@@ -55,9 +55,9 @@ The backend follows **Domain-Driven Design (DDD)** principles, organized into fo
     # Run from the backend directory for alembic
     cd backend && alembic upgrade head && cd ..
     ```
-4.  Start the API server (from project root to support absolute imports):
+4.  Start the API server:
     ```bash
-    PYTHONPATH=. uvicorn backend.interface.api.main:app --reload
+    python backend/server.py
     ```
 
 ### Frontend Setup
