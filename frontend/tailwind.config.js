@@ -1,0 +1,72 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{vue,js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      "colors": {
+          "background": "#0a0e1a",
+          "surface-bright": "#1a2438",
+          "surface": "#0f1524",
+          "on-tertiary-container": "#e8d0ff",
+          "outline-variant": "#2a3a48",
+          "error-container": "#3d1414",
+          "surface-container-lowest": "#0a0e1a",
+          "primary-fixed-dim": "#7dd3fc",
+          "on-primary": "#001f2e",
+          "on-secondary-container": "#c0d8e8",
+          "on-secondary-fixed-variant": "#2a4a5e",
+          "surface-container-low": "#111828",
+          "on-tertiary-fixed": "#1a002e",
+          "surface-container": "#141c2e",
+          "on-error-container": "#ffb3b3",
+          "secondary-fixed": "#c0d8e8",
+          "tertiary-container": "#3d2060",
+          "surface-container-highest": "#202c42",
+          "secondary-fixed-dim": "#88b4cc",
+          "on-tertiary-fixed-variant": "#4d2a73",
+          "on-secondary-fixed": "#0d1f2b",
+          "primary-fixed": "#c8eaff",
+          "outline": "#4a6070",
+          "on-secondary": "#001f2e",
+          "tertiary": "#c8a0f0",
+          "surface-dim": "#0f1524",
+          "tertiary-fixed-dim": "#c8a0f0",
+          "primary": "#7dd3fc",
+          "on-surface": "#e0e8f0",
+          "on-surface-variant": "#a0b4c4",
+          "surface-variant": "#1a2438",
+          "secondary": "#88b4cc",
+          "surface-tint": "#7dd3fc",
+          "error": "#ff6b6b",
+          "secondary-container": "#1a3a4e",
+          "primary-container": "#0e4d6e",
+          "on-tertiary": "#1a002e",
+          "surface-container-high": "#1a2438",
+          "on-background": "#e0e8f0",
+          "on-primary-container": "#c8eaff",
+          "on-error": "#1a0000",
+          "inverse-primary": "#0a4c6e",
+          "inverse-surface": "#e0e8f0",
+          "on-primary-fixed": "#001f2e",
+          "tertiary-fixed": "#e8d0ff",
+          "on-primary-fixed-variant": "#004d73",
+          "inverse-on-surface": "#0a0e1a"
+      },
+      "borderRadius": {
+          "DEFAULT": "0.5rem",
+          "lg": "1rem",
+          "xl": "1.5rem",
+          "full": "9999px"
+      },
+      "fontFamily": {
+          "headline": ["Inter"],
+          "body": ["Inter"],
+          "label": ["Inter"]
+      }
+    },
+  },
+  plugins: [],
+}
