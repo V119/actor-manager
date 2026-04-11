@@ -1,42 +1,38 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from typing import List, Optional
-from .schemas import ActorSchema, PortraitSchema, StyleSchema, GeneratedResultSchema, ProtocolSchema, GenerateStyleRequest
-from ...application.services import ActorService, PortraitService, StyleService, ProtocolService
-from ...infrastructure.repositories import (
+from backend.interface.api.schemas import ActorSchema, PortraitSchema, StyleSchema, GeneratedResultSchema, ProtocolSchema, GenerateStyleRequest
+from backend.application.services import ActorService, PortraitService, StyleService, ProtocolService
+from backend.infrastructure.repositories import (
     PeeweeActorRepository, PeeweePortraitRepository,
     PeeweeStyleRepository, PeeweeProtocolRepository,
     PeeweeGeneratedResultRepository
 )
-from ...infrastructure.orm_models import database
-from peewee_async import Manager
+from backend.infrastructure.orm_models import database
 
 router = APIRouter()
 
-def get_manager():
-    return Manager(database)
+def get_actor_service():
+    return ActorService(PeeweeActorRepository())
 
-def get_actor_service(manager: Manager = Depends(get_manager)):
-    return ActorService(PeeweeActorRepository(manager))
-
-def get_portrait_service(manager: Manager = Depends(get_manager)):
-    from ...infrastructure.storage import StorageClient
-    from ...infrastructure.config import settings
+def get_portrait_service():
+    from backend.infrastructure.storage import StorageClient
+    from backend.infrastructure.config import settings
     storage_client = StorageClient(
         settings.MINIO_ENDPOINT,
         settings.MINIO_ACCESS_KEY,
         settings.MINIO_SECRET_KEY,
         settings.MINIO_BUCKET
     )
-    return PortraitService(PeeweePortraitRepository(manager), storage_client)
+    return PortraitService(PeeweePortraitRepository(), storage_client)
 
-def get_style_service(manager: Manager = Depends(get_manager)):
+def get_style_service():
     return StyleService(
-        PeeweeStyleRepository(manager),
-        PeeweeGeneratedResultRepository(manager)
+        PeeweeStyleRepository(),
+        PeeweeGeneratedResultRepository()
     )
 
-def get_protocol_service(manager: Manager = Depends(get_manager)):
-    return ProtocolService(PeeweeProtocolRepository(manager))
+def get_protocol_service():
+    return ProtocolService(PeeweeProtocolRepository())
 
 @router.get("/actors", response_model=List[ActorSchema])
 async def list_actors(tag: Optional[str] = None, service: ActorService = Depends(get_actor_service)):

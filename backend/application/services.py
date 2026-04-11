@@ -1,10 +1,10 @@
 from typing import List, Optional
-from ..domain.models import Actor, Portrait, Style, GeneratedResult, Protocol, ProtocolStatus
-from ..domain.repositories import (
+from backend.domain.models import Actor, Portrait, Style, GeneratedResult, Protocol, ProtocolStatus
+from backend.domain.repositories import (
     ActorRepository, PortraitRepository, StyleRepository,
     GeneratedResultRepository, ProtocolRepository
 )
-from ..infrastructure.storage import StorageClient
+from backend.infrastructure.storage import StorageClient
 
 class ActorService:
     def __init__(self, actor_repo: ActorRepository):

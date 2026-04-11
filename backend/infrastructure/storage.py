@@ -1,5 +1,7 @@
 from minio import Minio
 import os
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 
 class StorageClient:
@@ -18,12 +20,15 @@ class StorageClient:
             self.client.make_bucket(self.bucket)
 
     async def upload_file(self, file_name: str, data: bytes, content_type: str):
-        self.client.put_object(
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None,
+            self.client.put_object,
             self.bucket,
             file_name,
             BytesIO(data),
-            length=len(data),
-            content_type=content_type
+            len(data),
+            content_type
         )
         return f"{self.bucket}/{file_name}"
 
