@@ -1,6 +1,7 @@
 fastapi
 uvicorn
 peewee-async
+aiopg
 alembic
 minio
 psycopg2-binary

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
-from .routes import router
-from ...infrastructure.orm_models import database
-from ...infrastructure.config import settings
+from backend.interface.api.routes import router
+from backend.infrastructure.orm_models import database
+from backend.infrastructure.config import settings
 
 app = FastAPI(title="Glacier AI Actor API")
 

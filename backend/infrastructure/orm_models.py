@@ -1,10 +1,11 @@
 import peewee
+import peewee_async
 from datetime import datetime
 from playhouse.postgres_ext import BinaryJSONField
 
-database = peewee.PostgresqlDatabase(None)
+database = peewee_async.PooledPostgresqlDatabase(None)
 
-class BaseModel(peewee.Model):
+class BaseModel(peewee_async.AioModel):
     class Meta:
         database = database
 
