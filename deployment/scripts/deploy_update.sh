@@ -57,6 +57,36 @@ wait_for_minio() {
   return 1
 }
 
+wait_for_backend() {
+  local retries=60
+  local code
+  while (( retries > 0 )); do
+    code="$(curl -s -o /tmp/actor-manager-backend-check.json -w '%{http_code}' "http://127.0.0.1:${BACKEND_PORT}/api/auth/me" || true)"
+    if [[ "$code" == "401" ]]; then
+      return 0
+    fi
+    sleep 1
+    retries=$((retries - 1))
+  done
+  echo "Backend startup timeout, last status=${code:-n/a}" >&2
+  return 1
+}
+
+wait_for_nginx_auth() {
+  local retries=60
+  local code
+  while (( retries > 0 )); do
+    code="$(curl -s -o /tmp/actor-manager-auth-check.json -w '%{http_code}' "http://127.0.0.1:${PUBLIC_PORT}/api/auth/me" || true)"
+    if [[ "$code" == "401" ]]; then
+      return 0
+    fi
+    sleep 1
+    retries=$((retries - 1))
+  done
+  echo "Nginx auth check timeout, last status=${code:-n/a}" >&2
+  return 1
+}
+
 if [[ "$(id -u)" -ne 0 ]]; then
   echo "Please run as root" >&2
   exit 1
@@ -186,15 +216,12 @@ EOF
 systemctl daemon-reload
 systemctl enable actor-manager-backend >/dev/null
 systemctl restart actor-manager-backend
+wait_for_backend
 
 log "Running health checks"
 curl -fsS "http://127.0.0.1:${PUBLIC_PORT}/healthz" >/dev/null
 curl -fsS "http://127.0.0.1:${PUBLIC_PORT}/" >/dev/null
-AUTH_CODE="$(curl -s -o /tmp/actor-manager-auth-check.json -w '%{http_code}' "http://127.0.0.1:${PUBLIC_PORT}/api/auth/me")"
-if [[ "$AUTH_CODE" != "401" ]]; then
-  echo "Auth check failed: expected 401, got ${AUTH_CODE}" >&2
-  exit 1
-fi
+wait_for_nginx_auth
 
 log "Deployment completed"
 docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' | awk 'NR==1 || $1 ~ /^actor-manager-/'
