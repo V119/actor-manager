@@ -165,7 +165,7 @@ if ! uv sync --all-groups --locked; then
 fi
 
 log "Running database migration and bootstrap"
-uv run python -m backend.scripts.bootstrap
+uv run --no-sync python -m backend.scripts.bootstrap
 
 log "Building frontend assets"
 pushd frontend >/dev/null
@@ -205,7 +205,7 @@ Environment=ACTOR_MANAGER_CONFIG_API_PORT=${BACKEND_PORT}
 Environment=ACTOR_MANAGER_CONFIG_API_RELOAD=false
 Environment=UV_PYTHON=${PYTHON_VERSION}
 Environment=UV_INDEX_URL=${UV_INDEX_URL}
-ExecStart=/usr/local/bin/uv run python backend/server.py
+ExecStart=/usr/local/bin/uv run --no-sync python backend/server.py
 Restart=always
 RestartSec=3
 
