@@ -7,6 +7,8 @@
 ```text
 deployment/
   README.md
+  scripts/
+    deploy_update.sh
   nginx/
     nginx.conf
     conf.d/
@@ -21,6 +23,36 @@ deployment/
 - `Nginx`：统一入口，负责静态前端分发、`/api/` 转发、基础安全头、限流与访问日志。
 - `Backend (FastAPI)`：业务 API（登录注册、肖像上传、视频上传、协议管理、风格实验室、企业发现广场等）。
 - `Frontend (Vue/Vite)`：SPA 应用，通过 Nginx 访问并调用同域 `/api`。
+
+## 一键更新部署脚本（服务器）
+
+脚本路径：`deployment/scripts/deploy_update.sh`
+
+能力：
+
+- 拉取 GitHub 最新代码（`main`）
+- 自动处理服务器工作区脏文件（先 stash）
+- 拉取并重标记 Postgres/MinIO/Nginx 镜像
+- 重建并启动 `postgres`、`minio`、`nginx` 容器
+- 执行 `uv sync`、数据库迁移与初始化
+- 构建前端并同步 Nginx 配置
+- 重启后端 `systemd` 服务并执行健康检查
+
+在服务器执行：
+
+```bash
+cd /opt/actor-manager/app/actor-manager
+bash deployment/scripts/deploy_update.sh
+```
+
+可选环境变量（覆盖默认值）：
+
+- `APP_ROOT`（默认 `/opt/actor-manager/app/actor-manager`）
+- `RUNTIME_ROOT`（默认 `/opt/actor-manager/runtime`）
+- `DATA_ROOT`（默认 `/opt/actor-manager/data`）
+- `BRANCH`（默认 `main`）
+- `PUBLIC_PORT`（默认 `8000`）
+- `BACKEND_PORT`（默认 `18000`）
 
 ## Nginx 配置能力（对应当前功能）
 
