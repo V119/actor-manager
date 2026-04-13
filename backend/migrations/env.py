@@ -1,11 +1,20 @@
-import logging
+from pathlib import Path
+import sys
 from logging.config import fileConfig
+
 from alembic import context
-from infrastructure.orm_models import database, ActorModel, PortraitModel, StyleModel, GeneratedResultModel, ProtocolModel
+from sqlalchemy import create_engine
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from backend.infrastructure.config import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -32,14 +41,6 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-    # We use Peewee's connection if possible, or just the URL
-    connectable = database
-
-    # Since Peewee isn't SQLAlchemy, we handle connection differently if needed
-    # but Alembic expects a SQLAlchemy engine for 'online' mode by default.
-    # However, we can just use the DB URL from config.
-
-    from sqlalchemy import create_engine
     url = config.get_main_option("sqlalchemy.url")
     engine = create_engine(url)
 

@@ -49,7 +49,7 @@ class GeneratedResult:
 @dataclass
 class Protocol:
     id: Optional[int]
-    actor_id: int
+    actor_id: Optional[int]
     company_name: str
     title: str
     content: str

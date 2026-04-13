@@ -1,0 +1,5 @@
+Create a high-contrast noir cinematic portrait of the same person from the reference image.
+Keep facial identity, hairstyle, and key appearance fully consistent.
+Use dramatic key light, deep shadows, monochrome or desaturated color grading, subtle film grain,
+and a classic detective-era atmosphere.
+Output a photorealistic portrait with strong mood and storytelling tension.

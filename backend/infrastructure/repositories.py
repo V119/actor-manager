@@ -100,7 +100,11 @@ class PeeweeStyleRepository(StyleRepository):
 
 class PeeweeGeneratedResultRepository(GeneratedResultRepository):
     async def list_by_actor(self, actor_id: int) -> List[GeneratedResult]:
-        query = GeneratedResultModel.select().where(GeneratedResultModel.actor_id == actor_id)
+        query = (
+            GeneratedResultModel.select()
+            .where(GeneratedResultModel.actor_id == actor_id)
+            .order_by(GeneratedResultModel.created_at.desc())
+        )
         models = await query.aio_execute()
         return [self._to_domain(m) for m in models]
 

@@ -1,0 +1,4 @@
+Create a cinematic portrait still of the same person in the reference image.
+Style: historical epic, dramatic storytelling, rich costume texture, golden rim light, volumetric haze, high-end film color grading, 85mm lens look, shallow depth of field.
+Must keep exact facial identity consistency and realistic skin details.
+Avoid extra characters, text, logos, deformed anatomy, blur, and artifacts.

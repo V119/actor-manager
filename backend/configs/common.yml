@@ -1,0 +1,108 @@
+env: dev
+
+logging:
+  level: INFO
+  request:
+    enabled: true
+    body_preview_limit: 2048
+    max_capture_bytes: 65536
+
+api:
+  title: Glacier AI Actor API
+  root_message: Welcome to Glacier AI Actor API
+  host: 0.0.0.0
+  port: 8000
+  reload: true
+  cors:
+    allow_origins:
+      - http://127.0.0.1:5173
+      - http://localhost:5173
+    allow_credentials: true
+    allow_methods:
+      - "*"
+    allow_headers:
+      - "*"
+
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: postgres
+  name: glacier_db
+
+minio:
+  endpoint: localhost:9000
+  access_key: minioadmin
+  secret_key: minioadmin
+  bucket: glacier
+  presign_expires_seconds: 1200
+  buckets:
+    portrait_raw: glacier-portrait-raw
+    portrait_generated: glacier-portrait-generated
+    portrait_video: glacier-portrait-video
+    style_generated: glacier-style-generated
+  secure: false
+
+upload:
+  stream:
+    part_size: 10485760
+  plan:
+    secret: change-me-upload-plan-secret
+    expires_seconds: 1800
+
+portrait:
+  guidance:
+    expected_single_ratio: "9:16"
+    expected_composite_ratio: "4:3"
+    min_capture_area: 腰部以上至头顶
+    capture_angles:
+      - 正面
+      - 左侧面
+      - 右侧面
+    background_requirement: 背景简单干净，避免杂乱
+    detection_note: 当前仅提示拍摄规范，暂不做自动检测，后续版本可能增加检测
+  compose:
+    width: 1200
+    height: 900
+    worker_concurrency: 2
+    order:
+      - front
+      - left
+      - right
+
+style_generation:
+  enabled: true
+  model:
+    base_url: https://dashscope.aliyuncs.com
+    prompt_base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    api_key: "sk-d7cc9fc8024b464aa4e7d76546d0c084"
+    prompt_model: qwen-plus
+    image_model: wan2.7-image
+    timeout_seconds: 120
+    image_api_path: /api/v1/services/aigc/multimodal-generation/generation
+  image:
+    size: "1024*1024"
+    n: 1
+    watermark: false
+    quality: high
+    response_format: b64_json
+  prompts:
+    root_dir: backend/prompts/styles
+    default_dir: default
+    file_name: prompt.txt
+  results:
+    limit_per_style: 20
+
+auth:
+  session_ttl_days: 7
+
+seed:
+  users:
+    individual:
+      username: actor_user
+      password: "123456"
+      display_name: 示例普通用户
+    enterprise:
+      username: enterprise_user
+      password: "123456"
+      display_name: 示例企业用户

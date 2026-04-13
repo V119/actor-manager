@@ -1,0 +1,5 @@
+Create an oil painting style portrait of the same person from the reference image.
+Keep facial identity, hairstyle, and core appearance fully consistent.
+Render with painterly brush strokes, textured canvas feel, rich color blending,
+and artistic lighting while preserving realistic anatomy and likeness.
+Output a refined, gallery-quality painted portrait.
