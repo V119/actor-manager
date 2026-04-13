@@ -3,8 +3,8 @@
     <div class="w-full max-w-md bg-surface/65 border border-sky-400/15 rounded-2xl p-8 backdrop-blur-2xl shadow-[0_0_40px_rgba(125,211,252,0.08)]">
       <div class="mb-8">
         <p class="text-xs tracking-[0.2em] uppercase text-sky-300">Glacier AI Actor</p>
-        <h1 class="text-3xl font-bold mt-2">登录账户</h1>
-        <p class="text-on-surface-variant text-sm mt-2">登录后按角色进入对应工作台。</p>
+        <h1 class="text-3xl font-bold mt-2">{{ pageTitle }}</h1>
+        <p class="text-on-surface-variant text-sm mt-2">{{ pageSubtitle }}</p>
       </div>
 
       <form class="space-y-5" @submit.prevent="submit">
@@ -41,16 +41,23 @@
         </button>
       </form>
 
-      <p class="text-sm text-on-surface-variant mt-6">
+      <p v-if="canRegister" class="text-sm text-on-surface-variant mt-6">
         还没有账号？
         <RouterLink to="/register" class="text-sky-300 hover:text-sky-200">去注册</RouterLink>
+      </p>
+      <p v-else class="text-sm text-on-surface-variant mt-6">
+        企业账号由后台管理员统一创建与维护。
+      </p>
+      <p class="text-xs text-on-surface-variant mt-3">
+        {{ switchHint }}
+        <RouterLink :to="switchLoginPath" class="text-sky-300 hover:text-sky-200">{{ switchLabel }}</RouterLink>
       </p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { authStore } from '../lib/auth'
 
@@ -64,12 +71,36 @@ const form = reactive({
 
 const loading = ref(false)
 const errorMessage = ref('')
+const expectedRole = computed(() => route.meta.loginRole === 'enterprise' ? 'enterprise' : 'individual')
+const pageTitle = computed(() => expectedRole.value === 'enterprise' ? '企业用户登录' : '普通演员登录')
+const pageSubtitle = computed(() => (
+  expectedRole.value === 'enterprise'
+    ? '登录后进入演员发布广场与协议管理。企业账号由后台管理员创建。'
+    : '登录后进入肖像上传、协议管理和风格实验室。'
+))
+const canRegister = computed(() => expectedRole.value === 'individual')
+const switchLoginPath = computed(() => (
+  expectedRole.value === 'enterprise' ? '/login/individual' : '/login/enterprise'
+))
+const switchHint = computed(() => (
+  expectedRole.value === 'enterprise' ? '普通演员请使用：' : '企业用户请使用：'
+))
+const switchLabel = computed(() => (
+  expectedRole.value === 'enterprise' ? '演员登录入口' : '企业登录入口'
+))
 
 async function submit() {
   loading.value = true
   errorMessage.value = ''
   try {
     const user = await authStore.login(form.username, form.password)
+    if (user.role !== expectedRole.value) {
+      await authStore.logout()
+      errorMessage.value = expectedRole.value === 'enterprise'
+        ? '该账号不是企业用户，请使用演员登录入口。'
+        : '该账号不是普通演员用户，请使用企业登录入口。'
+      return
+    }
     const redirect = typeof route.query.redirect === 'string'
       ? route.query.redirect
       : authStore.defaultRouteForRole(user.role)

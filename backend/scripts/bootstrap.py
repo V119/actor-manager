@@ -129,6 +129,7 @@ def ensure_tables() -> None:
 def seed_data() -> dict[str, int]:
     individual_seed = dict(get_config("seed.users.individual", {}))
     enterprise_seed = dict(get_config("seed.users.enterprise", {}))
+    admin_seed = dict(get_config("seed.users.admin", {}))
 
     individual_username = str(individual_seed.get("username", "actor_user"))
     individual_password = str(individual_seed.get("password", "123456"))
@@ -137,6 +138,11 @@ def seed_data() -> dict[str, int]:
     enterprise_username = str(enterprise_seed.get("username", "enterprise_user"))
     enterprise_password = str(enterprise_seed.get("password", "123456"))
     enterprise_display_name = str(enterprise_seed.get("display_name", "示例企业用户"))
+    enterprise_company_intro = str(enterprise_seed.get("company_intro", "示例企业简介"))
+
+    admin_username = str(admin_seed.get("username", "admin"))
+    admin_password = str(admin_seed.get("password", "Admin@123456"))
+    admin_display_name = str(admin_seed.get("display_name", "系统管理员"))
 
     logger.info("Seeding baseline data")
     with database.allow_sync():
@@ -146,6 +152,7 @@ def seed_data() -> dict[str, int]:
                 "password_hash": hash_password(individual_password),
                 "role": "individual",
                 "display_name": individual_display_name,
+                "company_intro": "",
             },
         )
         enterprise_user, enterprise_created = UserModel.get_or_create(
@@ -154,6 +161,16 @@ def seed_data() -> dict[str, int]:
                 "password_hash": hash_password(enterprise_password),
                 "role": "enterprise",
                 "display_name": enterprise_display_name,
+                "company_intro": enterprise_company_intro,
+            },
+        )
+        _admin_user, admin_created = UserModel.get_or_create(
+            username=admin_username,
+            defaults={
+                "password_hash": hash_password(admin_password),
+                "role": "admin",
+                "display_name": admin_display_name,
+                "company_intro": "",
             },
         )
 
@@ -243,7 +260,7 @@ def seed_data() -> dict[str, int]:
         )
 
     summary = {
-        "users_created": int(individual_created) + int(enterprise_created),
+        "users_created": int(individual_created) + int(enterprise_created) + int(admin_created),
         "actors_created": int(actor_created),
         "styles_created": style_created_count,
         "protocols_created": int(protocol_created) + int(assigned_protocol_created),

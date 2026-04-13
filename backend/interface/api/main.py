@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 from backend.config import get_config
 from backend.interface.api.auth_routes import router as auth_router
-from backend.interface.api.middleware import LogRequestMiddleware, TraceIdMiddleware
+from backend.interface.api.middleware import LogRequestMiddleware, TokenAuthMiddleware, TraceIdMiddleware
 from backend.interface.api.routes import router
 from backend.infrastructure.orm_models import database
 from backend.infrastructure.config import settings
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 app.add_middleware(LogRequestMiddleware)
 app.add_middleware(TraceIdMiddleware)
+app.add_middleware(TokenAuthMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

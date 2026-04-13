@@ -35,8 +35,9 @@ class StyleModel(BaseModel):
 class UserModel(BaseModel):
     username = peewee.CharField(unique=True)
     password_hash = peewee.CharField()
-    role = peewee.CharField()  # "individual" | "enterprise"
+    role = peewee.CharField()  # "individual" | "enterprise" | "admin"
     display_name = peewee.CharField()
+    company_intro = peewee.TextField(default="")
     created_at = peewee.DateTimeField(default=datetime.now)
 
 

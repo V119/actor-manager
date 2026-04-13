@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 import json
 import logging
 import time
@@ -10,6 +11,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 
 from backend.config import get_config, set_trace_id
+from backend.infrastructure.orm_models import SessionModel, UserModel, database
 
 
 logger = logging.getLogger(__name__)
@@ -95,6 +97,15 @@ def _summarize_body(content_type: str, body: bytes) -> str:
     return f"<binary {len(body)} bytes>"
 
 
+def _extract_token_from_header(authorization: str | None) -> str | None:
+    if not authorization:
+        return None
+    if not authorization.startswith("Bearer "):
+        return None
+    token = authorization.split(" ", 1)[1].strip()
+    return token or None
+
+
 class TraceIdMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         request_id = getattr(request.state, "request_id", "") or request.headers.get("X-Request-Id", uuid.uuid4().hex)
@@ -107,6 +118,41 @@ class TraceIdMiddleware(BaseHTTPMiddleware):
         response.headers["X-Trace-Id"] = trace_id
         response.headers["X-Request-Id"] = request_id
         return response
+
+
+class TokenAuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
+        request.state.current_user = None
+        request.state.session_token = None
+        request.state.auth_error = None
+
+        authorization = request.headers.get("authorization")
+        token = _extract_token_from_header(authorization)
+        if authorization and token is None:
+            request.state.auth_error = "Invalid authorization header"
+            logger.warning("Authorization header format invalid path=%s", request.url.path)
+            return await call_next(request)
+        if token is None:
+            return await call_next(request)
+
+        try:
+            with database.allow_sync():
+                session = (
+                    SessionModel.select(SessionModel, UserModel)
+                    .join(UserModel)
+                    .where((SessionModel.token == token) & (SessionModel.expires_at > datetime.now()))
+                    .first()
+                )
+            if session:
+                request.state.current_user = session.user
+                request.state.session_token = token
+            else:
+                request.state.auth_error = "Session expired or invalid"
+        except Exception:
+            logger.exception("Token authentication middleware failed path=%s", request.url.path)
+            request.state.auth_error = "Authentication middleware error"
+
+        return await call_next(request)
 
 
 class LogRequestMiddleware(BaseHTTPMiddleware):

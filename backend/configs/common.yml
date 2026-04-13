@@ -94,7 +94,11 @@ style_generation:
     limit_per_style: 20
 
 auth:
-  session_ttl_days: 7
+  session_ttl_hours: 3
+  admin:
+    username: admin
+    password: "Admin@123456"
+    display_name: 系统管理员
 
 seed:
   users:
@@ -106,3 +110,8 @@ seed:
       username: enterprise_user
       password: "123456"
       display_name: 示例企业用户
+      company_intro: 示例企业简介，可在后台管理端修改
+    admin:
+      username: admin
+      password: "Admin@123456"
+      display_name: 系统管理员

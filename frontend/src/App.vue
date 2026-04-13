@@ -33,7 +33,7 @@
         <div class="flex items-center gap-4">
           <div class="text-right">
             <p class="text-sm font-semibold text-sky-200">{{ currentUser?.display_name || '未登录' }}</p>
-            <p class="text-xs text-slate-400">{{ roleLabel }}</p>
+            <p class="text-xs text-slate-400">{{ profileSubtitle }}</p>
           </div>
           <div class="w-9 h-9 rounded-full border border-sky-400/30 bg-sky-400/10 text-sky-200 flex items-center justify-center text-xs font-bold">
             {{ avatarText }}
@@ -55,15 +55,40 @@ const route = useRoute()
 const router = useRouter()
 
 const currentUser = computed(() => authStore.state.user)
-const isAuthPage = computed(() => route.path === '/login' || route.path === '/register')
-const roleLabel = computed(() => currentUser.value?.role === 'enterprise' ? '企业用户' : '普通用户')
-const roleSubtitle = computed(() => currentUser.value?.role === 'enterprise' ? '企业协议工作台' : '演员用户工作台')
+const isAuthPage = computed(() => (
+  route.path.startsWith('/login')
+  || route.path === '/register'
+  || route.path.startsWith('/admin/login')
+))
+const roleLabel = computed(() => {
+  if (currentUser.value?.role === 'admin') {
+    return '系统管理员'
+  }
+  return currentUser.value?.role === 'enterprise' ? '企业用户' : '普通用户'
+})
+const roleSubtitle = computed(() => {
+  if (currentUser.value?.role === 'admin') {
+    return '系统管理控制台'
+  }
+  return currentUser.value?.role === 'enterprise' ? '企业协议工作台' : '演员用户工作台'
+})
+const profileSubtitle = computed(() => {
+  if (currentUser.value?.role === 'enterprise') {
+    return currentUser.value?.company_intro || '企业用户'
+  }
+  return roleLabel.value
+})
 const avatarText = computed(() => {
   const name = currentUser.value?.display_name || currentUser.value?.username || 'U'
   return name.slice(0, 1).toUpperCase()
 })
 
 const navItems = computed(() => {
+  if (currentUser.value?.role === 'admin') {
+    return [
+      { to: '/admin/enterprise-users', label: '企业用户管理', icon: 'admin_panel_settings' }
+    ]
+  }
   if (currentUser.value?.role === 'enterprise') {
     return [
       { to: '/discovery', label: '演员发布广场', icon: 'dashboard' },
@@ -78,8 +103,13 @@ const navItems = computed(() => {
 })
 
 async function handleLogout() {
+  const role = currentUser.value?.role
   await authStore.logout()
-  await router.replace('/login')
+  if (role === 'admin') {
+    await router.replace('/admin/login')
+    return
+  }
+  await router.replace(role === 'enterprise' ? '/login/enterprise' : '/login/individual')
 }
 </script>
 

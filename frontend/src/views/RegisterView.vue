@@ -4,7 +4,7 @@
       <div class="mb-8">
         <p class="text-xs tracking-[0.2em] uppercase text-sky-300">Glacier AI Actor</p>
         <h1 class="text-3xl font-bold mt-2">注册账户</h1>
-        <p class="text-on-surface-variant text-sm mt-2">选择普通用户或企业用户角色后进入对应工作台。</p>
+        <p class="text-on-surface-variant text-sm mt-2">当前仅开放普通演员用户注册，企业用户由后台管理员创建。</p>
       </div>
 
       <form class="space-y-5" @submit.prevent="submit">
@@ -27,28 +27,6 @@
             class="mt-2 w-full bg-surface/40 border border-sky-400/15 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/60 focus:border-sky-300/40"
             placeholder="例如：星界影业 / 苏长生"
           />
-        </label>
-
-        <label class="block">
-          <span class="text-xs text-on-surface-variant">角色</span>
-          <div class="mt-2 grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              class="rounded-xl border px-4 py-3 text-sm font-semibold transition-all"
-              :class="form.role === 'individual' ? 'border-sky-300 bg-sky-400/15 text-sky-200' : 'border-sky-400/15 bg-surface/40 text-on-surface-variant'"
-              @click="form.role = 'individual'"
-            >
-              普通用户
-            </button>
-            <button
-              type="button"
-              class="rounded-xl border px-4 py-3 text-sm font-semibold transition-all"
-              :class="form.role === 'enterprise' ? 'border-sky-300 bg-sky-400/15 text-sky-200' : 'border-sky-400/15 bg-surface/40 text-on-surface-variant'"
-              @click="form.role = 'enterprise'"
-            >
-              企业用户
-            </button>
-          </div>
         </label>
 
         <label class="block">
@@ -75,7 +53,11 @@
 
       <p class="text-sm text-on-surface-variant mt-6">
         已有账号？
-        <RouterLink to="/login" class="text-sky-300 hover:text-sky-200">去登录</RouterLink>
+        <RouterLink to="/login/individual" class="text-sky-300 hover:text-sky-200">演员登录</RouterLink>
+        /
+        <RouterLink to="/login/enterprise" class="text-sky-300 hover:text-sky-200">企业登录</RouterLink>
+        /
+        <RouterLink to="/admin/login" class="text-sky-300 hover:text-sky-200">后台管理</RouterLink>
       </p>
     </div>
   </div>
@@ -91,8 +73,7 @@ const router = useRouter()
 const form = reactive({
   username: '',
   display_name: '',
-  password: '',
-  role: 'individual'
+  password: ''
 })
 
 const loading = ref(false)
