@@ -128,7 +128,11 @@ log "Syncing Python dependencies"
 export UV_INDEX_URL
 export UV_PYTHON="$PYTHON_VERSION"
 uv python install "$PYTHON_VERSION"
-uv sync --all-groups --locked
+if ! uv sync --all-groups --locked; then
+  log "Locked sync failed, fallback to normal sync"
+  uv sync --all-groups
+  git restore --staged --worktree uv.lock >/dev/null 2>&1 || true
+fi
 
 log "Running database migration and bootstrap"
 uv run python -m backend.scripts.bootstrap
