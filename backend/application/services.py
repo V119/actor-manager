@@ -74,6 +74,15 @@ STYLE_CATALOG_DEFAULTS: list[dict[str, str]] = [
     },
 ]
 
+VIDEO_TYPE_INTRO = "intro"
+VIDEO_TYPE_SHOWREEL = "showreel"
+VIDEO_TYPE_ALL = (VIDEO_TYPE_INTRO, VIDEO_TYPE_SHOWREEL)
+VIDEO_TYPE_LABELS = {
+    VIDEO_TYPE_INTRO: "真人自我介绍",
+    VIDEO_TYPE_SHOWREEL: "妆造/演戏混剪",
+}
+THREE_VIEW_MIN_LONG_EDGE_PX = 2000
+
 
 class PortraitUploadPayload(TypedDict):
     data: bytes
@@ -251,11 +260,13 @@ class PortraitService:
         self,
         user_id: int,
         user_display_name: str,
+        video_type: str,
         filename: str,
         content_type: str,
         size: int,
     ) -> dict[str, Any]:
         actor_id = self._resolve_actor_for_user(user_id=user_id, user_display_name=user_display_name)
+        normalized_video_type = self._normalize_video_type(video_type)
         normalized_content_type = content_type or "application/octet-stream"
         if not normalized_content_type.startswith("video/"):
             raise ValueError("请上传视频文件。")
@@ -264,14 +275,15 @@ class PortraitService:
         upload_batch_key = uuid.uuid4().hex
         date_prefix = datetime.now().strftime("%Y/%m/%d")
         object_key = (
-            f"portraits/video/user_{user_id}/actor_{actor_id}/{date_prefix}/"
+            f"portraits/video/user_{user_id}/actor_{actor_id}/{normalized_video_type}/{date_prefix}/"
             f"{upload_batch_key}.{extension}"
         )
         upload_target = {
             "view_angle": "video",
+            "video_type": normalized_video_type,
             "bucket_name": settings.MINIO_PORTRAIT_VIDEO_BUCKET,
             "object_key": object_key,
-            "source_filename": filename or f"portrait_video.{extension}",
+            "source_filename": filename or f"{normalized_video_type}_video.{extension}",
             "mime_type": normalized_content_type,
             "file_size": max(0, int(size)),
             "image_url": f"{settings.MINIO_PORTRAIT_VIDEO_BUCKET}/{object_key}",
@@ -291,9 +303,10 @@ class PortraitService:
             "files": [upload_target],
         }
         logger.info(
-            "Prepared video direct upload plan user_id=%s actor_id=%s upload_batch_key=%s",
+            "Prepared video direct upload plan user_id=%s actor_id=%s video_type=%s upload_batch_key=%s",
             user_id,
             actor_id,
+            normalized_video_type,
             upload_batch_key,
         )
         return {
@@ -415,6 +428,7 @@ class PortraitService:
                 raise ValueError(f"Empty file for angle: {angle}")
 
             image, width, height, image_format = self._read_image(file_data)
+            self._validate_three_view_source_resolution(angle=angle, width=width, height=height)
             extension = self._guess_extension(payload["filename"], payload["content_type"], image_format)
             logger.debug(
                 "Three-view source parsed user_id=%s actor_id=%s angle=%s filename=%s size=%s resolution=%sx%s format=%s",
@@ -760,19 +774,12 @@ class PortraitService:
         replace_count = sum(1 for angle in ("left", "front", "right") if angle in images)
         if replace_count == 0:
             raise ValueError("请至少上传一张需要替换的图片。")
+        actor_id = self._resolve_actor_for_user(user_id=user_id, user_display_name=user_display_name)
 
         with database.allow_sync():
-            latest_session = (
-                PortraitUploadSessionModel.select()
-                .where(
-                    (PortraitUploadSessionModel.user_id == user_id)
-                    & (PortraitUploadSessionModel.is_current == True)  # noqa: E712
-                )
-                .order_by(PortraitUploadSessionModel.created_at.desc())
-                .first()
-            )
+            latest_session = self._get_recompose_base_session(user_id=user_id, actor_id=actor_id)
             if not latest_session:
-                raise ValueError("暂无可修改的历史三视图，请先完成首次上传。")
+                raise ValueError("暂无可修改的三视图，请先完成首次上传。")
 
             latest_assets = list(
                 PortraitUploadAssetModel.select()
@@ -828,6 +835,7 @@ class PortraitService:
         self,
         user_id: int,
         user_display_name: str,
+        video_type: str,
         file_data: bytes,
         filename: str,
         content_type: str,
@@ -835,6 +843,7 @@ class PortraitService:
         if not file_data:
             logger.warning("Portrait video upload failed: empty file user_id=%s", user_id)
             raise ValueError("视频文件不能为空。")
+        normalized_video_type = self._normalize_video_type(video_type)
         normalized_content_type = content_type or "application/octet-stream"
         if not normalized_content_type.startswith("video/"):
             logger.warning(
@@ -848,13 +857,14 @@ class PortraitService:
         extension = Path(filename).suffix.lower().lstrip(".") or "mp4"
         date_prefix = datetime.now().strftime("%Y/%m/%d")
         object_key = (
-            f"portraits/video/user_{user_id}/actor_{actor_id}/{date_prefix}/"
+            f"portraits/video/user_{user_id}/actor_{actor_id}/{normalized_video_type}/{date_prefix}/"
             f"{uuid.uuid4().hex}.{extension}"
         )
         logger.info(
-            "Portrait video upload started user_id=%s actor_id=%s filename=%s size=%s content_type=%s",
+            "Portrait video upload started user_id=%s actor_id=%s video_type=%s filename=%s size=%s content_type=%s",
             user_id,
             actor_id,
+            normalized_video_type,
             filename,
             len(file_data),
             normalized_content_type,
@@ -868,9 +878,10 @@ class PortraitService:
         return await self._create_video_asset_record(
             actor_id=actor_id,
             user_id=user_id,
+            video_type=normalized_video_type,
             bucket_name=settings.MINIO_PORTRAIT_VIDEO_BUCKET,
             object_key=object_key,
-            source_filename=filename or f"portrait_video.{extension}",
+            source_filename=filename or f"{normalized_video_type}_video.{extension}",
             mime_type=normalized_content_type,
             file_size=len(file_data),
         )
@@ -879,11 +890,13 @@ class PortraitService:
         self,
         user_id: int,
         user_display_name: str,
+        video_type: str,
         upload_stream: BinaryIO,
         filename: str,
         content_type: str,
         declared_size: int | None = None,
     ) -> dict[str, Any]:
+        normalized_video_type = self._normalize_video_type(video_type)
         normalized_content_type = content_type or "application/octet-stream"
         if not normalized_content_type.startswith("video/"):
             raise ValueError("请上传视频文件。")
@@ -892,14 +905,15 @@ class PortraitService:
         extension = Path(filename).suffix.lower().lstrip(".") or "mp4"
         date_prefix = datetime.now().strftime("%Y/%m/%d")
         object_key = (
-            f"portraits/video/user_{user_id}/actor_{actor_id}/{date_prefix}/"
+            f"portraits/video/user_{user_id}/actor_{actor_id}/{normalized_video_type}/{date_prefix}/"
             f"{uuid.uuid4().hex}.{extension}"
         )
         size = self._resolve_stream_size(upload_stream, declared_size)
         logger.info(
-            "Portrait video stream upload started user_id=%s actor_id=%s filename=%s size=%s content_type=%s",
+            "Portrait video stream upload started user_id=%s actor_id=%s video_type=%s filename=%s size=%s content_type=%s",
             user_id,
             actor_id,
+            normalized_video_type,
             filename,
             size,
             normalized_content_type,
@@ -920,9 +934,10 @@ class PortraitService:
         return await self._create_video_asset_record(
             actor_id=actor_id,
             user_id=user_id,
+            video_type=normalized_video_type,
             bucket_name=settings.MINIO_PORTRAIT_VIDEO_BUCKET,
             object_key=object_key,
-            source_filename=filename or f"portrait_video.{extension}",
+            source_filename=filename or f"{normalized_video_type}_video.{extension}",
             mime_type=normalized_content_type,
             file_size=final_size,
         )
@@ -942,13 +957,15 @@ class PortraitService:
         object_key = str(item.get("object_key"))
         source_filename = str(item.get("source_filename") or "portrait_video.mp4")
         mime_type = str(item.get("mime_type") or "application/octet-stream")
+        video_type = self._normalize_video_type(str(item.get("video_type") or VIDEO_TYPE_INTRO))
 
         stat = self.storage_client.stat_object(object_key, bucket=bucket_name)
         file_size = int(stat.get("size", item.get("file_size", 0)) or 0)
         logger.info(
-            "Commit video direct upload user_id=%s actor_id=%s bucket=%s object_key=%s size=%s",
+            "Commit video direct upload user_id=%s actor_id=%s video_type=%s bucket=%s object_key=%s size=%s",
             user_id,
             plan["actor_id"],
+            video_type,
             bucket_name,
             object_key,
             file_size,
@@ -956,6 +973,7 @@ class PortraitService:
         return await self._create_video_asset_record(
             actor_id=plan["actor_id"],
             user_id=user_id,
+            video_type=video_type,
             bucket_name=bucket_name,
             object_key=object_key,
             source_filename=source_filename,
@@ -969,9 +987,13 @@ class PortraitService:
         limit: int = 20,
         offset: int = 0,
         include_current: bool = False,
+        video_type: str | None = None,
     ) -> list[dict[str, Any]]:
+        normalized_video_type = self._normalize_video_type(video_type) if video_type else None
         with database.allow_sync():
             condition = PortraitVideoAssetModel.user_id == user_id
+            if normalized_video_type:
+                condition = condition & (PortraitVideoAssetModel.video_type == normalized_video_type)
             if not include_current:
                 condition = condition & PortraitVideoAssetModel.superseded_at.is_null(False)
             assets = list(
@@ -991,14 +1013,22 @@ class PortraitService:
         )
         return [self._serialize_video_asset(asset) for asset in assets]
 
-    async def get_current_portrait_video(self, user_id: int) -> Optional[dict[str, Any]]:
+    async def get_current_portrait_video(
+        self,
+        user_id: int,
+        video_type: str | None = None,
+    ) -> Optional[dict[str, Any]]:
+        normalized_video_type = self._normalize_video_type(video_type) if video_type else None
         with database.allow_sync():
+            condition = (
+                (PortraitVideoAssetModel.user_id == user_id)
+                & (PortraitVideoAssetModel.is_current == True)  # noqa: E712
+            )
+            if normalized_video_type:
+                condition = condition & (PortraitVideoAssetModel.video_type == normalized_video_type)
             asset = (
                 PortraitVideoAssetModel.select()
-                .where(
-                    (PortraitVideoAssetModel.user_id == user_id)
-                    & (PortraitVideoAssetModel.is_current == True)  # noqa: E712
-                )
+                .where(condition)
                 .order_by(PortraitVideoAssetModel.created_at.desc())
                 .first()
             )
@@ -1007,33 +1037,43 @@ class PortraitService:
         return self._serialize_video_asset(asset)
 
     async def get_video_state(self, user_id: int) -> dict[str, Any]:
+        state: dict[str, dict[str, Optional[dict[str, Any]]]] = {}
         with database.allow_sync():
-            draft = (
-                PortraitVideoAssetModel.select()
-                .where(
-                    (PortraitVideoAssetModel.user_id == user_id)
-                    & (PortraitVideoAssetModel.is_current == True)  # noqa: E712
+            for video_type in VIDEO_TYPE_ALL:
+                draft = (
+                    PortraitVideoAssetModel.select()
+                    .where(
+                        (PortraitVideoAssetModel.user_id == user_id)
+                        & (PortraitVideoAssetModel.video_type == video_type)
+                        & (PortraitVideoAssetModel.is_current == True)  # noqa: E712
+                    )
+                    .order_by(PortraitVideoAssetModel.created_at.desc())
+                    .first()
                 )
-                .order_by(PortraitVideoAssetModel.created_at.desc())
-                .first()
-            )
-            published = (
-                PortraitVideoAssetModel.select()
-                .where(
-                    (PortraitVideoAssetModel.user_id == user_id)
-                    & (PortraitVideoAssetModel.is_current == False)  # noqa: E712
-                    & PortraitVideoAssetModel.superseded_at.is_null(True)
+                published = (
+                    PortraitVideoAssetModel.select()
+                    .where(
+                        (PortraitVideoAssetModel.user_id == user_id)
+                        & (PortraitVideoAssetModel.video_type == video_type)
+                        & (PortraitVideoAssetModel.is_current == False)  # noqa: E712
+                        & PortraitVideoAssetModel.superseded_at.is_null(True)
+                    )
+                    .order_by(PortraitVideoAssetModel.created_at.desc())
+                    .first()
                 )
-                .order_by(PortraitVideoAssetModel.created_at.desc())
-                .first()
-            )
+                state[video_type] = {
+                    "draft": self._serialize_video_asset(draft) if draft else None,
+                    "published": self._serialize_video_asset(published) if published else None,
+                }
         return {
-            "draft": self._serialize_video_asset(draft) if draft else None,
-            "published": self._serialize_video_asset(published) if published else None,
+            "intro": state[VIDEO_TYPE_INTRO],
+            "showreel": state[VIDEO_TYPE_SHOWREEL],
+            "both_published_ready": all(state[item]["published"] for item in VIDEO_TYPE_ALL),
         }
 
-    async def publish_current_video(self, user_id: int, user_display_name: str) -> dict[str, Any]:
+    async def publish_current_video(self, user_id: int, user_display_name: str, video_type: str) -> dict[str, Any]:
         actor_id = self._resolve_actor_for_user(user_id=user_id, user_display_name=user_display_name)
+        normalized_video_type = self._normalize_video_type(video_type)
         with database.allow_sync():
             now = datetime.now()
             draft = (
@@ -1041,19 +1081,22 @@ class PortraitService:
                 .where(
                     (PortraitVideoAssetModel.user_id == user_id)
                     & (PortraitVideoAssetModel.actor_id == actor_id)
+                    & (PortraitVideoAssetModel.video_type == normalized_video_type)
                     & (PortraitVideoAssetModel.is_current == True)  # noqa: E712
                 )
                 .order_by(PortraitVideoAssetModel.created_at.desc())
                 .first()
             )
             if not draft:
-                raise ValueError("暂无可发布的视频草稿，请先上传视频。")
+                label = VIDEO_TYPE_LABELS.get(normalized_video_type, "该类型")
+                raise ValueError(f"暂无可发布的{label}草稿，请先上传视频。")
 
             (
                 PortraitVideoAssetModel.update(superseded_at=now)
                 .where(
                     (PortraitVideoAssetModel.user_id == user_id)
                     & (PortraitVideoAssetModel.actor_id == actor_id)
+                    & (PortraitVideoAssetModel.video_type == normalized_video_type)
                     & (PortraitVideoAssetModel.is_current == False)  # noqa: E712
                     & PortraitVideoAssetModel.superseded_at.is_null(True)
                 )
@@ -1072,28 +1115,46 @@ class PortraitService:
 
         await self._purge_superseded_video_versions(user_id=user_id, actor_id=actor_id)
         logger.info(
-            "Portrait video draft published user_id=%s actor_id=%s asset_id=%s",
+            "Portrait video draft published user_id=%s actor_id=%s video_type=%s asset_id=%s",
             user_id,
             actor_id,
+            normalized_video_type,
             draft.id,
         )
         return self._serialize_video_asset(draft)
 
-    async def get_published_video_for_actor(self, actor_id: int) -> Optional[dict[str, Any]]:
+    async def get_published_videos_for_actor(self, actor_id: int) -> list[dict[str, Any]]:
+        assets: list[PortraitVideoAssetModel] = []
         with database.allow_sync():
-            asset = (
-                PortraitVideoAssetModel.select()
-                .where(
-                    (PortraitVideoAssetModel.actor_id == actor_id)
-                    & (PortraitVideoAssetModel.is_current == False)  # noqa: E712
-                    & PortraitVideoAssetModel.superseded_at.is_null(True)
+            for video_type in VIDEO_TYPE_ALL:
+                asset = (
+                    PortraitVideoAssetModel.select()
+                    .where(
+                        (PortraitVideoAssetModel.actor_id == actor_id)
+                        & (PortraitVideoAssetModel.video_type == video_type)
+                        & (PortraitVideoAssetModel.is_current == False)  # noqa: E712
+                        & PortraitVideoAssetModel.superseded_at.is_null(True)
+                    )
+                    .order_by(PortraitVideoAssetModel.created_at.desc())
+                    .first()
                 )
-                .order_by(PortraitVideoAssetModel.created_at.desc())
-                .first()
-            )
-            if not asset:
-                return None
-        return self._serialize_video_asset(asset)
+                if asset:
+                    assets.append(asset)
+        return [self._serialize_video_asset(asset) for asset in assets]
+
+    def pick_primary_published_video(self, videos: list[dict[str, Any]]) -> Optional[dict[str, Any]]:
+        if not videos:
+            return None
+        by_type = {str(item.get("video_type")): item for item in videos}
+        if by_type.get(VIDEO_TYPE_SHOWREEL):
+            return by_type[VIDEO_TYPE_SHOWREEL]
+        if by_type.get(VIDEO_TYPE_INTRO):
+            return by_type[VIDEO_TYPE_INTRO]
+        return sorted(videos, key=lambda item: item.get("created_at") or datetime.min, reverse=True)[0]
+
+    async def get_published_video_for_actor(self, actor_id: int) -> Optional[dict[str, Any]]:
+        published = await self.get_published_videos_for_actor(actor_id)
+        return self.pick_primary_published_video(published)
 
     async def cleanup_three_view_history(self, user_id: int, purge_storage: bool = True) -> dict[str, int]:
         with database.allow_sync():
@@ -1409,12 +1470,14 @@ class PortraitService:
         self,
         actor_id: int,
         user_id: int,
+        video_type: str,
         bucket_name: str,
         object_key: str,
         source_filename: str,
         mime_type: str,
         file_size: int,
     ) -> dict[str, Any]:
+        normalized_video_type = self._normalize_video_type(video_type)
         video_url = f"{bucket_name}/{object_key}"
         with database.allow_sync():
             now = datetime.now()
@@ -1426,20 +1489,23 @@ class PortraitService:
                 .where(
                     (PortraitVideoAssetModel.user_id == user_id)
                     & (PortraitVideoAssetModel.actor_id == actor_id)
+                    & (PortraitVideoAssetModel.video_type == normalized_video_type)
                     & (PortraitVideoAssetModel.is_current == True)  # noqa: E712
                 )
                 .execute()
             )
             if retired:
                 logger.info(
-                    "Portrait video current asset rotated user_id=%s actor_id=%s retired_count=%s",
+                    "Portrait video current asset rotated user_id=%s actor_id=%s video_type=%s retired_count=%s",
                     user_id,
                     actor_id,
+                    normalized_video_type,
                     retired,
                 )
             asset = PortraitVideoAssetModel.create(
                 actor_id=actor_id,
                 user_id=user_id,
+                video_type=normalized_video_type,
                 is_current=True,
                 superseded_at=None,
                 bucket_name=bucket_name,
@@ -1451,15 +1517,22 @@ class PortraitService:
                 created_at=now,
             )
         logger.info(
-            "Portrait video asset persisted user_id=%s actor_id=%s asset_id=%s bucket=%s object_key=%s",
+            "Portrait video asset persisted user_id=%s actor_id=%s video_type=%s asset_id=%s bucket=%s object_key=%s",
             user_id,
             actor_id,
+            normalized_video_type,
             asset.id,
             bucket_name,
             object_key,
         )
         await self._purge_superseded_video_versions(user_id=user_id, actor_id=actor_id)
         return self._serialize_video_asset(asset)
+
+    def _normalize_video_type(self, video_type: str | None) -> str:
+        normalized = str(video_type or "").strip().lower()
+        if normalized not in VIDEO_TYPE_ALL:
+            raise ValueError("视频类型非法，仅支持 intro 或 showreel。")
+        return normalized
 
     def _resolve_stream_size(self, upload_stream: BinaryIO, declared_size: int | None) -> int:
         if declared_size is not None and declared_size > 0:
@@ -1581,15 +1654,7 @@ class PortraitService:
         latest_assets_by_angle: dict[str, PortraitUploadAssetModel] = {}
         if reuse_latest_missing:
             with database.allow_sync():
-                latest_session = (
-                    PortraitUploadSessionModel.select()
-                    .where(
-                        (PortraitUploadSessionModel.user_id == job.user_id)
-                        & (PortraitUploadSessionModel.is_current == True)  # noqa: E712
-                    )
-                    .order_by(PortraitUploadSessionModel.created_at.desc())
-                    .first()
-                )
+                latest_session = self._get_recompose_base_session(user_id=job.user_id, actor_id=job.actor_id)
                 if latest_session:
                     latest_assets = list(
                         PortraitUploadAssetModel.select()
@@ -1662,6 +1727,7 @@ class PortraitService:
             object_key = str(source["object_key"])
             file_data = await self.storage_client.download_file(object_key, bucket=bucket_name)
             image, width, height, _ = self._read_image(file_data)
+            self._validate_three_view_source_resolution(angle=angle, width=width, height=height)
             panels[angle] = ImageOps.fit(
                 image,
                 (panel_width, panel_height),
@@ -1770,8 +1836,17 @@ class PortraitService:
                     "name": user_display_name or f"user_{user_id}",
                     "age": 0,
                     "location": "unknown",
+                    "hometown": "",
                     "height": 0,
+                    "weight_kg": 0,
+                    "bust_cm": 0,
+                    "waist_cm": 0,
+                    "hip_cm": 0,
+                    "shoe_size": "",
                     "bio": "Auto-created actor profile for individual uploads.",
+                    "acting_requirements": "",
+                    "rejected_requirements": "",
+                    "availability_note": "",
                     "tags": ["self-upload"],
                     "is_published": False,
                 },
@@ -1781,6 +1856,159 @@ class PortraitService:
         else:
             logger.debug("Resolved existing actor for user user_id=%s actor_id=%s", user_id, actor.id)
         return int(actor.id)
+
+    async def get_actor_basic_info(self, user_id: int, user_display_name: str) -> dict[str, Any]:
+        actor_id = self._resolve_actor_for_user(user_id=user_id, user_display_name=user_display_name)
+        with database.allow_sync():
+            actor = ActorModel.get_or_none(ActorModel.id == actor_id)
+            if not actor:
+                raise ValueError("演员资料不存在，请稍后重试。")
+            avatar_session = self._get_recompose_base_session(user_id=user_id, actor_id=actor_id)
+        return self._serialize_actor_basic_info(actor=actor, avatar_session=avatar_session)
+
+    async def update_actor_basic_info(
+        self,
+        user_id: int,
+        user_display_name: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        actor_id = self._resolve_actor_for_user(user_id=user_id, user_display_name=user_display_name)
+        with database.allow_sync():
+            actor = ActorModel.get_or_none(ActorModel.id == actor_id)
+            if not actor:
+                raise ValueError("演员资料不存在，请稍后重试。")
+
+            actor.name = self._clamp_text(payload.get("name"), max_len=64) or actor.name
+            actor.age = self._clamp_int(payload.get("age"), min_value=0, max_value=100)
+            actor.height = self._clamp_int(payload.get("height"), min_value=0, max_value=250)
+            actor.weight_kg = self._clamp_int(payload.get("weight_kg"), min_value=0, max_value=300)
+            actor.location = self._clamp_text(payload.get("location"), max_len=64)
+            actor.hometown = self._clamp_text(payload.get("hometown"), max_len=64)
+            actor.bust_cm = self._clamp_int(payload.get("bust_cm"), min_value=0, max_value=200)
+            actor.waist_cm = self._clamp_int(payload.get("waist_cm"), min_value=0, max_value=200)
+            actor.hip_cm = self._clamp_int(payload.get("hip_cm"), min_value=0, max_value=220)
+            actor.shoe_size = self._clamp_text(payload.get("shoe_size"), max_len=16)
+            actor.bio = self._clamp_text(payload.get("bio"), max_len=2000)
+            actor.acting_requirements = self._clamp_text(payload.get("acting_requirements"), max_len=2000)
+            actor.rejected_requirements = self._clamp_text(payload.get("rejected_requirements"), max_len=2000)
+            actor.availability_note = self._clamp_text(payload.get("availability_note"), max_len=1000)
+            actor.tags = self._normalize_tags(payload.get("tags"))
+            actor.save()
+
+            avatar_session = self._get_recompose_base_session(user_id=user_id, actor_id=actor_id)
+
+        logger.info("Actor basic info updated user_id=%s actor_id=%s", user_id, actor_id)
+        return self._serialize_actor_basic_info(actor=actor, avatar_session=avatar_session)
+
+    def _serialize_actor_basic_info(
+        self,
+        actor: ActorModel,
+        avatar_session: PortraitUploadSessionModel | None,
+    ) -> dict[str, Any]:
+        avatar_url = None
+        avatar_source = "none"
+        if avatar_session:
+            avatar_url = self.storage_client.get_url(
+                avatar_session.composite_object_key,
+                bucket=avatar_session.composite_bucket,
+            )
+            avatar_source = "three_view"
+        return {
+            "actor_id": actor.id,
+            "external_id": actor.external_id,
+            "name": actor.name,
+            "age": int(actor.age or 0),
+            "height": int(actor.height or 0),
+            "weight_kg": int(actor.weight_kg or 0),
+            "location": actor.location or "",
+            "hometown": actor.hometown or "",
+            "bust_cm": int(actor.bust_cm or 0),
+            "waist_cm": int(actor.waist_cm or 0),
+            "hip_cm": int(actor.hip_cm or 0),
+            "shoe_size": actor.shoe_size or "",
+            "bio": actor.bio or "",
+            "tags": list(actor.tags or []),
+            "acting_requirements": actor.acting_requirements or "",
+            "rejected_requirements": actor.rejected_requirements or "",
+            "availability_note": actor.availability_note or "",
+            "avatar_url": avatar_url,
+            "avatar_source": avatar_source,
+            "created_at": actor.created_at,
+        }
+
+    def _clamp_int(self, value: Any, min_value: int, max_value: int) -> int:
+        try:
+            parsed = int(value)
+        except Exception:
+            return min_value
+        if parsed < min_value:
+            return min_value
+        if parsed > max_value:
+            return max_value
+        return parsed
+
+    def _clamp_text(self, value: Any, max_len: int) -> str:
+        text = str(value or "").strip()
+        if len(text) <= max_len:
+            return text
+        return text[:max_len]
+
+    def _normalize_tags(self, raw_tags: Any) -> list[str]:
+        if not isinstance(raw_tags, list):
+            return []
+        normalized: list[str] = []
+        for item in raw_tags:
+            tag = self._clamp_text(item, max_len=24)
+            if not tag:
+                continue
+            if tag in normalized:
+                continue
+            normalized.append(tag)
+            if len(normalized) >= 20:
+                break
+        return normalized
+
+    def _validate_three_view_source_resolution(self, angle: str, width: int, height: int) -> None:
+        long_edge = max(int(width or 0), int(height or 0))
+        if long_edge <= THREE_VIEW_MIN_LONG_EDGE_PX:
+            angle_label_map = {
+                "left": "左侧面图",
+                "front": "正面图",
+                "right": "右侧面图",
+            }
+            label = angle_label_map.get(str(angle).lower(), "该角度图片")
+            raise ValueError(
+                f"{label}清晰度不足：长边需大于 2000 像素，当前为 {width}x{height}。"
+            )
+
+    def _get_recompose_base_session(
+        self,
+        user_id: int,
+        actor_id: int,
+    ) -> PortraitUploadSessionModel | None:
+        draft_session = (
+            PortraitUploadSessionModel.select()
+            .where(
+                (PortraitUploadSessionModel.user_id == user_id)
+                & (PortraitUploadSessionModel.actor_id == actor_id)
+                & (PortraitUploadSessionModel.is_current == True)  # noqa: E712
+            )
+            .order_by(PortraitUploadSessionModel.created_at.desc())
+            .first()
+        )
+        if draft_session:
+            return draft_session
+        return (
+            PortraitUploadSessionModel.select()
+            .where(
+                (PortraitUploadSessionModel.user_id == user_id)
+                & (PortraitUploadSessionModel.actor_id == actor_id)
+                & (PortraitUploadSessionModel.is_current == False)  # noqa: E712
+                & PortraitUploadSessionModel.superseded_at.is_null(True)
+            )
+            .order_by(PortraitUploadSessionModel.created_at.desc())
+            .first()
+        )
 
     def _read_image(self, file_data: bytes) -> tuple[Image.Image, int, int, str]:
         try:
@@ -1898,6 +2126,7 @@ class PortraitService:
             "id": asset.id,
             "actor_id": asset.actor_id,
             "user_id": asset.user_id,
+            "video_type": asset.video_type,
             "is_current": bool(asset.is_current),
             "superseded_at": asset.superseded_at,
             "bucket_name": asset.bucket_name,

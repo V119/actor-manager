@@ -14,8 +14,17 @@ class ActorModel(BaseModel):
     external_id = peewee.CharField(unique=True)
     age = peewee.IntegerField()
     location = peewee.CharField()
+    hometown = peewee.CharField(default="")
     height = peewee.IntegerField()
+    weight_kg = peewee.IntegerField(default=0)
+    bust_cm = peewee.IntegerField(default=0)
+    waist_cm = peewee.IntegerField(default=0)
+    hip_cm = peewee.IntegerField(default=0)
+    shoe_size = peewee.CharField(default="")
     bio = peewee.TextField()
+    acting_requirements = peewee.TextField(default="")
+    rejected_requirements = peewee.TextField(default="")
+    availability_note = peewee.TextField(default="")
     tags = BinaryJSONField(default=[])
     is_published = peewee.BooleanField(default=False)
     created_at = peewee.DateTimeField(default=datetime.now)
@@ -39,6 +48,18 @@ class UserModel(BaseModel):
     display_name = peewee.CharField()
     company_intro = peewee.TextField(default="")
     created_at = peewee.DateTimeField(default=datetime.now)
+
+
+class PortraitGuidanceSampleModel(BaseModel):
+    view_angle = peewee.CharField(unique=True, index=True)  # left | front | right
+    bucket_name = peewee.CharField()
+    object_key = peewee.CharField()
+    image_url = peewee.CharField()
+    source_filename = peewee.CharField()
+    mime_type = peewee.CharField()
+    file_size = peewee.BigIntegerField(default=0)
+    created_at = peewee.DateTimeField(default=datetime.now)
+    updated_at = peewee.DateTimeField(default=datetime.now, index=True)
 
 
 class GeneratedResultModel(BaseModel):
@@ -119,6 +140,7 @@ class PortraitUploadAssetModel(BaseModel):
 class PortraitVideoAssetModel(BaseModel):
     actor = peewee.ForeignKeyField(ActorModel, backref='portrait_video_assets')
     user = peewee.ForeignKeyField(UserModel, backref='portrait_video_assets', on_delete='CASCADE')
+    video_type = peewee.CharField(default='intro', index=True)
     is_current = peewee.BooleanField(default=True, index=True)
     superseded_at = peewee.DateTimeField(null=True, index=True)
     bucket_name = peewee.CharField()
@@ -131,7 +153,7 @@ class PortraitVideoAssetModel(BaseModel):
 
     class Meta:
         indexes = (
-            (('actor', 'user', 'created_at'), False),
+            (('actor', 'user', 'video_type', 'created_at'), False),
         )
 
 

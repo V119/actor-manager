@@ -40,6 +40,7 @@ minio:
     portrait_raw: glacier-portrait-raw
     portrait_generated: glacier-portrait-generated
     portrait_video: glacier-portrait-video
+    portrait_guidance: glacier-portrait-guidance
     style_generated: glacier-style-generated
   secure: false
 
@@ -66,8 +67,8 @@ portrait:
     height: 900
     worker_concurrency: 2
     order:
-      - front
       - left
+      - front
       - right
 
 style_generation:

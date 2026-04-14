@@ -53,8 +53,17 @@
 
           <div class="bg-surface/60 border border-emerald-300/20 rounded-xl p-4">
             <h2 class="text-lg font-semibold mb-3">已发布视频</h2>
-            <div v-if="detail.published_video" class="space-y-3">
-              <video :src="detail.published_video.preview_url" controls class="w-full rounded-lg border border-emerald-300/20" />
+            <div v-if="publishedVideos.length" class="space-y-4">
+              <div
+                v-for="video in publishedVideos"
+                :key="video.id"
+                class="rounded-lg border border-emerald-300/20 bg-slate-950/20 p-3 space-y-2"
+              >
+                <p class="text-xs font-semibold text-emerald-200">
+                  {{ videoLabelMap[video.video_type] || '已发布视频' }}
+                </p>
+                <video :src="video.preview_url" controls class="w-full rounded-lg border border-emerald-300/20" />
+              </div>
             </div>
             <div v-else class="text-xs text-on-surface-variant">暂无已发布视频。</div>
           </div>
@@ -88,8 +97,20 @@ const route = useRoute()
 const loading = ref(false)
 const errorMessage = ref('')
 const detail = ref(null)
+const videoLabelMap = {
+  intro: '真人自我介绍',
+  showreel: '妆造风格/演戏混剪'
+}
 
 const fallbackCover = 'https://lh3.googleusercontent.com/aida-public/AB6AXuD9xOeWWM-jWAGILA81XqH26NeDYHoqtGJWE9brsTAGIiWw7kgjEJmhS9d25ZDEFQybXpSuk9M_jCEvPBHtXPid3MZ5GZKW2JezdodqzKL0BgEEX6Hj4IlvV5mgXkbks3cx4bd8E19xJxVGT1tENU9rYe3gtZ2xAs7dkwy2hkTeuysJ7qzuM90wWoIhgFKDYdLY5ylh0wX45zCP4PKhlDQBAr0mu0zk4x0jVLSNsJZAacfBelDO38vlM_4rieH1BZ0uq7nQpgs-BsoA'
+
+const publishedVideos = computed(() => {
+  const list = Array.isArray(detail.value?.published_videos)
+    ? detail.value.published_videos
+    : (detail.value?.published_video ? [detail.value.published_video] : [])
+  const order = { intro: 0, showreel: 1 }
+  return [...list].sort((a, b) => (order[a.video_type] ?? 99) - (order[b.video_type] ?? 99))
+})
 
 const coverImage = computed(() => {
   if (detail.value?.published_styles?.length) {
@@ -97,6 +118,9 @@ const coverImage = computed(() => {
   }
   if (detail.value?.published_three_view?.composite_preview_url) {
     return detail.value.published_three_view.composite_preview_url
+  }
+  if (publishedVideos.value.length) {
+    return publishedVideos.value[0].preview_url || fallbackCover
   }
   return fallbackCover
 })

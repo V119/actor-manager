@@ -11,6 +11,7 @@ from backend.infrastructure.orm_models import (
     ActorModel,
     GeneratedResultModel,
     PortraitComposeJobModel,
+    PortraitGuidanceSampleModel,
     PortraitModel,
     PortraitUploadAssetModel,
     PortraitUploadSessionModel,
@@ -91,15 +92,17 @@ def ensure_bucket() -> None:
             settings.MINIO_PORTRAIT_RAW_BUCKET,
             settings.MINIO_PORTRAIT_GENERATED_BUCKET,
             settings.MINIO_PORTRAIT_VIDEO_BUCKET,
+            settings.MINIO_PORTRAIT_GUIDANCE_BUCKET,
             settings.MINIO_STYLE_GENERATED_BUCKET,
         ]
     )
     logger.info(
-        "MinIO buckets ensured default=%s raw=%s generated=%s video=%s style=%s",
+        "MinIO buckets ensured default=%s raw=%s generated=%s video=%s guidance=%s style=%s",
         settings.MINIO_BUCKET,
         settings.MINIO_PORTRAIT_RAW_BUCKET,
         settings.MINIO_PORTRAIT_GENERATED_BUCKET,
         settings.MINIO_PORTRAIT_VIDEO_BUCKET,
+        settings.MINIO_PORTRAIT_GUIDANCE_BUCKET,
         settings.MINIO_STYLE_GENERATED_BUCKET,
     )
 
@@ -116,6 +119,7 @@ def ensure_tables() -> None:
                 PortraitUploadAssetModel,
                 PortraitComposeJobModel,
                 PortraitVideoAssetModel,
+                PortraitGuidanceSampleModel,
                 GeneratedResultModel,
                 UserModel,
                 SessionModel,

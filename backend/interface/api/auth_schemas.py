@@ -60,6 +60,26 @@ class AdminUpdateEnterpriseUserRequest(BaseModel):
     company_intro: str = Field(default="", max_length=4000)
 
 
+class PortraitGuidanceSampleSchema(BaseModel):
+    view_angle: Literal["left", "front", "right"]
+    image_url: str
+    preview_url: str
+    bucket_name: str
+    object_key: str
+    source_filename: str
+    mime_type: str
+    file_size: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class PortraitGuidanceSampleStateSchema(BaseModel):
+    left: Optional[PortraitGuidanceSampleSchema] = None
+    front: Optional[PortraitGuidanceSampleSchema] = None
+    right: Optional[PortraitGuidanceSampleSchema] = None
+    all_ready: bool = False
+
+
 class RoleProtocolSchema(BaseModel):
     id: int
     company_name: str

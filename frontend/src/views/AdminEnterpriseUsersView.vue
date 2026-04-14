@@ -4,7 +4,6 @@
       <div class="rounded-2xl border border-amber-400/20 bg-slate-950/60 backdrop-blur-xl p-6">
         <p class="text-xs tracking-[0.2em] uppercase text-amber-300">Admin Console</p>
         <h1 class="text-2xl font-bold text-amber-100 mt-2">企业用户管理</h1>
-        <p class="text-sm text-slate-300 mt-2">维护企业用户登录账号、企业名称和企业简介。企业用户登录后看到的企业信息与这里保持一致。</p>
       </div>
 
       <div class="grid grid-cols-1 xl:grid-cols-[minmax(300px,360px)_1fr] gap-6">

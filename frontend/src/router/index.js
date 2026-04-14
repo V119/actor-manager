@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import EditPortrait from '../views/EditPortrait.vue'
+import ActorBasicInfo from '../views/ActorBasicInfo.vue'
 import StyleLab from '../views/StyleLab.vue'
 import ProtocolManagement from '../views/ProtocolManagement.vue'
 import DiscoverySquare from '../views/DiscoverySquare.vue'
@@ -8,9 +9,19 @@ import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import AdminLoginView from '../views/AdminLoginView.vue'
 import AdminEnterpriseUsersView from '../views/AdminEnterpriseUsersView.vue'
+import AdminPortraitGuidanceView from '../views/AdminPortraitGuidanceView.vue'
 import { authStore } from '../lib/auth'
 
+const PUBLIC_LOGIN_PATHS = new Set([
+  '/login/individual',
+  '/login/enterprise',
+  '/admin/login'
+])
+
 function loginPathForRoute(to) {
+  if (typeof to?.path === 'string' && to.path.startsWith('/admin')) {
+    return '/admin/login'
+  }
   const roles = Array.isArray(to?.meta?.roles) ? to.meta.roles : []
   if (roles.length === 1 && roles[0] === 'admin') {
     return '/admin/login'
@@ -51,6 +62,18 @@ const routes = [
     meta: { requiresAuth: true, roles: ['admin'] }
   },
   {
+    path: '/admin/portrait-guidance',
+    name: 'AdminPortraitGuidance',
+    component: AdminPortraitGuidanceView,
+    meta: { requiresAuth: true, roles: ['admin'] }
+  },
+  {
+    path: '/actor-basic-info',
+    name: 'ActorBasicInfo',
+    component: ActorBasicInfo,
+    meta: { requiresAuth: true, roles: ['individual'] }
+  },
+  {
     path: '/edit-portrait',
     name: 'EditPortrait',
     component: EditPortrait,
@@ -89,17 +112,18 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  await authStore.restoreSession()
+  await authStore.restoreSession({ force: true })
 
   const isAuthed = authStore.isAuthenticated()
   const currentRole = authStore.state.user?.role
+  const isPublicLoginPage = PUBLIC_LOGIN_PATHS.has(to.path)
+
+  if (!isAuthed && !isPublicLoginPage) {
+    return { path: loginPathForRoute(to), query: { redirect: to.fullPath } }
+  }
 
   if (to.meta.guestOnly && isAuthed) {
     return authStore.defaultRouteForRole(currentRole)
-  }
-
-  if (to.meta.requiresAuth && !isAuthed) {
-    return { path: loginPathForRoute(to), query: { redirect: to.fullPath } }
   }
 
   if (to.meta.roles && isAuthed && !to.meta.roles.includes(currentRole)) {

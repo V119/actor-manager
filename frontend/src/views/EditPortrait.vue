@@ -21,20 +21,57 @@
         <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
           <article class="rounded-xl border border-sky-400/10 bg-slate-950/20 px-4 py-3">
             <p class="text-sm font-semibold text-sky-100">构图范围</p>
-            <p class="mt-1 text-xs text-on-surface-variant">上半身，取景从腰部以上到头顶。</p>
+            <p class="mt-1 text-xs text-on-surface-variant">请以示例图为标准，保持上半身取景，范围从腰部以上到头顶。</p>
           </article>
           <article class="rounded-xl border border-sky-400/10 bg-slate-950/20 px-4 py-3">
             <p class="text-sm font-semibold text-sky-100">角度要求</p>
-            <p class="mt-1 text-xs text-on-surface-variant">请分别拍摄正面、左侧面、右侧面各 1 张。</p>
+            <p class="mt-1 text-xs text-on-surface-variant">请对照下方左侧面、正面、右侧面示例图，各上传 1 张。</p>
           </article>
           <article class="rounded-xl border border-sky-400/10 bg-slate-950/20 px-4 py-3">
             <p class="text-sm font-semibold text-sky-100">背景环境</p>
-            <p class="mt-1 text-xs text-on-surface-variant">背景尽量简单干净，避免杂乱物体干扰。</p>
+            <p class="mt-1 text-xs text-on-surface-variant">参考示例图的干净背景，避免杂乱物体、强阴影和遮挡。</p>
           </article>
           <article class="rounded-xl border border-sky-400/10 bg-slate-950/20 px-4 py-3">
             <p class="text-sm font-semibold text-sky-100">检测说明</p>
-            <p class="mt-1 text-xs text-on-surface-variant">当前仅提供拍摄提示，后续版本可能加入自动检测。</p>
+            <p class="mt-1 text-xs text-on-surface-variant">上传图片将校验清晰度，左/正/右三张图片长边都需大于 2000 像素。</p>
           </article>
+        </div>
+
+        <div class="mt-5 rounded-2xl border border-sky-400/10 bg-slate-950/25 p-3 md:p-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 class="text-base font-semibold text-sky-100">标准示例图</h3>
+              <p class="mt-1 text-xs text-on-surface-variant">
+                请按示例图的角度、上半身取景范围和干净背景进行拍摄并上传。当前仅做提示，不做自动检测。
+              </p>
+            </div>
+            <span v-if="guidanceLoading" class="text-xs text-on-surface-variant">正在加载示例图...</span>
+          </div>
+
+          <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl mx-auto">
+            <article
+              v-for="slot in guidanceSampleSlots"
+              :key="slot.key"
+              class="rounded-xl border border-sky-400/10 bg-surface/35 p-2.5"
+            >
+              <div class="mb-2 flex items-center justify-between">
+                <p class="text-xs font-semibold text-sky-200">{{ slot.label }}</p>
+                <span class="text-[11px] text-on-surface-variant">示例标准</span>
+              </div>
+              <div class="mx-auto aspect-[9/16] w-24 sm:w-28 rounded-lg overflow-hidden border border-sky-400/10 bg-slate-950/40">
+                <img
+                  v-if="slot.previewUrl"
+                  :src="slot.previewUrl"
+                  :alt="slot.label"
+                  class="w-full h-full object-cover"
+                />
+                <div v-else class="w-full h-full flex flex-col items-center justify-center gap-2 text-on-surface-variant">
+                  <span class="material-symbols-outlined text-3xl">image_not_supported</span>
+                  <p class="text-xs">管理员暂未配置</p>
+                </div>
+              </div>
+            </article>
+          </div>
         </div>
       </section>
 
@@ -46,7 +83,7 @@
           </div>
           <p class="mb-4 text-xs text-on-surface-variant">
             <span v-if="loadingExisting">正在加载已上传素材...</span>
-            <span v-else-if="hasExistingSession">已显示你最近一次上传的三张原图。可替换任意角度并重新生成，未替换角度将沿用当前素材。</span>
+            <span v-else-if="hasExistingSession">已显示你当前三视图所用的三张原图。替换任意角度后点击“发布最新三视图”即可更新，未替换角度将沿用当前素材。</span>
             <span v-else>首次上传需选择左侧、正面、右侧三张图片。</span>
           </p>
 
@@ -84,23 +121,19 @@
               <p class="mt-2 text-[11px] text-on-surface-variant truncate">
                 {{ slot.displayFileName || '尚未上传文件' }}
               </p>
+              <p v-if="slot.error" class="mt-1 text-[11px] text-rose-300">
+                {{ slot.error }}
+              </p>
             </div>
           </div>
 
           <div class="mt-5">
             <button
               class="px-5 py-2.5 rounded-lg bg-sky-400 text-slate-950 font-semibold hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
-              :disabled="imageUploading || !canUploadImages"
-              @click="submitThreeView"
+              :disabled="isImageSubmitting || !canUploadImages || hasImageValidationError"
+              @click="publishLatestThreeView"
             >
-              {{ imageUploading ? '提交处理中...' : (hasExistingSession ? '提交修改并重新生成 4:3 三视图' : '上传并生成 4:3 三视图') }}
-            </button>
-            <button
-              class="ml-3 px-5 py-2.5 rounded-lg border border-emerald-300/40 text-emerald-200 hover:bg-emerald-400/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
-              :disabled="imagePublishing || !latestComposite"
-              @click="publishThreeViewDraft"
-            >
-              {{ imagePublishing ? '发布中...' : '发布当前三视图草稿' }}
+              {{ isImageSubmitting ? '发布处理中...' : (hasExistingSession ? '发布最新三视图（自动重新合成）' : '上传并发布三视图') }}
             </button>
           </div>
 
@@ -109,31 +142,15 @@
         </div>
 
         <div
-          v-if="latestComposite"
-          class="bg-surface/65 border border-sky-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl"
-        >
-          <h2 class="text-lg font-semibold mb-4">三视图草稿（未发布）</h2>
-          <div class="rounded-xl overflow-hidden border border-sky-300/20 bg-slate-950/25">
-            <div class="aspect-[4/3]">
-              <img
-                :src="latestComposite.composite_preview_url"
-                alt="三视图草稿"
-                class="w-full h-full object-cover"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div
-          v-if="publishedComposite"
+          v-if="displayComposite"
           class="bg-surface/65 border border-emerald-400/20 rounded-2xl p-5 md:p-6 backdrop-blur-xl"
         >
-          <h2 class="text-lg font-semibold mb-4">已发布三视图</h2>
+          <h2 class="text-lg font-semibold mb-4">当前三视图</h2>
           <div class="rounded-xl overflow-hidden border border-emerald-300/25 bg-slate-950/25">
             <div class="aspect-[4/3]">
               <img
-                :src="publishedComposite.composite_preview_url"
-                alt="已发布三视图"
+                :src="displayComposite.composite_preview_url"
+                alt="当前三视图"
                 class="w-full h-full object-cover"
               />
             </div>
@@ -141,23 +158,45 @@
         </div>
 
         <div class="bg-surface/65 border border-sky-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl">
-          <div class="flex items-center justify-between mb-5">
-            <h2 class="text-lg font-semibold">动态视频区</h2>
-            <span class="text-xs text-on-surface-variant">建议 5-10 秒，包含多角度缓慢转头</span>
+          <div class="flex items-start justify-between gap-4 mb-5">
+            <div>
+              <h2 class="text-lg font-semibold">动态视频区</h2>
+              <p class="text-xs text-on-surface-variant mt-1">
+                必须上传并发布 2 个本人视频：1 分钟内真人自我介绍 + 妆造风格/演戏混剪。
+              </p>
+            </div>
+            <span
+              class="text-xs px-2.5 py-1 rounded-full border"
+              :class="allRequiredVideosPublished ? 'border-emerald-300/40 text-emerald-200 bg-emerald-400/10' : 'border-amber-300/40 text-amber-200 bg-amber-400/10'"
+            >
+              {{ allRequiredVideosPublished ? '已满足双视频要求' : '待补齐双视频' }}
+            </span>
           </div>
 
-          <div class="grid md:grid-cols-2 gap-5">
-            <div class="rounded-xl border border-dashed border-sky-400/25 bg-slate-950/20 p-4">
+          <div class="grid xl:grid-cols-2 gap-5">
+            <article
+              v-for="slot in videoTypeSlots"
+              :key="slot.key"
+              class="rounded-xl border border-sky-400/20 bg-slate-950/20 p-4 space-y-4"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="text-sm font-semibold text-sky-100">{{ slot.title }}</p>
+                  <p class="text-xs text-on-surface-variant mt-1">{{ slot.subtitle }}</p>
+                </div>
+                <span class="text-[11px] text-sky-100 border border-sky-300/35 bg-sky-400/10 rounded-full px-2 py-0.5">必传</span>
+              </div>
+
               <div class="aspect-video rounded-lg overflow-hidden border border-sky-400/15 bg-surface/50">
                 <video
-                  v-if="currentVideoPreview"
-                  :src="currentVideoPreview"
+                  v-if="slot.currentPreview"
+                  :src="slot.currentPreview"
                   controls
                   class="w-full h-full object-cover"
                 />
                 <div v-else class="w-full h-full flex flex-col items-center justify-center gap-2 text-on-surface-variant">
                   <span class="material-symbols-outlined text-3xl">videocam</span>
-                  <p class="text-xs">未选择视频</p>
+                  <p class="text-xs">未选择 {{ slot.title }}</p>
                 </div>
               </div>
 
@@ -167,52 +206,71 @@
                   type="file"
                   accept="video/*"
                   class="hidden"
-                  @change="onVideoSelected"
+                  @change="onVideoSelected(slot.key, $event)"
                 />
               </label>
               <p class="mt-2 text-[11px] text-on-surface-variant truncate">
-                {{ currentVideoFileName || '尚未上传文件' }}
+                {{ slot.currentFileName || '尚未上传文件' }}
               </p>
-            </div>
 
-            <div class="rounded-xl border border-sky-400/10 bg-slate-950/20 p-4 space-y-4">
               <div class="space-y-2">
-                <p class="text-sm font-semibold text-sky-100">视频建议内容</p>
+                <p class="text-sm font-semibold text-sky-100">上传要求</p>
                 <ul class="space-y-2 text-xs text-on-surface-variant">
-                  <li>1. 面部无遮挡，光线均匀，避免强背光。</li>
-                  <li>2. 缓慢转头覆盖正面、左侧面、右侧面。</li>
-                  <li>3. 背景保持干净，尽量减少移动干扰。</li>
+                  <li v-for="tip in slot.tips" :key="`${slot.key}-${tip}`">- {{ tip }}</li>
                 </ul>
               </div>
+
+              <label class="flex items-center gap-2 text-xs text-on-surface-variant">
+                <input
+                  v-model="videoOwnershipConfirmed[slot.key]"
+                  type="checkbox"
+                  class="h-4 w-4 rounded border border-sky-300/40 bg-slate-900/70"
+                />
+                确认该视频为本人出镜
+              </label>
+
+              <div class="flex flex-wrap gap-3">
               <button
                 class="px-5 py-2.5 rounded-lg border border-sky-300/35 text-sky-100 hover:bg-sky-400/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
-                :disabled="videoUploading || !videoFile"
-                @click="submitVideo"
+                :disabled="slot.form.uploading || !slot.form.file"
+                @click="submitVideo(slot.key)"
               >
-                {{ videoUploading ? '视频上传中...' : '上传视频素材' }}
+                {{ slot.form.uploading ? '视频上传中...' : '上传视频素材' }}
               </button>
               <button
                 class="px-5 py-2.5 rounded-lg border border-emerald-300/40 text-emerald-200 hover:bg-emerald-400/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
-                :disabled="videoPublishing || !latestVideo"
-                @click="publishVideoDraft"
+                :disabled="slot.form.publishing || !slot.draft"
+                @click="publishVideoDraft(slot.key)"
               >
-                {{ videoPublishing ? '发布中...' : '发布当前视频草稿' }}
+                {{ slot.form.publishing ? '发布中...' : '发布当前视频草稿' }}
               </button>
-              <p v-if="videoSuccessMessage" class="text-sm text-emerald-300">{{ videoSuccessMessage }}</p>
-              <p v-if="videoErrorMessage" class="text-sm text-rose-300">{{ videoErrorMessage }}</p>
-            </div>
+              </div>
+              <p v-if="slot.form.success" class="text-sm text-emerald-300">{{ slot.form.success }}</p>
+              <p v-if="slot.form.error" class="text-sm text-rose-300">{{ slot.form.error }}</p>
+
+              <div v-if="slot.draft" class="rounded-xl border border-sky-300/20 bg-slate-950/25 p-3">
+                <p class="text-xs font-semibold mb-2">视频草稿（未发布）</p>
+                <video :src="slot.draft.preview_url" controls class="w-full rounded-lg border border-sky-300/15" />
+                <p class="mt-2 text-xs text-on-surface-variant truncate">{{ slot.draftFileName || '未命名文件' }}</p>
+              </div>
+
+              <div v-if="slot.published" class="rounded-xl border border-emerald-300/25 bg-slate-950/25 p-3">
+                <p class="text-xs font-semibold mb-2">已发布视频</p>
+                <video :src="slot.published.preview_url" controls class="w-full rounded-lg border border-emerald-300/20" />
+                <p class="mt-2 text-xs text-on-surface-variant truncate">{{ slot.publishedFileName || '未命名文件' }}</p>
+              </div>
+            </article>
           </div>
 
-          <div v-if="latestVideo" class="mt-5 rounded-xl border border-sky-300/20 bg-slate-950/25 p-4">
-            <p class="text-sm font-semibold mb-2">视频草稿（未发布）</p>
-            <video :src="latestVideo.preview_url" controls class="w-full rounded-lg border border-sky-300/15" />
-            <p class="mt-2 text-xs text-on-surface-variant truncate">{{ latestVideoFileName || '未命名文件' }}</p>
-          </div>
-
-          <div v-if="publishedVideo" class="mt-5 rounded-xl border border-emerald-300/25 bg-slate-950/25 p-4">
-            <p class="text-sm font-semibold mb-2">已发布视频</p>
-            <video :src="publishedVideo.preview_url" controls class="w-full rounded-lg border border-emerald-300/20" />
-            <p class="mt-2 text-xs text-on-surface-variant truncate">{{ publishedVideoFileName || '未命名文件' }}</p>
+          <div
+            class="mt-5 rounded-xl border px-4 py-3"
+            :class="allRequiredVideosPublished ? 'border-emerald-300/30 bg-emerald-400/5' : 'border-amber-300/30 bg-amber-400/5'"
+          >
+            <p class="text-sm font-semibold">完整度检查</p>
+            <p class="mt-1 text-xs text-on-surface-variant">
+              <span v-if="allRequiredVideosPublished">两个必填视频都已发布，演员动态视频区完整。</span>
+              <span v-else>请补齐并发布“真人自我介绍”和“妆造风格/演戏混剪”两个视频。</span>
+            </p>
           </div>
         </div>
       </section>
@@ -234,43 +292,116 @@ const imageSuccessMessage = ref('')
 const latestComposite = ref(null)
 const publishedComposite = ref(null)
 
-const videoUploading = ref(false)
-const videoPublishing = ref(false)
-const videoErrorMessage = ref('')
-const videoSuccessMessage = ref('')
-const videoFile = ref(null)
-const videoFileName = ref('')
-const videoPreview = ref('')
-const latestVideo = ref(null)
-const publishedVideo = ref(null)
+const VIDEO_TYPE_INTRO = 'intro'
+const VIDEO_TYPE_SHOWREEL = 'showreel'
+const INTRO_MAX_DURATION_SECONDS = 60
+const MIN_IMAGE_LONG_EDGE_PX = 2000
+const VIDEO_TYPE_CONFIGS = [
+  {
+    key: VIDEO_TYPE_INTRO,
+    title: '真人自我介绍',
+    subtitle: '时长要求：1 分钟以内',
+    tips: [
+      '本人出镜，镜头稳定，声音清晰。',
+      '建议介绍姓名、年龄段、擅长角色与作品经历。',
+      '如超出 1 分钟将无法上传。'
+    ]
+  },
+  {
+    key: VIDEO_TYPE_SHOWREEL,
+    title: '妆造风格/演戏混剪',
+    subtitle: '展示不同妆造或演戏片段',
+    tips: [
+      '本人出镜，可包含不同妆造、角色与情绪段落。',
+      '建议用多个片段混剪，突出可塑性和镜头表现。',
+      '可附带台词、动作或情绪转场片段。'
+    ]
+  }
+]
+
+function createVideoFormState() {
+  return {
+    uploading: false,
+    publishing: false,
+    error: '',
+    success: '',
+    file: null,
+    fileName: '',
+    preview: ''
+  }
+}
+
+const videoForms = reactive({
+  [VIDEO_TYPE_INTRO]: createVideoFormState(),
+  [VIDEO_TYPE_SHOWREEL]: createVideoFormState()
+})
+const videoDrafts = ref({
+  [VIDEO_TYPE_INTRO]: null,
+  [VIDEO_TYPE_SHOWREEL]: null
+})
+const publishedVideos = ref({
+  [VIDEO_TYPE_INTRO]: null,
+  [VIDEO_TYPE_SHOWREEL]: null
+})
+const videoOwnershipConfirmed = reactive({
+  [VIDEO_TYPE_INTRO]: false,
+  [VIDEO_TYPE_SHOWREEL]: false
+})
+const guidanceLoading = ref(false)
+const guidanceSamples = ref({ left: null, front: null, right: null, all_ready: false })
 
 const images = reactive({
-  left: { label: '左侧面图', preview: '', file: null, fileName: '', existingPreview: '', existingFileName: '' },
-  front: { label: '正面图', preview: '', file: null, fileName: '', existingPreview: '', existingFileName: '' },
-  right: { label: '右侧面图', preview: '', file: null, fileName: '', existingPreview: '', existingFileName: '' }
+  left: { label: '左侧面图', preview: '', file: null, fileName: '', existingPreview: '', existingFileName: '', error: '' },
+  front: { label: '正面图', preview: '', file: null, fileName: '', existingPreview: '', existingFileName: '', error: '' },
+  right: { label: '右侧面图', preview: '', file: null, fileName: '', existingPreview: '', existingFileName: '', error: '' }
 })
 
-const hasExistingSession = computed(() => Boolean(latestComposite.value?.session_id))
+const activeComposite = computed(() => latestComposite.value || publishedComposite.value || null)
+const displayComposite = computed(() => latestComposite.value || publishedComposite.value || null)
+const hasExistingSession = computed(() => Boolean(activeComposite.value?.session_id))
 const hasAnyImageReplacement = computed(() => Boolean(images.left.file || images.front.file || images.right.file))
+const hasImageValidationError = computed(() => Boolean(images.left.error || images.front.error || images.right.error))
+const isImageSubmitting = computed(() => imageUploading.value || imagePublishing.value)
 
 const imageSlots = computed(() => [
   {
     key: 'left',
     label: images.left.label,
     currentPreview: images.left.preview || images.left.existingPreview,
-    displayFileName: images.left.fileName || images.left.existingFileName
+    displayFileName: images.left.fileName || images.left.existingFileName,
+    error: images.left.error
   },
   {
     key: 'front',
     label: images.front.label,
     currentPreview: images.front.preview || images.front.existingPreview,
-    displayFileName: images.front.fileName || images.front.existingFileName
+    displayFileName: images.front.fileName || images.front.existingFileName,
+    error: images.front.error
   },
   {
     key: 'right',
     label: images.right.label,
     currentPreview: images.right.preview || images.right.existingPreview,
-    displayFileName: images.right.fileName || images.right.existingFileName
+    displayFileName: images.right.fileName || images.right.existingFileName,
+    error: images.right.error
+  }
+])
+
+const guidanceSampleSlots = computed(() => [
+  {
+    key: 'left',
+    label: '左侧面图',
+    previewUrl: guidanceSamples.value?.left?.preview_url || ''
+  },
+  {
+    key: 'front',
+    label: '正面图',
+    previewUrl: guidanceSamples.value?.front?.preview_url || ''
+  },
+  {
+    key: 'right',
+    label: '右侧面图',
+    previewUrl: guidanceSamples.value?.right?.preview_url || ''
   }
 ])
 
@@ -281,10 +412,22 @@ const canUploadImages = computed(() => {
   return Boolean(images.left.file && images.front.file && images.right.file)
 })
 
-const currentVideoPreview = computed(() => videoPreview.value || latestVideo.value?.preview_url || '')
-const currentVideoFileName = computed(() => videoFileName.value || latestVideo.value?.source_filename || '')
-const latestVideoFileName = computed(() => latestVideo.value?.source_filename || extractFileName(latestVideo.value?.object_key || ''))
-const publishedVideoFileName = computed(() => publishedVideo.value?.source_filename || extractFileName(publishedVideo.value?.object_key || ''))
+const videoTypeSlots = computed(() => VIDEO_TYPE_CONFIGS.map((config) => {
+  const draft = videoDrafts.value[config.key] || null
+  const published = publishedVideos.value[config.key] || null
+  const form = videoForms[config.key]
+  return {
+    ...config,
+    draft,
+    published,
+    form,
+    currentPreview: form.preview || draft?.preview_url || '',
+    currentFileName: form.fileName || draft?.source_filename || '',
+    draftFileName: draft?.source_filename || extractFileName(draft?.object_key || ''),
+    publishedFileName: published?.source_filename || extractFileName(published?.object_key || '')
+  }
+}))
+const allRequiredVideosPublished = computed(() => VIDEO_TYPE_CONFIGS.every((item) => Boolean(publishedVideos.value[item.key]?.id)))
 const COMPOSE_JOB_POLL_INTERVAL_MS = 1200
 const COMPOSE_JOB_POLL_MAX_ATTEMPTS = 200
 
@@ -307,25 +450,155 @@ function applySessionToImageSlots(session) {
     images[key].preview = ''
     images[key].file = null
     images[key].fileName = ''
+    images[key].error = ''
   }
 }
 
-function onImageSelected(slotKey, event) {
+async function onImageSelected(slotKey, event) {
+  const slot = images[slotKey]
   const input = event.target
   if (!input?.files?.length) return
   const file = input.files[0]
-  images[slotKey].file = file
-  images[slotKey].fileName = file.name
-  images[slotKey].preview = URL.createObjectURL(file)
+  slot.error = ''
+  imageErrorMessage.value = ''
+
+  try {
+    const { width, height } = await getImageDimensions(file)
+    const longEdge = Math.max(width, height)
+    if (longEdge <= MIN_IMAGE_LONG_EDGE_PX) {
+      throw new Error(`${slot.label}清晰度不足：长边需大于 2000 像素，当前为 ${width}x${height}。`)
+    }
+    if (slot.preview) {
+      URL.revokeObjectURL(slot.preview)
+    }
+    slot.file = file
+    slot.fileName = file.name
+    slot.preview = URL.createObjectURL(file)
+  } catch (error) {
+    slot.file = null
+    slot.fileName = ''
+    if (slot.preview) {
+      URL.revokeObjectURL(slot.preview)
+      slot.preview = ''
+    }
+    const message = error instanceof Error ? error.message : '图片校验失败，请更换图片后重试。'
+    slot.error = message
+    imageErrorMessage.value = message
+  } finally {
+    input.value = ''
+  }
 }
 
-function onVideoSelected(event) {
+async function onVideoSelected(videoType, event) {
+  const form = videoForms[videoType]
   const input = event.target
   if (!input?.files?.length) return
   const file = input.files[0]
-  videoFile.value = file
-  videoFileName.value = file.name
-  videoPreview.value = URL.createObjectURL(file)
+  form.error = ''
+  form.success = ''
+
+  try {
+    if (videoType === VIDEO_TYPE_INTRO) {
+      const durationSeconds = await getVideoDuration(file)
+      if (durationSeconds > INTRO_MAX_DURATION_SECONDS) {
+        throw new Error(`自我介绍视频需控制在 1 分钟内，当前约 ${Math.ceil(durationSeconds)} 秒。`)
+      }
+    }
+    if (form.preview) {
+      URL.revokeObjectURL(form.preview)
+    }
+    form.file = file
+    form.fileName = file.name
+    form.preview = URL.createObjectURL(file)
+  } catch (error) {
+    form.file = null
+    form.fileName = ''
+    if (form.preview) {
+      URL.revokeObjectURL(form.preview)
+      form.preview = ''
+    }
+    form.error = error instanceof Error ? error.message : '视频读取失败，请重试。'
+  } finally {
+    input.value = ''
+  }
+}
+
+function clearVideoSelection(videoType) {
+  const form = videoForms[videoType]
+  form.file = null
+  form.fileName = ''
+  if (form.preview) {
+    URL.revokeObjectURL(form.preview)
+  }
+  form.preview = ''
+}
+
+function normalizeVideoTypeState(payload, videoType) {
+  if (payload?.[videoType]) {
+    return payload[videoType]
+  }
+  if (videoType === VIDEO_TYPE_INTRO) {
+    return {
+      draft: payload?.draft || null,
+      published: payload?.published || null
+    }
+  }
+  return {
+    draft: null,
+    published: null
+  }
+}
+
+function applyVideoState(payload) {
+  VIDEO_TYPE_CONFIGS.forEach((item) => {
+    const state = normalizeVideoTypeState(payload, item.key)
+    videoDrafts.value[item.key] = state?.draft || null
+    publishedVideos.value[item.key] = state?.published || null
+  })
+}
+
+function getVideoDuration(file) {
+  return new Promise((resolve, reject) => {
+    const tempUrl = URL.createObjectURL(file)
+    const video = document.createElement('video')
+    video.preload = 'metadata'
+    video.onloadedmetadata = () => {
+      const duration = Number(video.duration || 0)
+      URL.revokeObjectURL(tempUrl)
+      if (!Number.isFinite(duration) || duration <= 0) {
+        reject(new Error('无法读取视频时长，请更换文件后重试。'))
+        return
+      }
+      resolve(duration)
+    }
+    video.onerror = () => {
+      URL.revokeObjectURL(tempUrl)
+      reject(new Error('无法解析视频时长，请确认视频文件格式。'))
+    }
+    video.src = tempUrl
+  })
+}
+
+function getImageDimensions(file) {
+  return new Promise((resolve, reject) => {
+    const tempUrl = URL.createObjectURL(file)
+    const image = new Image()
+    image.onload = () => {
+      const width = Number(image.naturalWidth || 0)
+      const height = Number(image.naturalHeight || 0)
+      URL.revokeObjectURL(tempUrl)
+      if (!width || !height) {
+        reject(new Error('无法读取图片尺寸，请更换文件后重试。'))
+        return
+      }
+      resolve({ width, height })
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(tempUrl)
+      reject(new Error('图片读取失败，请上传有效图片文件。'))
+    }
+    image.src = tempUrl
+  })
 }
 
 async function loadExistingAssets() {
@@ -333,7 +606,10 @@ async function loadExistingAssets() {
 
   loadingExisting.value = true
   imageErrorMessage.value = ''
-  videoErrorMessage.value = ''
+  VIDEO_TYPE_CONFIGS.forEach((item) => {
+    videoForms[item.key].error = ''
+    videoForms[item.key].success = ''
+  })
   try {
     const threeViewState = await apiRequest('/portraits/three-view/state', {
       token: authStore.state.token
@@ -341,19 +617,16 @@ async function loadExistingAssets() {
     latestComposite.value = threeViewState?.draft || null
     publishedComposite.value = threeViewState?.published || null
 
-    if (latestComposite.value?.session_id) {
-      applySessionToImageSlots(latestComposite.value)
-      imageSuccessMessage.value = '已加载三视图草稿，可继续修改或发布。'
-    } else if (publishedComposite.value?.session_id) {
-      applySessionToImageSlots(publishedComposite.value)
-      imageSuccessMessage.value = '已加载当前已发布三视图。'
+    const baseComposite = latestComposite.value || publishedComposite.value
+    if (baseComposite?.session_id) {
+      applySessionToImageSlots(baseComposite)
+      imageSuccessMessage.value = '已加载当前三视图素材，替换任意角度后可直接发布更新。'
     }
 
     const videoState = await apiRequest('/portraits/videos/state', {
       token: authStore.state.token
     })
-    latestVideo.value = videoState?.draft || null
-    publishedVideo.value = videoState?.published || null
+    applyVideoState(videoState || {})
   } catch (error) {
     const message = error instanceof Error ? error.message : '历史素材加载失败，请稍后重试。'
     imageErrorMessage.value = message
@@ -362,7 +635,22 @@ async function loadExistingAssets() {
   }
 }
 
-async function submitThreeView() {
+async function loadGuidanceSamples() {
+  if (!authStore.state.token) return
+  guidanceLoading.value = true
+  try {
+    const payload = await apiRequest('/portrait-guidance/samples', {
+      token: authStore.state.token
+    })
+    guidanceSamples.value = payload || { left: null, front: null, right: null, all_ready: false }
+  } catch (error) {
+    console.warn('portrait guidance samples load failed', error)
+  } finally {
+    guidanceLoading.value = false
+  }
+}
+
+async function publishLatestThreeView() {
   if (!authStore.state.token) {
     imageErrorMessage.value = '登录状态失效，请重新登录。'
     return
@@ -371,6 +659,10 @@ async function submitThreeView() {
     imageErrorMessage.value = hasExistingSession.value
       ? '请至少选择一张要替换的图片。'
       : '请先上传左侧、正面、右侧三张图片。'
+    return
+  }
+  if (hasImageValidationError.value) {
+    imageErrorMessage.value = '图片清晰度校验未通过，请修正后再提交。'
     return
   }
 
@@ -395,115 +687,110 @@ async function submitThreeView() {
 
     latestComposite.value = result
     applySessionToImageSlots(result)
-    if (usedFallback) {
-      imageSuccessMessage.value = '直传链路不可用，已自动切换为后端上传并完成 4:3 三视图生成。'
-    } else {
-      imageSuccessMessage.value = hadExisting
-        ? '修改已提交，系统已重新生成 4:3 上半身三视图。'
-        : '上传成功，已生成 4:3 上半身三视图拼接图。'
+
+    imagePublishing.value = true
+    try {
+      const published = await apiRequest('/portraits/three-view/publish', {
+        method: 'POST',
+        token: authStore.state.token
+      })
+      publishedComposite.value = published
+      latestComposite.value = null
+      applySessionToImageSlots(published)
+      if (usedFallback) {
+        imageSuccessMessage.value = '已自动切换为后端上传链路并完成“重新合成 + 发布”流程。'
+      } else {
+        imageSuccessMessage.value = hadExisting
+          ? '已发布最新三视图，企业端看到的将是最新版本。'
+          : '三视图已生成并发布成功。'
+      }
+    } finally {
+      imagePublishing.value = false
     }
   } catch (error) {
-    imageErrorMessage.value = error instanceof Error ? error.message : '上传失败，请稍后重试。'
+    imageErrorMessage.value = error instanceof Error ? error.message : '发布失败，请稍后重试。'
   } finally {
     imageUploading.value = false
   }
 }
 
-async function submitVideo() {
+async function submitVideo(videoType) {
+  const form = videoForms[videoType]
   if (!authStore.state.token) {
-    videoErrorMessage.value = '登录状态失效，请重新登录。'
+    form.error = '登录状态失效，请重新登录。'
     return
   }
-  if (!videoFile.value) {
-    videoErrorMessage.value = '请先选择视频文件。'
+  if (!form.file) {
+    form.error = '请先选择视频文件。'
+    return
+  }
+  if (!videoOwnershipConfirmed[videoType]) {
+    form.error = '请先勾选“确认该视频为本人出镜”。'
     return
   }
 
-  videoUploading.value = true
-  videoErrorMessage.value = ''
-  videoSuccessMessage.value = ''
+  form.uploading = true
+  form.error = ''
+  form.success = ''
   try {
-    const file = videoFile.value
+    const file = form.file
     let result = null
     let usedFallback = false
     try {
-      result = await submitVideoDirectFlow(file)
+      result = await submitVideoDirectFlow(file, videoType)
     } catch (directError) {
       console.warn('video direct upload fallback triggered', directError)
-      result = await submitVideoLegacyFlow(file)
+      result = await submitVideoLegacyFlow(file, videoType)
       usedFallback = true
     }
-    latestVideo.value = result
-    if (publishedVideo.value && publishedVideo.value.id === result.id) {
-      publishedVideo.value = null
+    videoDrafts.value[videoType] = result
+    if (publishedVideos.value[videoType] && publishedVideos.value[videoType].id === result.id) {
+      publishedVideos.value[videoType] = null
     }
-    videoFile.value = null
-    videoFileName.value = ''
-    videoPreview.value = ''
-    videoSuccessMessage.value = usedFallback
+    clearVideoSelection(videoType)
+    form.success = usedFallback
       ? '直传链路不可用，已自动切换为后端上传并完成保存。'
       : '视频上传成功，已保存为新的素材版本。'
   } catch (error) {
-    videoErrorMessage.value = error instanceof Error ? error.message : '视频上传失败，请稍后重试。'
+    form.error = error instanceof Error ? error.message : '视频上传失败，请稍后重试。'
   } finally {
-    videoUploading.value = false
+    form.uploading = false
   }
 }
 
-async function publishThreeViewDraft() {
+async function publishVideoDraft(videoType) {
+  const form = videoForms[videoType]
   if (!authStore.state.token) {
-    imageErrorMessage.value = '登录状态失效，请重新登录。'
+    form.error = '登录状态失效，请重新登录。'
     return
   }
-  if (!latestComposite.value?.session_id) {
-    imageErrorMessage.value = '暂无可发布的三视图草稿。'
+  if (!videoDrafts.value[videoType]?.id) {
+    form.error = '暂无可发布的视频草稿。'
     return
   }
-
-  imagePublishing.value = true
-  imageErrorMessage.value = ''
-  imageSuccessMessage.value = ''
-  try {
-    const published = await apiRequest('/portraits/three-view/publish', {
-      method: 'POST',
-      token: authStore.state.token
-    })
-    publishedComposite.value = published
-    latestComposite.value = null
-    applySessionToImageSlots(published)
-    imageSuccessMessage.value = '三视图草稿已发布，企业用户可在广场查看。'
-  } catch (error) {
-    imageErrorMessage.value = error instanceof Error ? error.message : '三视图发布失败，请稍后重试。'
-  } finally {
-    imagePublishing.value = false
-  }
-}
-
-async function publishVideoDraft() {
-  if (!authStore.state.token) {
-    videoErrorMessage.value = '登录状态失效，请重新登录。'
-    return
-  }
-  if (!latestVideo.value?.id) {
-    videoErrorMessage.value = '暂无可发布的视频草稿。'
+  if (!videoOwnershipConfirmed[videoType]) {
+    form.error = '请先勾选“确认该视频为本人出镜”。'
     return
   }
 
-  videoPublishing.value = true
-  videoErrorMessage.value = ''
-  videoSuccessMessage.value = ''
+  form.publishing = true
+  form.error = ''
+  form.success = ''
   try {
     const published = await apiRequest('/portraits/videos/publish', {
       method: 'POST',
-      token: authStore.state.token
+      token: authStore.state.token,
+      body: {
+        video_type: videoType
+      }
     })
-    publishedVideo.value = published
-    latestVideo.value = null
-    videoSuccessMessage.value = '视频草稿已发布，企业用户可在广场查看。'
+    publishedVideos.value[videoType] = published
+    videoDrafts.value[videoType] = null
+    form.success = '视频草稿已发布，企业用户可在广场查看。'
   } catch (error) {
-    videoErrorMessage.value = error instanceof Error ? error.message : '视频发布失败，请稍后重试。'
+    form.error = error instanceof Error ? error.message : '视频发布失败，请稍后重试。'
   } finally {
-    videoPublishing.value = false
+    form.publishing = false
   }
 }
 
@@ -565,11 +852,12 @@ async function submitThreeViewLegacyFlow(selectedFiles, hadExisting) {
   })
 }
 
-async function submitVideoDirectFlow(file) {
+async function submitVideoDirectFlow(file, videoType) {
   const plan = await apiRequest('/portraits/videos/presign', {
     method: 'POST',
     token: authStore.state.token,
     body: {
+      video_type: videoType,
       filename: file.name,
       content_type: file.type || 'application/octet-stream',
       size: file.size || 0
@@ -590,9 +878,10 @@ async function submitVideoDirectFlow(file) {
   })
 }
 
-async function submitVideoLegacyFlow(file) {
+async function submitVideoLegacyFlow(file, videoType) {
   const formData = new FormData()
   formData.append('video_file', file)
+  formData.append('video_type', videoType)
   return apiRequest('/portraits/videos', {
     method: 'POST',
     token: authStore.state.token,
@@ -629,6 +918,9 @@ async function waitForComposeJob(jobKey) {
 }
 
 onMounted(async () => {
-  await loadExistingAssets()
+  await Promise.all([
+    loadGuidanceSamples(),
+    loadExistingAssets()
+  ])
 })
 </script>

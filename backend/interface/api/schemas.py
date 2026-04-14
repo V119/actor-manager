@@ -1,6 +1,9 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Literal, Optional
 from datetime import datetime
+
+VideoTypeLiteral = Literal["intro", "showreel"]
+
 
 class PortraitSchema(BaseModel):
     id: Optional[int]
@@ -26,6 +29,47 @@ class ActorSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ActorBasicInfoSchema(BaseModel):
+    actor_id: int
+    external_id: str
+    name: str
+    age: int
+    height: int
+    weight_kg: int
+    location: str
+    hometown: str
+    bust_cm: int
+    waist_cm: int
+    hip_cm: int
+    shoe_size: str
+    bio: str
+    tags: List[str]
+    acting_requirements: str
+    rejected_requirements: str
+    availability_note: str
+    avatar_url: Optional[str]
+    avatar_source: Literal["three_view", "none"]
+    created_at: datetime
+
+
+class ActorBasicInfoUpdateRequest(BaseModel):
+    name: str
+    age: int = 0
+    height: int = 0
+    weight_kg: int = 0
+    location: str = ""
+    hometown: str = ""
+    bust_cm: int = 0
+    waist_cm: int = 0
+    hip_cm: int = 0
+    shoe_size: str = ""
+    bio: str = ""
+    tags: List[str] = Field(default_factory=list)
+    acting_requirements: str = ""
+    rejected_requirements: str = ""
+    availability_note: str = ""
 
 class StyleSchema(BaseModel):
     id: int
@@ -175,6 +219,7 @@ class PortraitVideoSchema(BaseModel):
     id: int
     actor_id: int
     user_id: int
+    video_type: VideoTypeLiteral
     is_current: bool
     superseded_at: Optional[datetime]
     bucket_name: str
@@ -191,12 +236,19 @@ class PortraitVideoListSchema(BaseModel):
     items: List[PortraitVideoSchema]
 
 
-class PortraitVideoStateSchema(BaseModel):
+class PortraitVideoTypeStateSchema(BaseModel):
     draft: Optional[PortraitVideoSchema]
     published: Optional[PortraitVideoSchema]
 
 
+class PortraitVideoStateSchema(BaseModel):
+    intro: PortraitVideoTypeStateSchema
+    showreel: PortraitVideoTypeStateSchema
+    both_published_ready: bool
+
+
 class PortraitVideoDirectUploadPlanRequest(BaseModel):
+    video_type: VideoTypeLiteral
     filename: str
     content_type: str
     size: int = 0
@@ -211,6 +263,10 @@ class PortraitVideoDirectUploadPlanSchema(BaseModel):
 
 class PortraitVideoDirectUploadCommitRequest(BaseModel):
     upload_plan_token: str
+
+
+class PortraitVideoPublishRequest(BaseModel):
+    video_type: VideoTypeLiteral
 
 
 class HistoryCleanupResultSchema(BaseModel):
@@ -235,4 +291,5 @@ class PublishedActorDetailSchema(BaseModel):
     actor: ActorSchema
     published_three_view: Optional[ThreeViewUploadSchema]
     published_video: Optional[PortraitVideoSchema]
+    published_videos: List[PortraitVideoSchema]
     published_styles: List[GeneratedResultSchema]

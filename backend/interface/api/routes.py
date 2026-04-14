@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 import logging
-from typing import List, Optional
+from typing import List, Literal, Optional
 from backend.interface.api.schemas import (
+    ActorBasicInfoSchema,
+    ActorBasicInfoUpdateRequest,
     ActorSchema,
     GenerateStyleRequest,
     GeneratedResultSchema,
@@ -13,6 +15,7 @@ from backend.interface.api.schemas import (
     PortraitVideoDirectUploadPlanRequest,
     PortraitVideoDirectUploadPlanSchema,
     PortraitVideoListSchema,
+    PortraitVideoPublishRequest,
     PortraitVideoSchema,
     PortraitVideoStateSchema,
     ProtocolSchema,
@@ -97,6 +100,33 @@ async def get_actor(
     return actor
 
 
+@router.get("/actors/me/basic-info", response_model=ActorBasicInfoSchema)
+async def get_my_actor_basic_info(
+    service: PortraitService = Depends(get_portrait_service),
+    current_user: UserModel = Depends(require_individual_user),
+):
+    return await service.get_actor_basic_info(
+        user_id=current_user.id,
+        user_display_name=current_user.display_name,
+    )
+
+
+@router.put("/actors/me/basic-info", response_model=ActorBasicInfoSchema)
+async def update_my_actor_basic_info(
+    req: ActorBasicInfoUpdateRequest,
+    service: PortraitService = Depends(get_portrait_service),
+    current_user: UserModel = Depends(require_individual_user),
+):
+    try:
+        return await service.update_actor_basic_info(
+            user_id=current_user.id,
+            user_display_name=current_user.display_name,
+            payload=req.model_dump(),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get("/enterprise/discovery/actors", response_model=List[PublishedActorCardSchema])
 async def list_published_actor_cards(
     limit: int = Query(default=100, ge=1, le=500),
@@ -115,7 +145,8 @@ async def list_published_actor_cards(
     cards: list[dict] = []
     for actor in actors:
         published_three = await portrait_service.get_published_three_view_for_actor(actor.id)
-        published_video = await portrait_service.get_published_video_for_actor(actor.id)
+        published_videos = await portrait_service.get_published_videos_for_actor(actor.id)
+        published_video = portrait_service.pick_primary_published_video(published_videos)
         style_preview, style_count = await style_service.get_published_result_summary_for_actor(actor.id)
         if not published_three and not published_video and not style_preview:
             continue
@@ -132,8 +163,9 @@ async def list_published_actor_cards(
         timestamps = []
         if published_three and published_three.get("created_at"):
             timestamps.append(published_three["created_at"])
-        if published_video and published_video.get("created_at"):
-            timestamps.append(published_video["created_at"])
+        for video in published_videos:
+            if video.get("created_at"):
+                timestamps.append(video["created_at"])
         if style_preview and style_preview.get("published_at"):
             timestamps.append(style_preview["published_at"])
         if timestamps:
@@ -174,7 +206,8 @@ async def get_published_actor_detail(
         raise HTTPException(status_code=404, detail="Actor not found")
 
     published_three = await portrait_service.get_published_three_view_for_actor(actor_id)
-    published_video = await portrait_service.get_published_video_for_actor(actor_id)
+    published_videos = await portrait_service.get_published_videos_for_actor(actor_id)
+    published_video = portrait_service.pick_primary_published_video(published_videos)
     published_styles = await style_service.list_published_results_by_actor(actor_id=actor_id, limit=200)
     if not published_three and not published_video and not published_styles:
         raise HTTPException(status_code=404, detail="No published materials for this actor")
@@ -183,6 +216,7 @@ async def get_published_actor_detail(
         "actor": actor,
         "published_three_view": published_three,
         "published_video": published_video,
+        "published_videos": published_videos,
         "published_styles": published_styles,
     }
 
@@ -417,6 +451,7 @@ async def prepare_video_direct_upload_plan(
         return await service.prepare_video_direct_upload(
             user_id=current_user.id,
             user_display_name=current_user.display_name,
+            video_type=req.video_type,
             filename=req.filename,
             content_type=req.content_type,
             size=req.size,
@@ -447,6 +482,7 @@ async def commit_video_direct_upload(
 @router.post("/portraits/videos", response_model=PortraitVideoSchema)
 async def upload_portrait_video(
     video_file: UploadFile = File(...),
+    video_type: Literal["intro", "showreel"] = Form(...),
     service: PortraitService = Depends(get_portrait_service),
     current_user: UserModel = Depends(require_individual_user),
 ):
@@ -463,6 +499,7 @@ async def upload_portrait_video(
         return await service.upload_portrait_video_stream(
             user_id=current_user.id,
             user_display_name=current_user.display_name,
+            video_type=video_type,
             upload_stream=video_file.file,
             filename=video_file.filename or "portrait_video.mp4",
             content_type=video_file.content_type or "application/octet-stream",
@@ -478,6 +515,7 @@ async def list_portrait_videos(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     include_current: bool = Query(default=False),
+    video_type: Optional[Literal["intro", "showreel"]] = Query(default=None),
     service: PortraitService = Depends(get_portrait_service),
     current_user: UserModel = Depends(require_individual_user),
 ):
@@ -493,16 +531,18 @@ async def list_portrait_videos(
         limit=limit,
         offset=offset,
         include_current=include_current,
+        video_type=video_type,
     )
     return {"items": items}
 
 
 @router.get("/portraits/videos/current", response_model=Optional[PortraitVideoSchema])
 async def get_current_portrait_video(
+    video_type: Optional[Literal["intro", "showreel"]] = Query(default=None),
     service: PortraitService = Depends(get_portrait_service),
     current_user: UserModel = Depends(require_individual_user),
 ):
-    return await service.get_current_portrait_video(user_id=current_user.id)
+    return await service.get_current_portrait_video(user_id=current_user.id, video_type=video_type)
 
 
 @router.get("/portraits/videos/state", response_model=PortraitVideoStateSchema)
@@ -515,6 +555,7 @@ async def get_portrait_video_state(
 
 @router.post("/portraits/videos/publish", response_model=PortraitVideoSchema)
 async def publish_portrait_video_draft(
+    req: PortraitVideoPublishRequest,
     service: PortraitService = Depends(get_portrait_service),
     current_user: UserModel = Depends(require_individual_user),
 ):
@@ -522,6 +563,7 @@ async def publish_portrait_video_draft(
         return await service.publish_current_video(
             user_id=current_user.id,
             user_display_name=current_user.display_name,
+            video_type=req.video_type,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

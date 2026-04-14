@@ -1,12 +1,22 @@
 from datetime import datetime, timedelta
 import logging
+from pathlib import Path
 from typing import List, Optional
+import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 
 from backend.config import get_config
-from backend.infrastructure.orm_models import ProtocolModel, SessionModel, UserModel, database
+from backend.infrastructure.config import settings
+from backend.infrastructure.orm_models import (
+    PortraitGuidanceSampleModel,
+    ProtocolModel,
+    SessionModel,
+    UserModel,
+    database,
+)
 from backend.infrastructure.security import generate_session_token, hash_password, verify_password
+from backend.infrastructure.storage import StorageClient
 from backend.interface.api.auth_schemas import (
     AdminCreateEnterpriseUserRequest,
     AdminEnterpriseUserSchema,
@@ -15,6 +25,8 @@ from backend.interface.api.auth_schemas import (
     CreateProtocolRequest,
     LoginRequest,
     MessageResponse,
+    PortraitGuidanceSampleSchema,
+    PortraitGuidanceSampleStateSchema,
     RegisterRequest,
     RoleProtocolSchema,
     UserSchema,
@@ -150,6 +162,63 @@ def _to_protocol_schema(protocol: ProtocolModel, target_user: Optional[UserModel
     )
 
 
+def _get_storage_client() -> StorageClient:
+    return StorageClient(
+        settings.MINIO_ENDPOINT,
+        settings.MINIO_ACCESS_KEY,
+        settings.MINIO_SECRET_KEY,
+        settings.MINIO_BUCKET,
+        secure=settings.MINIO_SECURE,
+    )
+
+
+def _to_guidance_sample_schema(
+    sample: PortraitGuidanceSampleModel,
+    storage_client: StorageClient,
+) -> PortraitGuidanceSampleSchema:
+    return PortraitGuidanceSampleSchema(
+        view_angle=sample.view_angle,
+        image_url=sample.image_url,
+        preview_url=storage_client.get_url(sample.object_key, bucket=sample.bucket_name),
+        bucket_name=sample.bucket_name,
+        object_key=sample.object_key,
+        source_filename=sample.source_filename,
+        mime_type=sample.mime_type,
+        file_size=sample.file_size,
+        created_at=sample.created_at,
+        updated_at=sample.updated_at,
+    )
+
+
+def _load_guidance_sample_state() -> PortraitGuidanceSampleStateSchema:
+    storage_client = _get_storage_client()
+    with database.allow_sync():
+        samples = list(PortraitGuidanceSampleModel.select())
+
+    payload = {"left": None, "front": None, "right": None}
+    for sample in samples:
+        if sample.view_angle in payload:
+            payload[sample.view_angle] = _to_guidance_sample_schema(sample, storage_client)
+
+    return PortraitGuidanceSampleStateSchema(
+        left=payload["left"],
+        front=payload["front"],
+        right=payload["right"],
+        all_ready=all(payload.values()),
+    )
+
+
+def _guidance_extension(filename: str, content_type: str) -> str:
+    extension = Path(filename or "").suffix.lower().lstrip(".")
+    if extension in {"jpg", "jpeg", "png", "webp"}:
+        return extension
+    if content_type == "image/png":
+        return "png"
+    if content_type == "image/webp":
+        return "webp"
+    return "jpg"
+
+
 @router.post("/auth/register", response_model=AuthResponse)
 async def register(req: RegisterRequest):
     with database.allow_sync():
@@ -222,6 +291,11 @@ async def me(current_user: UserModel = Depends(get_current_user)):
     return _to_user_schema(current_user)
 
 
+@router.get("/portrait-guidance/samples", response_model=PortraitGuidanceSampleStateSchema)
+async def get_portrait_guidance_samples(_current_user: UserModel = Depends(get_current_user)):
+    return _load_guidance_sample_state()
+
+
 @router.get("/admin/enterprise-users", response_model=List[AdminEnterpriseUserSchema])
 async def list_enterprise_users(_current_user: UserModel = Depends(require_admin_user)):
     with database.allow_sync():
@@ -285,6 +359,74 @@ async def update_enterprise_user(
 
     logger.info("Enterprise user updated user_id=%s username=%s", user.id, user.username)
     return _to_admin_enterprise_user_schema(user)
+
+
+@router.post(
+    "/admin/portrait-guidance/samples/{view_angle}",
+    response_model=PortraitGuidanceSampleSchema,
+)
+async def upload_portrait_guidance_sample(
+    view_angle: str,
+    file: UploadFile = File(...),
+    _current_user: UserModel = Depends(require_admin_user),
+):
+    normalized_angle = view_angle.strip().lower()
+    if normalized_angle not in {"left", "front", "right"}:
+        raise HTTPException(status_code=400, detail="Invalid guidance sample angle")
+
+    content_type = file.content_type or "application/octet-stream"
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Guidance sample must be an image")
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Guidance sample image cannot be empty")
+
+    storage_client = _get_storage_client()
+    extension = _guidance_extension(file.filename or "", content_type)
+    now = datetime.now()
+    object_key = f"portrait-guidance/samples/{normalized_angle}/{uuid.uuid4().hex}.{extension}"
+    image_url = await storage_client.upload_file(
+        object_key,
+        data,
+        content_type,
+        bucket=settings.MINIO_PORTRAIT_GUIDANCE_BUCKET,
+    )
+
+    with database.allow_sync():
+        sample = PortraitGuidanceSampleModel.get_or_none(
+            PortraitGuidanceSampleModel.view_angle == normalized_angle
+        )
+        if sample is None:
+            sample = PortraitGuidanceSampleModel.create(
+                view_angle=normalized_angle,
+                bucket_name=settings.MINIO_PORTRAIT_GUIDANCE_BUCKET,
+                object_key=object_key,
+                image_url=image_url,
+                source_filename=file.filename or f"{normalized_angle}.{extension}",
+                mime_type=content_type,
+                file_size=len(data),
+                created_at=now,
+                updated_at=now,
+            )
+        else:
+            sample.bucket_name = settings.MINIO_PORTRAIT_GUIDANCE_BUCKET
+            sample.object_key = object_key
+            sample.image_url = image_url
+            sample.source_filename = file.filename or f"{normalized_angle}.{extension}"
+            sample.mime_type = content_type
+            sample.file_size = len(data)
+            sample.updated_at = now
+            sample.save()
+
+    logger.info(
+        "Portrait guidance sample uploaded angle=%s bucket=%s object_key=%s bytes=%s",
+        normalized_angle,
+        settings.MINIO_PORTRAIT_GUIDANCE_BUCKET,
+        object_key,
+        len(data),
+    )
+    return _to_guidance_sample_schema(sample, storage_client)
 
 
 @router.get("/enterprise/users", response_model=List[UserSchema])

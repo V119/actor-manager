@@ -35,8 +35,14 @@
             <p class="text-sm font-semibold text-sky-200">{{ currentUser?.display_name || '未登录' }}</p>
             <p class="text-xs text-slate-400">{{ profileSubtitle }}</p>
           </div>
-          <div class="w-9 h-9 rounded-full border border-sky-400/30 bg-sky-400/10 text-sky-200 flex items-center justify-center text-xs font-bold">
-            {{ avatarText }}
+          <div class="w-9 h-9 rounded-full overflow-hidden border border-sky-400/30 bg-sky-400/10 text-sky-200 flex items-center justify-center text-xs font-bold">
+            <img
+              v-if="headerAvatarUrl"
+              :src="headerAvatarUrl"
+              alt="头像"
+              class="w-full h-full object-cover"
+            />
+            <span v-else>{{ avatarText }}</span>
           </div>
         </div>
       </nav>
@@ -47,14 +53,16 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { apiRequest } from './lib/api'
 import { authStore } from './lib/auth'
 
 const route = useRoute()
 const router = useRouter()
 
 const currentUser = computed(() => authStore.state.user)
+const individualAvatarUrl = ref('')
 const isAuthPage = computed(() => (
   route.path.startsWith('/login')
   || route.path === '/register'
@@ -82,11 +90,16 @@ const avatarText = computed(() => {
   const name = currentUser.value?.display_name || currentUser.value?.username || 'U'
   return name.slice(0, 1).toUpperCase()
 })
+const headerAvatarUrl = computed(() => {
+  if (currentUser.value?.role !== 'individual') return ''
+  return individualAvatarUrl.value || ''
+})
 
 const navItems = computed(() => {
   if (currentUser.value?.role === 'admin') {
     return [
-      { to: '/admin/enterprise-users', label: '企业用户管理', icon: 'admin_panel_settings' }
+      { to: '/admin/enterprise-users', label: '企业用户管理', icon: 'admin_panel_settings' },
+      { to: '/admin/portrait-guidance', label: '拍摄示例图管理', icon: 'photo_camera' }
     ]
   }
   if (currentUser.value?.role === 'enterprise') {
@@ -96,11 +109,29 @@ const navItems = computed(() => {
     ]
   }
   return [
-    { to: '/edit-portrait', label: '肖像上传', icon: 'cloud_upload' },
+    { to: '/actor-basic-info', label: '基本信息', icon: 'person' },
+    { to: '/edit-portrait', label: '素材管理', icon: 'cloud_upload' },
     { to: '/protocols', label: '协议管理', icon: 'description' },
     { to: '/style-lab', label: '风格实验室', icon: 'auto_awesome' }
   ]
 })
+
+watch(
+  () => [currentUser.value?.id, currentUser.value?.role, authStore.state.token],
+  async ([userId, role, token]) => {
+    if (!userId || role !== 'individual' || !token) {
+      individualAvatarUrl.value = ''
+      return
+    }
+    try {
+      const payload = await apiRequest('/actors/me/basic-info', { token })
+      individualAvatarUrl.value = payload?.avatar_url || ''
+    } catch (_error) {
+      individualAvatarUrl.value = ''
+    }
+  },
+  { immediate: true }
+)
 
 async function handleLogout() {
   const role = currentUser.value?.role

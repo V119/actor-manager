@@ -4,13 +4,13 @@ from backend.config import get_config
 
 
 def _parse_compose_order() -> tuple[str, str, str]:
-    raw = get_config("portrait.compose.order", ["front", "left", "right"])
+    raw = get_config("portrait.compose.order", ["left", "front", "right"])
     if not isinstance(raw, list):
-        return ("front", "left", "right")
+        return ("left", "front", "right")
     normalized = [str(item).strip().lower() for item in raw]
     expected = {"front", "left", "right"}
     if set(normalized) != expected:
-        return ("front", "left", "right")
+        return ("left", "front", "right")
     return tuple(normalized)  # type: ignore[return-value]
 
 
@@ -28,6 +28,7 @@ class Settings:
     MINIO_PORTRAIT_RAW_BUCKET: str
     MINIO_PORTRAIT_GENERATED_BUCKET: str
     MINIO_PORTRAIT_VIDEO_BUCKET: str
+    MINIO_PORTRAIT_GUIDANCE_BUCKET: str
     MINIO_STYLE_GENERATED_BUCKET: str
     MINIO_SECURE: bool
     MINIO_PRESIGN_EXPIRES_SECONDS: int
@@ -78,6 +79,7 @@ settings = Settings(
         get_config("minio.buckets.portrait_generated", "glacier-portrait-generated")
     ),
     MINIO_PORTRAIT_VIDEO_BUCKET=str(get_config("minio.buckets.portrait_video", "glacier-portrait-video")),
+    MINIO_PORTRAIT_GUIDANCE_BUCKET=str(get_config("minio.buckets.portrait_guidance", "glacier-portrait-guidance")),
     MINIO_STYLE_GENERATED_BUCKET=str(get_config("minio.buckets.style_generated", "glacier-style-generated")),
     MINIO_SECURE=bool(get_config("minio.secure", False)),
     MINIO_PRESIGN_EXPIRES_SECONDS=int(get_config("minio.presign_expires_seconds", 1200)),

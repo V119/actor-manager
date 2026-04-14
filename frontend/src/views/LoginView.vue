@@ -41,12 +41,8 @@
         </button>
       </form>
 
-      <p v-if="canRegister" class="text-sm text-on-surface-variant mt-6">
-        还没有账号？
-        <RouterLink to="/register" class="text-sky-300 hover:text-sky-200">去注册</RouterLink>
-      </p>
-      <p v-else class="text-sm text-on-surface-variant mt-6">
-        企业账号由后台管理员统一创建与维护。
+      <p class="text-sm text-on-surface-variant mt-6">
+        如需新账号，请联系系统管理员创建。
       </p>
       <p class="text-xs text-on-surface-variant mt-3">
         {{ switchHint }}
@@ -78,7 +74,6 @@ const pageSubtitle = computed(() => (
     ? '登录后进入演员发布广场与协议管理。企业账号由后台管理员创建。'
     : '登录后进入肖像上传、协议管理和风格实验室。'
 ))
-const canRegister = computed(() => expectedRole.value === 'individual')
 const switchLoginPath = computed(() => (
   expectedRole.value === 'enterprise' ? '/login/individual' : '/login/enterprise'
 ))
