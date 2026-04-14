@@ -72,7 +72,10 @@ async function submit() {
   loading.value = true
   errorMessage.value = ''
   try {
-    const user = await authStore.adminLogin(form.username, form.password)
+    const loginFn = typeof authStore.adminLogin === 'function'
+      ? authStore.adminLogin.bind(authStore)
+      : authStore.login.bind(authStore)
+    const user = await loginFn(form.username, form.password)
     if (user.role !== 'admin') {
       await authStore.logout()
       errorMessage.value = '该账号不是管理员账号。'
