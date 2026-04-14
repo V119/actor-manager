@@ -169,6 +169,7 @@ def _get_storage_client() -> StorageClient:
         settings.MINIO_SECRET_KEY,
         settings.MINIO_BUCKET,
         secure=settings.MINIO_SECURE,
+        public_base_url=settings.MINIO_PUBLIC_BASE_URL,
     )
 
 

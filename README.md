@@ -88,9 +88,12 @@ uv sync --all-groups
 - 三视图素材存储采用分桶：
   - `minio.buckets.portrait_raw`（原始三张图）
   - `minio.buckets.portrait_generated`（4:3 合成图）
+- 部署到服务器并由 Nginx 统一接入时，需要设置：
+  - `minio.public_base_url`（默认空；服务器部署脚本默认设置为 `/minio`）
+  - 这样前端拿到的上传/预览 URL 会是同域 `/minio/...`，不会暴露内部 `localhost:9000`
 - 三视图拼接参数可配置：
   - `portrait.compose.width` / `portrait.compose.height`
-  - `portrait.compose.order`（默认 `front,left,right`）
+  - `portrait.compose.order`（默认 `left,front,right`）
 - 风格实验室（百炼）配置项：
   - `style_generation.model.base_url`（默认 `https://dashscope.aliyuncs.com`）
   - `style_generation.model.prompt_base_url`（默认 `https://dashscope.aliyuncs.com/compatible-mode/v1`）

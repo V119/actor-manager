@@ -54,6 +54,7 @@ def get_portrait_service():
         settings.MINIO_SECRET_KEY,
         settings.MINIO_BUCKET,
         secure=settings.MINIO_SECURE,
+        public_base_url=settings.MINIO_PUBLIC_BASE_URL,
     )
     return PortraitService(PeeweePortraitRepository(), storage_client)
 
@@ -66,6 +67,7 @@ def get_style_service():
         settings.MINIO_SECRET_KEY,
         settings.MINIO_BUCKET,
         secure=settings.MINIO_SECURE,
+        public_base_url=settings.MINIO_PUBLIC_BASE_URL,
     )
     return StyleService(
         PeeweeStyleRepository(),

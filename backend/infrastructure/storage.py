@@ -3,6 +3,7 @@ from datetime import timedelta
 from io import BytesIO
 import logging
 from typing import BinaryIO, Any
+from urllib.parse import urlsplit, urlunsplit
 
 from minio import Minio
 
@@ -13,8 +14,17 @@ logger = logging.getLogger(__name__)
 class StorageClient:
     _ensured_buckets: set[tuple[str, str]] = set()
 
-    def __init__(self, endpoint: str, access_key: str, secret_key: str, bucket: str, secure: bool = False):
+    def __init__(
+        self,
+        endpoint: str,
+        access_key: str,
+        secret_key: str,
+        bucket: str,
+        secure: bool = False,
+        public_base_url: str = "",
+    ):
         self.endpoint = endpoint
+        self.public_base_url = self._normalize_public_base_url(public_base_url)
         self.client = Minio(
             endpoint,
             access_key=access_key,
@@ -154,7 +164,7 @@ class StorageClient:
     ) -> str:
         target_bucket = bucket or self.bucket
         self.ensure_bucket(target_bucket)
-        return self.client.presigned_put_object(target_bucket, file_name, expires=expires)
+        return self._to_public_url(self.client.presigned_put_object(target_bucket, file_name, expires=expires))
 
     def stat_object(self, file_name: str, bucket: str | None = None) -> dict[str, Any]:
         target_bucket = bucket or self.bucket
@@ -175,4 +185,24 @@ class StorageClient:
     ) -> str:
         target_bucket = bucket or self.bucket
         self.ensure_bucket(target_bucket)
-        return self.client.presigned_get_object(target_bucket, file_name, expires=expires)
+        return self._to_public_url(self.client.presigned_get_object(target_bucket, file_name, expires=expires))
+
+    def _to_public_url(self, internal_url: str) -> str:
+        if not self.public_base_url:
+            return internal_url
+
+        source = urlsplit(internal_url)
+        public = urlsplit(self.public_base_url)
+        public_path = f"{public.path.rstrip('/')}{source.path}"
+
+        if public.scheme and public.netloc:
+            return urlunsplit((public.scheme, public.netloc, public_path, source.query, source.fragment))
+
+        return urlunsplit(("", "", public_path, source.query, source.fragment))
+
+    @staticmethod
+    def _normalize_public_base_url(public_base_url: str) -> str:
+        value = (public_base_url or "").strip().rstrip("/")
+        if value and "://" not in value and not value.startswith("/"):
+            return f"/{value}"
+        return value

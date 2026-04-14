@@ -23,6 +23,7 @@ deployment/
 - `Nginx`：统一入口，负责静态前端分发、`/api/` 转发、基础安全头、限流与访问日志。
 - `Backend (FastAPI)`：业务 API（登录注册、肖像上传、视频上传、协议管理、风格实验室、企业发现广场等）。
 - `Frontend (Vue/Vite)`：SPA 应用，通过 Nginx 访问并调用同域 `/api`。
+- `MinIO`：后端使用内部地址访问，浏览器通过 Nginx 同域 `/minio/` 访问预览文件并执行直传。
 
 ## 一键更新部署脚本（服务器）
 
@@ -53,11 +54,13 @@ bash deployment/scripts/deploy_update.sh
 - `BRANCH`（默认 `main`）
 - `PUBLIC_PORT`（默认 `8000`）
 - `BACKEND_PORT`（默认 `18000`）
+- `MINIO_PUBLIC_BASE_URL`（默认 `/minio`，用于后端返回给前端的 MinIO 公开访问前缀）
 
 ## Nginx 配置能力（对应当前功能）
 
 - 前后端统一接入：
   - `/api/` -> 后端服务
+  - `/minio/` -> MinIO 对象存储（用于文件预览与浏览器直传，避免前端拿到 `localhost:9000`）
   - 其他路径 -> 前端静态文件（SPA History 路由回退到 `index.html`）
 - 上传与生成场景适配：
   - `client_max_body_size 256m`
@@ -77,9 +80,12 @@ bash deployment/scripts/deploy_update.sh
 ## 部署前准备
 
 1. 后端可访问地址与端口（默认）：`host.docker.internal:18000`（Nginx 容器回源宿主机）
-2. 前端构建产物目录：`frontend/dist`
-3. 如果前后端拆分部署：
+2. MinIO 可访问地址与端口（默认）：`host.docker.internal:9000`（Nginx 容器回源宿主机）
+3. 前端构建产物目录：`frontend/dist`
+4. 后端需要设置 `ACTOR_MANAGER_CONFIG_MINIO_PUBLIC_BASE_URL=/minio`，一键部署脚本已默认设置。
+5. 如果前后端拆分部署：
    - 修改 `deployment/nginx/conf.d/upstreams.conf` 中的 `server` 地址为真实后端地址。
+   - 同时确保 `minio.public_base_url` 指向浏览器可访问的 MinIO 统一入口。
 
 ## 前端构建（必须）
 
@@ -97,6 +103,12 @@ VITE_API_BASE_URL=/api npm run build
 ```bash
 cd /Users/haoyang/src/python/actor-manager
 ACTOR_MANAGER_CONFIG_API_PORT=18000 ACTOR_MANAGER_CONFIG_API_RELOAD=false uv run python backend/server.py
+```
+
+如果通过本目录 Nginx 统一接入文件预览和直传，后端启动时还需要带上：
+
+```bash
+ACTOR_MANAGER_CONFIG_MINIO_PUBLIC_BASE_URL=/minio
 ```
 
 ## Nginx 语法校验
@@ -133,7 +145,10 @@ docker run -d --name actor-manager-nginx \
    - 刷新 `http://127.0.0.1:8000/login/enterprise` 不应 404（SPA 回退生效）
 3. API 转发：
    - `curl -i http://127.0.0.1:8000/api/auth/me`（未登录应返回 401，但路径应命中后端）
-4. Trace 链路：
+4. MinIO 代理：
+   - `curl -i http://127.0.0.1:8000/minio/minio/health/live` 返回 MinIO 健康检查结果
+   - 登录后上传/预览接口返回的 `preview_url` / `upload_url` 不应再包含 `localhost:9000`
+5. Trace 链路：
    - API 响应头包含 `X-Trace-Id` 与 `X-Request-Id`
    - Nginx access log 中可看到 `request_id` / `trace_id` 字段
 

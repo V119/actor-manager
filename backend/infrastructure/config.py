@@ -25,6 +25,7 @@ class Settings:
     MINIO_ACCESS_KEY: str
     MINIO_SECRET_KEY: str
     MINIO_BUCKET: str
+    MINIO_PUBLIC_BASE_URL: str
     MINIO_PORTRAIT_RAW_BUCKET: str
     MINIO_PORTRAIT_GENERATED_BUCKET: str
     MINIO_PORTRAIT_VIDEO_BUCKET: str
@@ -74,6 +75,7 @@ settings = Settings(
     MINIO_ACCESS_KEY=str(get_config("minio.access_key", "minioadmin")),
     MINIO_SECRET_KEY=str(get_config("minio.secret_key", "minioadmin")),
     MINIO_BUCKET=str(get_config("minio.bucket", "glacier")),
+    MINIO_PUBLIC_BASE_URL=str(get_config("minio.public_base_url", "")),
     MINIO_PORTRAIT_RAW_BUCKET=str(get_config("minio.buckets.portrait_raw", "glacier-portrait-raw")),
     MINIO_PORTRAIT_GENERATED_BUCKET=str(
         get_config("minio.buckets.portrait_generated", "glacier-portrait-generated")

@@ -35,6 +35,7 @@ minio:
   access_key: minioadmin
   secret_key: minioadmin
   bucket: glacier
+  public_base_url: ""
   presign_expires_seconds: 1200
   buckets:
     portrait_raw: glacier-portrait-raw
