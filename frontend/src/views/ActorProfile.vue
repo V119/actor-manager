@@ -82,6 +82,23 @@
           </div>
           <div v-else class="text-xs text-on-surface-variant">暂无已发布风格图。</div>
         </section>
+
+        <section class="bg-surface/60 border border-emerald-300/20 rounded-xl p-4">
+          <h2 class="text-lg font-semibold mb-3">已发布录音</h2>
+          <div v-if="publishedAudios.length" class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div
+              v-for="audio in publishedAudios"
+              :key="audio.id"
+              class="rounded-lg border border-emerald-300/20 bg-slate-950/20 p-3 space-y-2"
+            >
+              <p class="text-xs font-semibold text-emerald-200 truncate">
+                {{ audio.source_filename || '已发布录音' }}
+              </p>
+              <audio :src="audio.preview_url" controls class="w-full" preload="metadata" />
+            </div>
+          </div>
+          <div v-else class="text-xs text-on-surface-variant">暂无已发布录音。</div>
+        </section>
       </template>
     </div>
   </div>
@@ -110,6 +127,13 @@ const publishedVideos = computed(() => {
     : (detail.value?.published_video ? [detail.value.published_video] : [])
   const order = { intro: 0, showreel: 1 }
   return [...list].sort((a, b) => (order[a.video_type] ?? 99) - (order[b.video_type] ?? 99))
+})
+
+const publishedAudios = computed(() => {
+  const list = Array.isArray(detail.value?.published_audios)
+    ? detail.value.published_audios
+    : []
+  return [...list].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
 })
 
 const coverImage = computed(() => {

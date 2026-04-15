@@ -8,6 +8,9 @@ from backend.interface.api.schemas import (
     GenerateStyleRequest,
     GeneratedResultSchema,
     HistoryCleanupResultSchema,
+    PortraitAudioListSchema,
+    PortraitAudioPublishToggleRequest,
+    PortraitAudioSchema,
     PublishedActorCardSchema,
     PublishedActorDetailSchema,
     PortraitSchema,
@@ -20,6 +23,7 @@ from backend.interface.api.schemas import (
     PortraitVideoStateSchema,
     ProtocolSchema,
     StylePublishRequest,
+    StyleResultStateToggleRequest,
     StyleResultGroupListSchema,
     StyleSchema,
     ThreeViewComposeJobCreateRequest,
@@ -149,8 +153,9 @@ async def list_published_actor_cards(
         published_three = await portrait_service.get_published_three_view_for_actor(actor.id)
         published_videos = await portrait_service.get_published_videos_for_actor(actor.id)
         published_video = portrait_service.pick_primary_published_video(published_videos)
+        published_audios = await portrait_service.get_published_audios_for_actor(actor.id)
         style_preview, style_count = await style_service.get_published_result_summary_for_actor(actor.id)
-        if not published_three and not published_video and not style_preview:
+        if not published_three and not published_video and not style_preview and not published_audios:
             continue
 
         cover_image_url = None
@@ -168,6 +173,9 @@ async def list_published_actor_cards(
         for video in published_videos:
             if video.get("created_at"):
                 timestamps.append(video["created_at"])
+        for audio in published_audios:
+            if audio.get("created_at"):
+                timestamps.append(audio["created_at"])
         if style_preview and style_preview.get("published_at"):
             timestamps.append(style_preview["published_at"])
         if timestamps:
@@ -189,6 +197,7 @@ async def list_published_actor_cards(
                     if published_video else None
                 ),
                 "published_style_count": int(style_count),
+                "published_audio_count": len(published_audios),
                 "updated_at": updated_at,
             }
         )
@@ -210,8 +219,9 @@ async def get_published_actor_detail(
     published_three = await portrait_service.get_published_three_view_for_actor(actor_id)
     published_videos = await portrait_service.get_published_videos_for_actor(actor_id)
     published_video = portrait_service.pick_primary_published_video(published_videos)
+    published_audios = await portrait_service.get_published_audios_for_actor(actor_id)
     published_styles = await style_service.list_published_results_by_actor(actor_id=actor_id, limit=200)
-    if not published_three and not published_video and not published_styles:
+    if not published_three and not published_video and not published_audios and not published_styles:
         raise HTTPException(status_code=404, detail="No published materials for this actor")
 
     return {
@@ -219,6 +229,7 @@ async def get_published_actor_detail(
         "published_three_view": published_three,
         "published_video": published_video,
         "published_videos": published_videos,
+        "published_audios": published_audios,
         "published_styles": published_styles,
     }
 
@@ -571,6 +582,90 @@ async def publish_portrait_video_draft(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.post("/portraits/audios", response_model=PortraitAudioSchema)
+async def upload_portrait_audio(
+    audio_file: UploadFile = File(...),
+    service: PortraitService = Depends(get_portrait_service),
+    current_user: UserModel = Depends(require_individual_user),
+):
+    try:
+        declared_size = None
+        if hasattr(audio_file, "size"):
+            declared_size = getattr(audio_file, "size")
+        logger.info(
+            "Portrait audio upload received user_id=%s filename=%s content_type=%s",
+            current_user.id,
+            audio_file.filename,
+            audio_file.content_type,
+        )
+        return await service.upload_portrait_audio_stream(
+            user_id=current_user.id,
+            user_display_name=current_user.display_name,
+            upload_stream=audio_file.file,
+            filename=audio_file.filename or "portrait_audio.mp3",
+            content_type=audio_file.content_type or "application/octet-stream",
+            declared_size=declared_size,
+        )
+    except ValueError as exc:
+        logger.warning("Portrait audio upload rejected user_id=%s reason=%s", current_user.id, str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/portraits/audios", response_model=PortraitAudioListSchema)
+async def list_portrait_audios(
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    service: PortraitService = Depends(get_portrait_service),
+    current_user: UserModel = Depends(require_individual_user),
+):
+    logger.info(
+        "Portrait audio list query user_id=%s limit=%s offset=%s",
+        current_user.id,
+        limit,
+        offset,
+    )
+    items = await service.list_portrait_audios(
+        user_id=current_user.id,
+        limit=limit,
+        offset=offset,
+    )
+    return {"items": items}
+
+
+@router.post("/portraits/audios/state", response_model=PortraitAudioSchema)
+async def toggle_portrait_audio_state(
+    req: PortraitAudioPublishToggleRequest,
+    service: PortraitService = Depends(get_portrait_service),
+    current_user: UserModel = Depends(require_individual_user),
+):
+    try:
+        return await service.toggle_portrait_audio_publish(
+            user_id=current_user.id,
+            user_display_name=current_user.display_name,
+            audio_id=req.audio_id,
+            published=req.published,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.delete("/portraits/audios/{audio_id}")
+async def delete_portrait_audio(
+    audio_id: int,
+    service: PortraitService = Depends(get_portrait_service),
+    current_user: UserModel = Depends(require_individual_user),
+):
+    try:
+        await service.delete_portrait_audio(
+            user_id=current_user.id,
+            user_display_name=current_user.display_name,
+            audio_id=audio_id,
+        )
+        return {"ok": True}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.delete("/portraits/three-view/history", response_model=HistoryCleanupResultSchema)
 async def cleanup_three_view_history(
     purge_storage: bool = Query(default=True),
@@ -626,6 +721,7 @@ async def generate_style(
             user_id=current_user.id,
             user_display_name=current_user.display_name,
             style_id=req.style_id,
+            custom_prompt=req.custom_prompt,
         )
     except ValueError as exc:
         logger.warning("Generate style rejected user_id=%s style_id=%s reason=%s", current_user.id, req.style_id, str(exc))
@@ -633,6 +729,34 @@ async def generate_style(
     except RuntimeError as exc:
         logger.error("Generate style failed user_id=%s style_id=%s reason=%s", current_user.id, req.style_id, str(exc))
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@router.post("/styles/upload", response_model=GeneratedResultSchema)
+async def upload_custom_style_image(
+    style_id: int = Form(...),
+    image_file: UploadFile = File(...),
+    service: StyleService = Depends(get_style_service),
+    current_user: UserModel = Depends(require_individual_user),
+):
+    payload = await image_file.read()
+    logger.info(
+        "Upload custom style image request user_id=%s style_id=%s filename=%s size=%s",
+        current_user.id,
+        style_id,
+        image_file.filename,
+        len(payload),
+    )
+    try:
+        return await service.upload_custom_result(
+            user_id=current_user.id,
+            user_display_name=current_user.display_name,
+            style_id=style_id,
+            file_data=payload,
+            filename=image_file.filename or "custom-upload.jpg",
+            content_type=image_file.content_type or "image/jpeg",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/styles/publish", response_model=GeneratedResultSchema)
@@ -647,6 +771,40 @@ async def publish_style_draft(
             user_display_name=current_user.display_name,
             style_id=req.style_id,
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/styles/result-state", response_model=GeneratedResultSchema)
+async def toggle_style_result_state(
+    req: StyleResultStateToggleRequest,
+    service: StyleService = Depends(get_style_service),
+    current_user: UserModel = Depends(require_individual_user),
+):
+    try:
+        return await service.toggle_result_state(
+            user_id=current_user.id,
+            user_display_name=current_user.display_name,
+            result_id=req.result_id,
+            published=req.published,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.delete("/styles/results/{result_id}")
+async def delete_style_result(
+    result_id: int,
+    service: StyleService = Depends(get_style_service),
+    current_user: UserModel = Depends(require_individual_user),
+):
+    try:
+        await service.delete_result(
+            user_id=current_user.id,
+            user_display_name=current_user.display_name,
+            result_id=result_id,
+        )
+        return {"ok": True}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

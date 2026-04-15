@@ -169,6 +169,66 @@
         <section class="bg-surface/65 border border-sky-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl space-y-4">
           <h2 class="text-lg font-semibold">职业信息与接戏偏好</h2>
 
+          <div class="rounded-2xl border border-sky-400/15 bg-slate-950/20 p-4 md:p-5 space-y-4">
+            <div>
+              <p class="text-sm font-semibold text-sky-100">自我定价</p>
+              <p class="mt-1 text-xs text-on-surface-variant">
+                设置你的基础合作报价，企业端沟通时可更快了解合作预期。
+              </p>
+            </div>
+
+            <div class="grid lg:grid-cols-[1.2fr_1fr] gap-4">
+              <div class="space-y-2">
+                <span class="text-xs text-on-surface-variant">计费方式</span>
+                <div class="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    class="rounded-xl border px-4 py-3 text-left transition"
+                    :class="form.pricing_unit === 'day'
+                      ? 'border-sky-300/40 bg-sky-400/12 text-sky-50 shadow-[0_0_0_1px_rgba(125,211,252,0.18)]'
+                      : 'border-sky-300/15 bg-slate-950/25 text-on-surface-variant hover:border-sky-300/30 hover:text-sky-100'"
+                    @click="form.pricing_unit = 'day'"
+                  >
+                    <p class="text-sm font-semibold">按天计费</p>
+                    <p class="mt-1 text-xs opacity-80">适合通告、拍摄天数明确的项目</p>
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-xl border px-4 py-3 text-left transition"
+                    :class="form.pricing_unit === 'project'
+                      ? 'border-sky-300/40 bg-sky-400/12 text-sky-50 shadow-[0_0_0_1px_rgba(125,211,252,0.18)]'
+                      : 'border-sky-300/15 bg-slate-950/25 text-on-surface-variant hover:border-sky-300/30 hover:text-sky-100'"
+                    @click="form.pricing_unit = 'project'"
+                  >
+                    <p class="text-sm font-semibold">按项目计费</p>
+                    <p class="mt-1 text-xs opacity-80">适合整包合作、角色打包报价</p>
+                  </button>
+                </div>
+              </div>
+
+              <label class="space-y-2">
+                <span class="text-xs text-on-surface-variant">
+                  价格（元/{{ form.pricing_unit === 'day' ? '天' : '项目' }}）
+                </span>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-sky-200/80">￥</span>
+                  <input
+                    v-model.number="form.pricing_amount"
+                    type="number"
+                    min="0"
+                    max="100000000"
+                    step="1"
+                    class="w-full rounded-xl border border-sky-300/20 bg-slate-950/30 pl-8 pr-3 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/50"
+                    :placeholder="form.pricing_unit === 'day' ? '例如：3000' : '例如：20000'"
+                  />
+                </div>
+                <p class="text-[11px] text-on-surface-variant">
+                  当前展示为基础参考报价，实际合作价格可根据角色、档期和项目内容再沟通。
+                </p>
+              </label>
+            </div>
+          </div>
+
           <label class="space-y-1 block">
             <span class="text-xs text-on-surface-variant">擅长标签</span>
             <div class="rounded-lg border border-sky-300/20 bg-slate-950/30 p-2.5">
@@ -332,7 +392,9 @@ const form = reactive({
   tags: [],
   acting_requirements: '',
   rejected_requirements: '',
-  availability_note: ''
+  availability_note: '',
+  pricing_unit: 'project',
+  pricing_amount: 0
 })
 
 const profileCompletion = computed(() => {
@@ -344,7 +406,8 @@ const profileCompletion = computed(() => {
     Boolean(form.hometown.trim()),
     Boolean(form.bio.trim()),
     form.tags.length > 0,
-    Boolean(form.acting_requirements.trim())
+    Boolean(form.acting_requirements.trim()),
+    form.pricing_amount > 0
   ]
   const done = checks.filter(Boolean).length
   return Math.round((done / checks.length) * 100)
@@ -367,6 +430,8 @@ function applyBasicInfo(payload) {
   form.acting_requirements = payload?.acting_requirements || ''
   form.rejected_requirements = payload?.rejected_requirements || ''
   form.availability_note = payload?.availability_note || ''
+  form.pricing_unit = payload?.pricing_unit === 'day' ? 'day' : 'project'
+  form.pricing_amount = Number(payload?.pricing_amount || 0)
 }
 
 function normalizeInt(value, minValue, maxValue) {
@@ -393,7 +458,9 @@ function buildSubmitPayload() {
     tags: form.tags,
     acting_requirements: form.acting_requirements.trim(),
     rejected_requirements: form.rejected_requirements.trim(),
-    availability_note: form.availability_note.trim()
+    availability_note: form.availability_note.trim(),
+    pricing_unit: form.pricing_unit === 'day' ? 'day' : 'project',
+    pricing_amount: normalizeInt(form.pricing_amount, 0, 100000000)
   }
 }
 

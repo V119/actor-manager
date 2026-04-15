@@ -49,6 +49,8 @@ class ActorBasicInfoSchema(BaseModel):
     acting_requirements: str
     rejected_requirements: str
     availability_note: str
+    pricing_unit: Literal["day", "project"]
+    pricing_amount: int
     avatar_url: Optional[str]
     avatar_source: Literal["three_view", "none"]
     created_at: datetime
@@ -70,6 +72,8 @@ class ActorBasicInfoUpdateRequest(BaseModel):
     acting_requirements: str = ""
     rejected_requirements: str = ""
     availability_note: str = ""
+    pricing_unit: Literal["day", "project"] = "project"
+    pricing_amount: int = 0
 
 class StyleSchema(BaseModel):
     id: int
@@ -89,6 +93,7 @@ class GeneratedResultSchema(BaseModel):
     style_category: str
     image_url: str
     preview_url: str
+    custom_prompt: str
     lifecycle_state: str
     published_at: Optional[datetime]
     created_at: datetime
@@ -108,6 +113,7 @@ class ProtocolSchema(BaseModel):
 
 class GenerateStyleRequest(BaseModel):
     style_id: int
+    custom_prompt: str = ""
     actor_id: Optional[int] = None
 
 
@@ -119,12 +125,16 @@ class StyleResultGroupSchema(BaseModel):
     style_id: int
     style_name: str
     style_category: str
-    draft_result: Optional[GeneratedResultSchema]
-    published_result: Optional[GeneratedResultSchema]
+    results: List[GeneratedResultSchema]
 
 
 class StyleResultGroupListSchema(BaseModel):
     groups: List[StyleResultGroupSchema]
+
+
+class StyleResultStateToggleRequest(BaseModel):
+    result_id: int
+    published: bool
 
 
 class ThreeViewRawImageSchema(BaseModel):
@@ -269,6 +279,31 @@ class PortraitVideoPublishRequest(BaseModel):
     video_type: VideoTypeLiteral
 
 
+class PortraitAudioSchema(BaseModel):
+    id: int
+    actor_id: int
+    user_id: int
+    is_published: bool
+    superseded_at: Optional[datetime]
+    bucket_name: str
+    object_key: str
+    audio_url: str
+    preview_url: str
+    source_filename: str
+    mime_type: str
+    file_size: int
+    created_at: datetime
+
+
+class PortraitAudioListSchema(BaseModel):
+    items: List[PortraitAudioSchema]
+
+
+class PortraitAudioPublishToggleRequest(BaseModel):
+    audio_id: int
+    published: bool
+
+
 class HistoryCleanupResultSchema(BaseModel):
     deleted_records: int
     deleted_objects: int
@@ -284,6 +319,7 @@ class PublishedActorCardSchema(BaseModel):
     published_three_view_url: Optional[str]
     published_video_url: Optional[str]
     published_style_count: int
+    published_audio_count: int
     updated_at: datetime
 
 
@@ -292,4 +328,5 @@ class PublishedActorDetailSchema(BaseModel):
     published_three_view: Optional[ThreeViewUploadSchema]
     published_video: Optional[PortraitVideoSchema]
     published_videos: List[PortraitVideoSchema]
+    published_audios: List[PortraitAudioSchema]
     published_styles: List[GeneratedResultSchema]

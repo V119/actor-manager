@@ -3,13 +3,13 @@
     <main class="max-w-7xl mx-auto px-6 md:px-8 pt-24 pb-14 space-y-8">
       <header class="space-y-3">
         <div class="flex items-center gap-3">
-          <h1 class="text-3xl font-bold tracking-tight">肖像与视频素材上传</h1>
+          <h1 class="text-3xl font-bold tracking-tight">肖像、视频与录音素材上传</h1>
           <span class="px-3 py-1 rounded-full border border-sky-300/30 bg-sky-400/10 text-sky-200 text-xs font-semibold">
             个人素材中心
           </span>
         </div>
         <p class="text-sm text-on-surface-variant max-w-3xl leading-relaxed">
-          你上传的素材会自动归档到当前账号下，系统会将左侧面、正面、右侧面三张图片合成为一张 4:3 上半身三视图图像，同时支持上传视频素材。
+          你上传的素材会自动归档到当前账号下，系统会将左侧面、正面、右侧面三张图片合成为一张 4:3 上半身三视图图像，同时支持上传视频与录音素材。
         </p>
       </header>
 
@@ -273,6 +273,115 @@
             </p>
           </div>
         </div>
+
+        <div class="bg-surface/65 border border-sky-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl">
+          <div class="flex flex-wrap items-start justify-between gap-4 mb-5">
+            <div>
+              <h2 class="text-lg font-semibold">录音素材区</h2>
+              <p class="text-xs text-on-surface-variant mt-1">
+                可上传一段或多段声音素材，用于展示声线、台词表现或角色声音状态。每条录音都可单独发布、取消发布或删除。
+              </p>
+            </div>
+            <span
+              class="text-xs px-2.5 py-1 rounded-full border"
+              :class="publishedAudioCount > 0 ? 'border-emerald-300/40 text-emerald-200 bg-emerald-400/10' : 'border-sky-300/35 text-sky-100 bg-sky-400/10'"
+            >
+              {{ publishedAudioCount > 0 ? `已发布 ${publishedAudioCount} 条录音` : '暂无已发布录音' }}
+            </span>
+          </div>
+
+          <div class="rounded-2xl border border-sky-400/15 bg-slate-950/20 p-4 md:p-5">
+            <div class="flex flex-col lg:flex-row lg:items-center gap-4">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-sky-100">上传新的录音素材</p>
+                <p class="mt-1 text-xs text-on-surface-variant">
+                  支持常见音频格式，上传后可先试听，再决定是否发布到企业端广场。
+                </p>
+                <p class="mt-3 text-xs text-on-surface-variant truncate">
+                  {{ selectedAudioFileLabel }}
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-3">
+                <label class="inline-flex cursor-pointer items-center justify-center rounded-lg border border-sky-300/25 bg-sky-400/10 px-4 py-2.5 text-sm text-sky-100 hover:bg-sky-400/20 transition-colors">
+                  选择录音
+                  <input
+                    type="file"
+                    accept="audio/*"
+                    multiple
+                    class="hidden"
+                    @change="onAudioSelected"
+                  />
+                </label>
+                <button
+                  class="rounded-lg border border-emerald-300/35 px-4 py-2.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-400/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                  :disabled="audioUpload.uploading || !selectedAudioFileCount"
+                  @click="submitAudio"
+                >
+                  {{ audioUpload.uploading ? '录音上传中...' : `上传录音素材${selectedAudioFileCount ? `（${selectedAudioFileCount}）` : ''}` }}
+                </button>
+              </div>
+            </div>
+            <p v-if="audioUpload.error" class="mt-3 text-sm text-rose-300">{{ audioUpload.error }}</p>
+            <p v-if="audioUpload.success" class="mt-3 text-sm text-emerald-300">{{ audioUpload.success }}</p>
+          </div>
+
+          <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <article
+              v-for="asset in audioAssets"
+              :key="asset.id"
+              class="rounded-2xl border border-sky-400/15 bg-slate-950/20 p-4 space-y-4"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-sky-100 truncate">{{ asset.source_filename || '未命名录音' }}</p>
+                  <p class="mt-1 text-xs text-on-surface-variant">
+                    {{ formatAudioMeta(asset) }}
+                  </p>
+                </div>
+                <span
+                  class="shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium"
+                  :class="asset.is_published ? 'border-emerald-300/35 bg-emerald-400/10 text-emerald-200' : 'border-amber-300/35 bg-amber-400/10 text-amber-200'"
+                >
+                  {{ asset.is_published ? '已发布' : '未发布' }}
+                </span>
+              </div>
+
+              <div class="rounded-xl border border-sky-400/12 bg-surface/45 p-3">
+                <audio :src="asset.preview_url" controls class="w-full" preload="metadata" />
+              </div>
+
+              <div class="flex items-center justify-between gap-3">
+                <button
+                  class="inline-flex min-w-[88px] items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium transition disabled:opacity-60 disabled:cursor-not-allowed"
+                  :class="asset.is_published ? 'border-amber-300/35 text-amber-200 hover:bg-amber-400/10' : 'border-emerald-300/35 text-emerald-200 hover:bg-emerald-400/10'"
+                  :disabled="audioActionLoadingId === asset.id"
+                  @click="toggleAudioPublish(asset)"
+                >
+                  {{ audioActionLoadingId === asset.id ? '处理中...' : (asset.is_published ? '取消发布' : '发布') }}
+                </button>
+                <button
+                  class="inline-flex min-w-[88px] items-center justify-center rounded-lg border border-rose-300/35 px-3 py-2 text-sm font-medium text-rose-200 hover:bg-rose-400/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                  :disabled="audioActionLoadingId === asset.id"
+                  @click="deleteAudio(asset)"
+                >
+                  删除
+                </button>
+              </div>
+            </article>
+
+            <div
+              v-if="!audioAssets.length && !audioLoading"
+              class="md:col-span-2 xl:col-span-3 rounded-2xl border border-dashed border-sky-400/20 bg-slate-950/15 px-5 py-10 text-center"
+            >
+              <span class="material-symbols-outlined text-4xl text-sky-200/80">mic</span>
+              <p class="mt-3 text-sm font-semibold text-sky-100">还没有录音素材</p>
+              <p class="mt-1 text-xs text-on-surface-variant">上传第一条录音后，就可以在这里统一试听、发布和删除。</p>
+            </div>
+          </div>
+
+          <p v-if="audioLoading" class="mt-4 text-xs text-on-surface-variant">正在加载录音素材...</p>
+          <p v-if="audioListError" class="mt-4 text-sm text-rose-300">{{ audioListError }}</p>
+        </div>
       </section>
     </main>
   </div>
@@ -335,6 +444,12 @@ const videoForms = reactive({
   [VIDEO_TYPE_INTRO]: createVideoFormState(),
   [VIDEO_TYPE_SHOWREEL]: createVideoFormState()
 })
+const audioUpload = reactive({
+  uploading: false,
+  error: '',
+  success: '',
+  files: []
+})
 const videoDrafts = ref({
   [VIDEO_TYPE_INTRO]: null,
   [VIDEO_TYPE_SHOWREEL]: null
@@ -343,6 +458,10 @@ const publishedVideos = ref({
   [VIDEO_TYPE_INTRO]: null,
   [VIDEO_TYPE_SHOWREEL]: null
 })
+const audioAssets = ref([])
+const audioLoading = ref(false)
+const audioListError = ref('')
+const audioActionLoadingId = ref(null)
 const videoOwnershipConfirmed = reactive({
   [VIDEO_TYPE_INTRO]: false,
   [VIDEO_TYPE_SHOWREEL]: false
@@ -428,6 +547,13 @@ const videoTypeSlots = computed(() => VIDEO_TYPE_CONFIGS.map((config) => {
   }
 }))
 const allRequiredVideosPublished = computed(() => VIDEO_TYPE_CONFIGS.every((item) => Boolean(publishedVideos.value[item.key]?.id)))
+const publishedAudioCount = computed(() => audioAssets.value.filter((item) => item?.is_published).length)
+const selectedAudioFileCount = computed(() => audioUpload.files.length)
+const selectedAudioFileLabel = computed(() => {
+  if (!audioUpload.files.length) return '尚未选择录音文件'
+  if (audioUpload.files.length === 1) return audioUpload.files[0]?.name || '已选择 1 个录音文件'
+  return `已选择 ${audioUpload.files.length} 个录音文件`
+})
 const COMPOSE_JOB_POLL_INTERVAL_MS = 1200
 const COMPOSE_JOB_POLL_MAX_ATTEMPTS = 200
 
@@ -523,6 +649,27 @@ async function onVideoSelected(videoType, event) {
   }
 }
 
+async function onAudioSelected(event) {
+  const input = event.target
+  if (!input?.files?.length) return
+  const files = Array.from(input.files)
+  audioUpload.error = ''
+  audioUpload.success = ''
+
+  try {
+    const invalidFile = files.find((file) => !(file.type || '').startsWith('audio/'))
+    if (invalidFile) {
+      throw new Error(`“${invalidFile.name}”不是音频文件，请重新选择。`)
+    }
+    audioUpload.files = files
+  } catch (error) {
+    clearAudioSelection()
+    audioUpload.error = error instanceof Error ? error.message : '录音文件读取失败，请重试。'
+  } finally {
+    input.value = ''
+  }
+}
+
 function clearVideoSelection(videoType) {
   const form = videoForms[videoType]
   form.file = null
@@ -531,6 +678,10 @@ function clearVideoSelection(videoType) {
     URL.revokeObjectURL(form.preview)
   }
   form.preview = ''
+}
+
+function clearAudioSelection() {
+  audioUpload.files = []
 }
 
 function normalizeVideoTypeState(payload, videoType) {
@@ -555,6 +706,31 @@ function applyVideoState(payload) {
     videoDrafts.value[item.key] = state?.draft || null
     publishedVideos.value[item.key] = state?.published || null
   })
+}
+
+function formatFileSize(size) {
+  const value = Number(size || 0)
+  if (!Number.isFinite(value) || value <= 0) return '未知大小'
+  if (value < 1024) return `${value} B`
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function formatDateTime(value) {
+  if (!value) return '未知时间'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '未知时间'
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+function formatAudioMeta(asset) {
+  return `${formatFileSize(asset?.file_size)} · ${formatDateTime(asset?.created_at)}`
 }
 
 function getVideoDuration(file) {
@@ -632,6 +808,23 @@ async function loadExistingAssets() {
     imageErrorMessage.value = message
   } finally {
     loadingExisting.value = false
+  }
+}
+
+async function loadAudioAssets() {
+  if (!authStore.state.token) return
+
+  audioLoading.value = true
+  audioListError.value = ''
+  try {
+    const payload = await apiRequest('/portraits/audios', {
+      token: authStore.state.token
+    })
+    audioAssets.value = Array.isArray(payload?.items) ? payload.items : []
+  } catch (error) {
+    audioListError.value = error instanceof Error ? error.message : '录音素材加载失败，请稍后重试。'
+  } finally {
+    audioLoading.value = false
   }
 }
 
@@ -794,6 +987,98 @@ async function publishVideoDraft(videoType) {
   }
 }
 
+async function submitAudio() {
+  if (!authStore.state.token) {
+    audioUpload.error = '登录状态失效，请重新登录。'
+    return
+  }
+  if (!audioUpload.files.length) {
+    audioUpload.error = '请先选择录音文件。'
+    return
+  }
+
+  audioUpload.uploading = true
+  audioUpload.error = ''
+  audioUpload.success = ''
+  try {
+    const uploaded = []
+    for (const file of audioUpload.files) {
+      const formData = new FormData()
+      formData.append('audio_file', file)
+      const result = await apiRequest('/portraits/audios', {
+        method: 'POST',
+        token: authStore.state.token,
+        formData
+      })
+      uploaded.push(result)
+    }
+    audioAssets.value = [...uploaded.reverse(), ...audioAssets.value]
+    clearAudioSelection()
+    audioUpload.success = uploaded.length > 1
+      ? `已上传 ${uploaded.length} 条录音素材，可根据需要选择发布到企业端。`
+      : '录音素材上传成功，可根据需要选择发布到企业端。'
+  } catch (error) {
+    audioUpload.error = error instanceof Error ? error.message : '录音上传失败，请稍后重试。'
+  } finally {
+    audioUpload.uploading = false
+  }
+}
+
+async function toggleAudioPublish(asset) {
+  if (!authStore.state.token) {
+    audioListError.value = '登录状态失效，请重新登录。'
+    return
+  }
+  if (!asset?.id) return
+
+  audioActionLoadingId.value = asset.id
+  audioListError.value = ''
+  try {
+    const updated = await apiRequest('/portraits/audios/state', {
+      method: 'POST',
+      token: authStore.state.token,
+      body: {
+        audio_id: asset.id,
+        published: !asset.is_published
+      }
+    })
+    const existing = audioAssets.value.find((item) => item.id === updated.id)
+    if (existing) {
+      existing.is_published = updated.is_published
+      existing.superseded_at = updated.superseded_at
+    }
+  } catch (error) {
+    audioListError.value = error instanceof Error ? error.message : '录音发布状态切换失败，请稍后重试。'
+  } finally {
+    audioActionLoadingId.value = null
+  }
+}
+
+async function deleteAudio(asset) {
+  if (!authStore.state.token) {
+    audioListError.value = '登录状态失效，请重新登录。'
+    return
+  }
+  if (!asset?.id) return
+
+  const confirmed = window.confirm(`确认永久删除录音素材“${asset.source_filename || '未命名录音'}”吗？删除后无法恢复。`)
+  if (!confirmed) return
+
+  audioActionLoadingId.value = asset.id
+  audioListError.value = ''
+  try {
+    await apiRequest(`/portraits/audios/${asset.id}`, {
+      method: 'DELETE',
+      token: authStore.state.token
+    })
+    audioAssets.value = audioAssets.value.filter((item) => item.id !== asset.id)
+  } catch (error) {
+    audioListError.value = error instanceof Error ? error.message : '录音删除失败，请稍后重试。'
+  } finally {
+    audioActionLoadingId.value = null
+  }
+}
+
 async function submitThreeViewDirectFlow(selectedFiles, hadExisting) {
   const selectedAngles = Object.keys(selectedFiles)
   const selectedCount = selectedAngles.length
@@ -920,7 +1205,8 @@ async function waitForComposeJob(jobKey) {
 onMounted(async () => {
   await Promise.all([
     loadGuidanceSamples(),
-    loadExistingAssets()
+    loadExistingAssets(),
+    loadAudioAssets()
   ])
 })
 </script>

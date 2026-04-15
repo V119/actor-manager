@@ -30,7 +30,27 @@
     <main class="flex-1 ml-64 relative overflow-y-auto">
       <nav class="fixed top-0 left-64 right-0 bg-[#0a0e1a]/60 backdrop-blur-xl border-b border-sky-400/10 shadow-[0_0_30px_rgba(125,211,252,0.05)] z-50 flex justify-between items-center px-6 h-16">
         <div class="text-2xl font-semibold tracking-tighter text-sky-300">Glacier AI</div>
-        <div class="flex items-center gap-4">
+        <button
+          v-if="currentUser?.role === 'individual'"
+          type="button"
+          class="flex items-center gap-4 rounded-full px-2 py-1 -mr-2 hover:bg-white/5 transition-colors"
+          @click="goToActorBasicInfo"
+        >
+          <div class="text-right">
+            <p class="text-sm font-semibold text-sky-200">{{ currentUser?.display_name || '未登录' }}</p>
+            <p class="text-xs text-slate-400">{{ profileSubtitle }}</p>
+          </div>
+          <div class="w-9 h-9 rounded-full overflow-hidden border border-sky-400/30 bg-sky-400/10 text-sky-200 flex items-center justify-center text-xs font-bold">
+            <img
+              v-if="headerAvatarUrl"
+              :src="headerAvatarUrl"
+              alt="头像"
+              class="w-full h-full object-cover"
+            />
+            <span v-else>{{ avatarText }}</span>
+          </div>
+        </button>
+        <div v-else class="flex items-center gap-4">
           <div class="text-right">
             <p class="text-sm font-semibold text-sky-200">{{ currentUser?.display_name || '未登录' }}</p>
             <p class="text-xs text-slate-400">{{ profileSubtitle }}</p>
@@ -141,6 +161,12 @@ async function handleLogout() {
     return
   }
   await router.replace(role === 'enterprise' ? '/login/enterprise' : '/login/individual')
+}
+
+async function goToActorBasicInfo() {
+  if (currentUser.value?.role !== 'individual') return
+  if (route.path === '/actor-basic-info') return
+  await router.push('/actor-basic-info')
 }
 </script>
 

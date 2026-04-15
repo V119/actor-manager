@@ -29,6 +29,7 @@ class Settings:
     MINIO_PORTRAIT_RAW_BUCKET: str
     MINIO_PORTRAIT_GENERATED_BUCKET: str
     MINIO_PORTRAIT_VIDEO_BUCKET: str
+    MINIO_PORTRAIT_AUDIO_BUCKET: str
     MINIO_PORTRAIT_GUIDANCE_BUCKET: str
     MINIO_STYLE_GENERATED_BUCKET: str
     MINIO_SECURE: bool
@@ -81,6 +82,7 @@ settings = Settings(
         get_config("minio.buckets.portrait_generated", "glacier-portrait-generated")
     ),
     MINIO_PORTRAIT_VIDEO_BUCKET=str(get_config("minio.buckets.portrait_video", "glacier-portrait-video")),
+    MINIO_PORTRAIT_AUDIO_BUCKET=str(get_config("minio.buckets.portrait_audio", "glacier-portrait-audio")),
     MINIO_PORTRAIT_GUIDANCE_BUCKET=str(get_config("minio.buckets.portrait_guidance", "glacier-portrait-guidance")),
     MINIO_STYLE_GENERATED_BUCKET=str(get_config("minio.buckets.style_generated", "glacier-style-generated")),
     MINIO_SECURE=bool(get_config("minio.secure", False)),

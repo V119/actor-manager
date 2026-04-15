@@ -1,0 +1,22 @@
+<svg width="720" height="960" viewBox="0 0 720 960" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="96" y1="72" x2="624" y2="888" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#123B52"/>
+      <stop offset="0.52" stop-color="#1D5A6F"/>
+      <stop offset="1" stop-color="#E59F53"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(542 190) rotate(121.44) scale(478.188 390.988)">
+      <stop stop-color="#FFF1C8" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#FFF1C8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="720" height="960" rx="36" fill="url(#bg)"/>
+  <rect width="720" height="960" rx="36" fill="url(#glow)"/>
+  <rect x="90" y="116" width="540" height="728" rx="28" fill="rgba(7,17,26,0.18)" stroke="rgba(255,255,255,0.24)" stroke-width="3"/>
+  <rect x="190" y="274" width="340" height="340" rx="26" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.32)" stroke-width="3" stroke-dasharray="14 14"/>
+  <path d="M304 398C304 360.445 334.445 330 372 330C409.555 330 440 360.445 440 398C440 426.457 420.827 446.914 393.604 455.903C375.993 461.718 364 478.211 364 496V506" stroke="white" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="364" cy="550" r="14" fill="white"/>
+  <rect x="206" y="664" width="308" height="60" rx="30" fill="rgba(9,24,35,0.45)" stroke="rgba(255,255,255,0.28)" stroke-width="2"/>
+  <text x="360" y="705" text-anchor="middle" fill="white" font-size="30" font-family="Arial, sans-serif" font-weight="700">Custom Upload</text>
+  <text x="360" y="188" text-anchor="middle" fill="white" font-size="38" font-family="Arial, sans-serif" font-weight="700" letter-spacing="2">自定义风格</text>
+</svg>

@@ -41,12 +41,16 @@
       </div>
     </section>
 
-    <section>
-      <h3 class="text-sm font-semibold text-primary uppercase tracking-widest flex items-center gap-2 mb-4">
-        <span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
-        选择视觉风格
-      </h3>
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+    <section class="rounded-2xl border border-sky-400/10 bg-surface/55 backdrop-blur-xl p-5 space-y-6">
+      <div class="flex items-center justify-between gap-4 flex-wrap">
+        <h3 class="text-sm font-semibold text-primary uppercase tracking-widest flex items-center gap-2">
+          <span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
+          风格创作与结果管理
+        </h3>
+        <p class="text-xs text-on-surface-variant">点击风格卡片切换标签，管理当前风格下的全部图片。</p>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <button
           v-for="style in styleCards"
           :key="style.name"
@@ -69,68 +73,145 @@
           </div>
         </button>
       </div>
-    </section>
 
-    <section class="flex flex-col items-center py-2">
-      <button
-        class="relative group px-12 py-4 bg-primary/20 rounded-full border border-primary/50 text-primary font-bold text-lg flex items-center gap-3 transition-all duration-300 hover:bg-primary/30 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-        :disabled="generating || !selectedStyleId || !hasBasePhotos"
-        @click="generateStyle"
-      >
-        <span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">auto_fix_high</span>
-        {{ generating ? '生成中...' : '开始生成' }}
-      </button>
-      <p class="text-xs text-on-surface-variant mt-4">预计耗时 15-30 秒，基于你已发布的基础照生成</p>
-      <p v-if="errorMessage" class="text-sm text-rose-300 mt-3">{{ errorMessage }}</p>
-      <p v-if="successMessage" class="text-sm text-emerald-300 mt-3">{{ successMessage }}</p>
-    </section>
+      <div class="rounded-xl border border-sky-300/20 bg-slate-950/25 p-4 space-y-3">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h4 class="text-base font-semibold text-sky-100">{{ activeStyleCard?.name || '请选择风格' }}</h4>
+            <p class="text-xs text-on-surface-variant">{{ activeStyleCard?.en || '选择风格后可生成并管理图片' }}</p>
+          </div>
+          <div class="text-xs text-on-surface-variant">
+            当前风格共 {{ activeStyleResults.length }} 张
+          </div>
+        </div>
 
-    <section>
-      <h3 class="text-sm font-semibold text-primary uppercase tracking-widest flex items-center gap-2 mb-6">
-        <span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
-        最终生成效果图
-      </h3>
-
-      <div class="space-y-8">
-        <div
-          v-for="group in groupedDisplay"
-          :key="group.name"
-          class="rounded-2xl border border-sky-400/10 bg-surface/55 backdrop-blur-xl p-4"
-        >
-          <div class="mb-4 flex items-center justify-between">
-            <div>
-              <h4 class="text-base font-semibold text-sky-100">{{ group.name }}</h4>
-              <p class="text-xs text-on-surface-variant">{{ group.en }}</p>
-            </div>
+        <div v-if="!isCustomStyle">
+          <label for="custom-style-prompt" class="block text-xs text-on-surface-variant mb-2">自定义描述</label>
+          <div class="flex items-center gap-3 flex-wrap">
+            <input
+              id="custom-style-prompt"
+              v-model="customPromptInput"
+              type="text"
+              maxlength="1000"
+              placeholder="例如：夜晚街头，微雨，电影级侧光，情绪感强烈"
+              class="flex-1 min-w-[240px] rounded-lg border border-sky-300/25 bg-slate-950/40 px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/70 focus:outline-none focus:ring-2 focus:ring-primary/35 focus:border-primary/45"
+            />
             <button
-              class="px-3 py-1.5 rounded-md border border-emerald-300/40 text-xs text-emerald-200 hover:bg-emerald-400/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
-              :disabled="!group.draft_result || publishingStyleId === group.style_id"
-              @click="publishStyleDraft(group.style_id)"
+              class="relative group px-5 py-2.5 bg-primary/20 rounded-full border border-primary/50 text-primary font-semibold text-sm flex items-center gap-2 transition-all duration-300 hover:bg-primary/30 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+              :disabled="isCurrentStyleGenerating || !selectedStyleId || !hasBasePhotos"
+              @click="generateStyle"
             >
-              {{ publishingStyleId === group.style_id ? '发布中...' : '发布该风格草稿' }}
+              <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">auto_fix_high</span>
+              {{ isCurrentStyleGenerating ? '生成中...' : '生成当前风格图片' }}
             </button>
           </div>
-
-          <div class="grid md:grid-cols-2 gap-4">
-            <div class="rounded-xl border border-sky-300/20 bg-slate-950/25 p-3">
-              <p class="text-xs text-sky-200 mb-2">草稿（未发布）</p>
-              <div v-if="group.draft_result" class="rounded-lg overflow-hidden border border-sky-300/15">
-                <img :src="group.draft_result.preview_url || group.draft_result.image_url" :alt="`${group.name} 草稿`" class="w-full h-auto" />
+          <p class="text-[11px] text-on-surface-variant mt-2">预计耗时 15-30 秒</p>
+        </div>
+        <div v-else>
+          <label class="block text-xs text-on-surface-variant mb-2">上传自定义图片</label>
+          <div class="flex items-center gap-3 flex-wrap">
+            <label
+              for="custom-style-upload"
+              class="flex-1 min-w-[240px] rounded-lg border border-dashed border-sky-300/25 bg-slate-950/40 px-3 py-2.5 text-sm text-on-surface-variant cursor-pointer hover:border-primary/45 hover:text-on-surface transition-colors"
+            >
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-base">upload_file</span>
+                <span>{{ customUploadFileName || '选择一张图片上传到自定义风格' }}</span>
               </div>
-              <div v-else class="text-xs text-on-surface-variant py-6 text-center">暂无草稿</div>
-            </div>
-
-            <div class="rounded-xl border border-emerald-300/25 bg-slate-950/25 p-3">
-              <p class="text-xs text-emerald-200 mb-2">已发布</p>
-              <div v-if="group.published_result" class="rounded-lg overflow-hidden border border-emerald-300/20">
-                <img :src="group.published_result.preview_url || group.published_result.image_url" :alt="`${group.name} 已发布`" class="w-full h-auto" />
-              </div>
-              <div v-else class="text-xs text-on-surface-variant py-6 text-center">暂无已发布内容</div>
-            </div>
+            </label>
+            <input
+              id="custom-style-upload"
+              ref="customUploadInput"
+              type="file"
+              accept="image/*"
+              class="hidden"
+              @change="handleCustomFileChange"
+            />
+            <button
+              class="relative group px-5 py-2.5 bg-primary/20 rounded-full border border-primary/50 text-primary font-semibold text-sm flex items-center gap-2 transition-all duration-300 hover:bg-primary/30 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+              :disabled="isCurrentStyleUploading || !selectedStyleId || !customUploadFile"
+              @click="uploadCustomStyleImage"
+            >
+              <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">cloud_upload</span>
+              {{ isCurrentStyleUploading ? '上传中...' : '上传当前图片' }}
+            </button>
           </div>
+          <p class="text-[11px] text-on-surface-variant mt-2">选择图片上传。</p>
+        </div>
+      </div>
+
+      <div>
+        <div v-if="!activeStyleResults.length" class="rounded-xl border border-dashed border-sky-300/25 bg-slate-950/20 p-8 text-sm text-on-surface-variant text-center">
+          {{ isCustomStyle ? '当前风格暂无图片，选择图片后点击“上传当前图片”开始添加。' : '当前风格暂无图片，输入描述后点击“生成当前风格图片”开始创作。' }}
+        </div>
+        <div v-else class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <article
+            v-for="item in activeStyleResults"
+            :key="item.id"
+            class="group rounded-xl border border-sky-300/20 bg-slate-950/30 overflow-hidden"
+          >
+            <div class="relative">
+              <img
+                :src="item.preview_url || item.image_url"
+                :alt="`${activeStyleCard?.name || '风格图'}-${item.id}`"
+                class="w-full aspect-[3/4] object-cover"
+              />
+              <div class="absolute top-2 right-2">
+                <span
+                  class="px-2 py-1 rounded-full text-[11px] font-medium border"
+                  :class="item.lifecycle_state === 'published' ? 'bg-emerald-500/25 border-emerald-300/60 text-emerald-50' : 'bg-amber-500/20 border-amber-300/60 text-amber-50'"
+                >
+                  {{ item.lifecycle_state === 'published' ? '已发布' : '未发布' }}
+                </span>
+              </div>
+              <div class="absolute inset-x-0 bottom-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                <div class="rounded-lg border border-white/15 bg-slate-950/78 backdrop-blur-sm shadow-[0_10px_24px_rgba(2,6,23,0.45)] px-3 py-2">
+                  <p class="text-[11px] text-slate-100 leading-relaxed line-clamp-3 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]">
+                  {{ item.custom_prompt || '无自定义描述' }}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="p-3 flex items-center justify-between gap-2">
+              <div class="flex items-center gap-3">
+                <div class="flex flex-col">
+                </div>
+                <button
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                  :class="item.lifecycle_state === 'published'
+                    ? 'border-amber-300/45 bg-amber-500/15 text-amber-50 hover:bg-amber-500/22 hover:border-amber-300/60'
+                    : 'border-emerald-300/45 bg-emerald-500/18 text-emerald-50 hover:bg-emerald-500/25 hover:border-emerald-300/60'"
+                  :disabled="updatingResultId === item.id"
+                  @click="toggleResultState(item)"
+                >
+                  <span class="material-symbols-outlined text-sm mr-1">
+                    {{ updatingResultId === item.id ? 'hourglass_top' : item.lifecycle_state === 'published' ? 'visibility_off' : 'visibility' }}
+                  </span>
+                  {{
+                    updatingResultId === item.id
+                      ? '处理中...'
+                      : item.lifecycle_state === 'published'
+                        ? '取消发布'
+                        : '发布'
+                  }}
+                </button>
+              </div>
+              <button
+                class="px-3 py-1.5 rounded-md border border-rose-300/40 text-xs text-rose-200 hover:bg-rose-400/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                :disabled="deletingResultId === item.id"
+                @click="confirmDeleteResult(item)"
+              >
+                {{ deletingResultId === item.id ? '删除中...' : '删除' }}
+              </button>
+            </div>
+          </article>
         </div>
       </div>
     </section>
+
+    <p v-if="errorMessage" class="text-sm text-rose-300 mt-3">{{ errorMessage }}</p>
+    <p v-if="successMessage" class="text-sm text-emerald-300 mt-3">{{ successMessage }}</p>
   </div>
 </template>
 
@@ -172,6 +253,12 @@ const STYLE_DEFINITIONS = [
     en: 'Oil Painting',
     category: 'oil-painting',
     preview_url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC9ipTxbm-qu6iG2QPAj3nqp4AOHKOW90w-SWgTR1EcK5dwWhFfyX8PJQPzY-B0OfbKxN2sgUtQJqqMKBXbUdMqUoBsQ9VeRE6gkRhc7fkFOz4sxTTopU3Dz1QFbGH05fD8X4y0PqFzcZxDo2LdCx-B4szCAnJHuUosFvTXKctdMun_ymrRWle9pKy63DTN_3mXGJQgmR4JcALzmtYRg8egVqJuPHExwmfjx31EOZvUgNbJvYcNahq54dK1nka59YiPX9SzSsrLJ4RE'
+  },
+  {
+    name: '自定义',
+    en: 'Custom Upload',
+    category: 'custom',
+    preview_url: '/style-custom-preview.svg'
   }
 ]
 
@@ -180,9 +267,14 @@ const styleGroups = ref([])
 const publishedThreeView = ref(null)
 
 const selectedStyleId = ref(null)
-const generating = ref(false)
-const publishingStyleId = ref(null)
+const generatingStyleIds = ref([])
+const uploadingStyleIds = ref([])
+const updatingResultId = ref(null)
+const deletingResultId = ref(null)
 const loadingBasePhotos = ref(false)
+const customPromptInput = ref('')
+const customUploadFile = ref(null)
+const customUploadInput = ref(null)
 const errorMessage = ref('')
 const successMessage = ref('')
 
@@ -220,24 +312,35 @@ const styleCards = computed(() => {
   })
 })
 
-const groupedDisplay = computed(() => {
-  const groupMap = new Map()
+const activeStyleCard = computed(() => {
+  return styleCards.value.find((item) => item.id === selectedStyleId.value) || null
+})
+const isCustomStyle = computed(() => String(activeStyleCard.value?.category || '').toLowerCase() === 'custom')
+const customUploadFileName = computed(() => customUploadFile.value?.name || '')
+
+const styleResultMap = computed(() => {
+  const map = new Map()
   const groups = Array.isArray(styleGroups.value) ? styleGroups.value : []
   groups.forEach((group) => {
-    groupMap.set(group.style_name, group)
-  })
-
-  const cardMap = new Map(styleCards.value.map((item) => [item.name, item]))
-  return STYLE_DEFINITIONS.map((style) => {
-    const group = groupMap.get(style.name) || {}
-    return {
-      style_id: group.style_id || cardMap.get(style.name)?.id || null,
-      name: style.name,
-      en: style.en,
-      draft_result: group.draft_result || null,
-      published_result: group.published_result || null
+    if (group?.style_id) {
+      map.set(group.style_id, Array.isArray(group.results) ? group.results : [])
     }
   })
+  return map
+})
+
+const activeStyleResults = computed(() => {
+  if (!selectedStyleId.value) return []
+  const rows = styleResultMap.value.get(selectedStyleId.value) || []
+  return [...rows].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+})
+const isCurrentStyleGenerating = computed(() => {
+  if (!selectedStyleId.value) return false
+  return generatingStyleIds.value.includes(selectedStyleId.value)
+})
+const isCurrentStyleUploading = computed(() => {
+  if (!selectedStyleId.value) return false
+  return uploadingStyleIds.value.includes(selectedStyleId.value)
 })
 
 function selectStyle(style) {
@@ -248,6 +351,11 @@ function selectStyle(style) {
 
 function goToPortraitUpload() {
   router.push('/edit-portrait')
+}
+
+function handleCustomFileChange(event) {
+  const files = event?.target?.files
+  customUploadFile.value = files && files[0] ? files[0] : null
 }
 
 async function loadStyles() {
@@ -273,13 +381,18 @@ async function loadCurrentThreeView() {
 }
 
 async function loadStyleResults() {
-  const payload = await apiRequest('/styles/results?limit_per_style=20', { token: authStore.state.token })
+  const payload = await apiRequest('/styles/results?limit_per_style=100', { token: authStore.state.token })
   styleGroups.value = Array.isArray(payload?.groups) ? payload.groups : []
 }
 
 async function generateStyle() {
-  if (!selectedStyleId.value) {
+  const styleId = selectedStyleId.value
+  if (!styleId) {
     errorMessage.value = '请先选择一个风格。'
+    return
+  }
+  if (isCustomStyle.value) {
+    errorMessage.value = '自定义风格请使用图片上传。'
     return
   }
   if (!hasBasePhotos.value) {
@@ -287,7 +400,7 @@ async function generateStyle() {
     return
   }
 
-  generating.value = true
+  generatingStyleIds.value = [...new Set([...generatingStyleIds.value, styleId])]
   errorMessage.value = ''
   successMessage.value = ''
 
@@ -296,40 +409,95 @@ async function generateStyle() {
       method: 'POST',
       token: authStore.state.token,
       body: {
-        style_id: selectedStyleId.value
+        style_id: styleId,
+        custom_prompt: customPromptInput.value.trim()
       }
     })
-    successMessage.value = '风格图片已生成，结果已更新到下方对应风格分组。'
+    successMessage.value = '风格图片已生成，已更新当前风格列表。'
     await loadStyleResults()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '生成失败，请稍后重试。'
   } finally {
-    generating.value = false
+    generatingStyleIds.value = generatingStyleIds.value.filter((id) => id !== styleId)
   }
 }
 
-async function publishStyleDraft(styleId) {
+async function uploadCustomStyleImage() {
+  const styleId = selectedStyleId.value
   if (!styleId) {
-    errorMessage.value = '请选择可用风格后再发布。'
+    errorMessage.value = '请先选择自定义风格。'
     return
   }
-  publishingStyleId.value = styleId
+  if (!customUploadFile.value) {
+    errorMessage.value = '请先选择一张图片后再上传。'
+    return
+  }
+
+  uploadingStyleIds.value = [...new Set([...uploadingStyleIds.value, styleId])]
   errorMessage.value = ''
   successMessage.value = ''
+
   try {
-    await apiRequest('/styles/publish', {
+    const formData = new FormData()
+    formData.append('style_id', String(styleId))
+    formData.append('image_file', customUploadFile.value)
+    await apiRequest('/styles/upload', {
+      method: 'POST',
+      token: authStore.state.token,
+      formData
+    })
+    customUploadFile.value = null
+    if (customUploadInput.value) {
+      customUploadInput.value.value = ''
+    }
+    await loadStyleResults()
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '上传失败，请稍后重试。'
+  } finally {
+    uploadingStyleIds.value = uploadingStyleIds.value.filter((id) => id !== styleId)
+  }
+}
+
+async function toggleResultState(item) {
+  if (!item?.id) return
+  updatingResultId.value = item.id
+  errorMessage.value = ''
+  try {
+    const targetPublished = item.lifecycle_state !== 'published'
+    await apiRequest('/styles/result-state', {
       method: 'POST',
       token: authStore.state.token,
       body: {
-        style_id: styleId
+        result_id: item.id,
+        published: targetPublished
       }
     })
-    successMessage.value = '草稿风格图已发布，企业用户可在广场查看。'
     await loadStyleResults()
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : '发布失败，请稍后重试。'
+    errorMessage.value = error instanceof Error ? error.message : '状态切换失败，请稍后重试。'
   } finally {
-    publishingStyleId.value = null
+    updatingResultId.value = null
+  }
+}
+
+async function confirmDeleteResult(item) {
+  if (!item?.id) return
+  const confirmed = window.confirm('确定删除该图片吗？删除后将永久移除且不可恢复。')
+  if (!confirmed) return
+
+  deletingResultId.value = item.id
+  errorMessage.value = ''
+  successMessage.value = ''
+  try {
+    await apiRequest(`/styles/results/${item.id}`, {
+      method: 'DELETE',
+      token: authStore.state.token
+    })
+    await loadStyleResults()
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '删除失败，请稍后重试。'
+  } finally {
+    deletingResultId.value = null
   }
 }
 

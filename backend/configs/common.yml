@@ -41,6 +41,7 @@ minio:
     portrait_raw: glacier-portrait-raw
     portrait_generated: glacier-portrait-generated
     portrait_video: glacier-portrait-video
+    portrait_audio: glacier-portrait-audio
     portrait_guidance: glacier-portrait-guidance
     style_generated: glacier-style-generated
   secure: false

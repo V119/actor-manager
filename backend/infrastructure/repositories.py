@@ -31,6 +31,8 @@ class PeeweeActorRepository(ActorRepository):
             'height': actor.height,
             'bio': actor.bio,
             'tags': actor.tags,
+            'pricing_unit': actor.pricing_unit,
+            'pricing_amount': actor.pricing_amount,
             'is_published': actor.is_published
         }
         if actor.id:
@@ -50,6 +52,8 @@ class PeeweeActorRepository(ActorRepository):
             height=model.height,
             bio=model.bio,
             tags=model.tags,
+            pricing_unit=getattr(model, "pricing_unit", "project"),
+            pricing_amount=int(getattr(model, "pricing_amount", 0) or 0),
             is_published=model.is_published,
             created_at=model.created_at
         )

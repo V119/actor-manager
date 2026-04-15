@@ -54,7 +54,7 @@
               </span>
             </div>
             <div class="text-xs text-on-surface-variant">
-              已发布风格图 {{ actor.published_style_count }} 张
+              已发布风格图 {{ actor.published_style_count }} 张 · 录音 {{ actor.published_audio_count || 0 }} 条
             </div>
           </div>
         </button>

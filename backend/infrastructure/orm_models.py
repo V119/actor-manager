@@ -25,6 +25,8 @@ class ActorModel(BaseModel):
     acting_requirements = peewee.TextField(default="")
     rejected_requirements = peewee.TextField(default="")
     availability_note = peewee.TextField(default="")
+    pricing_unit = peewee.CharField(default="project")
+    pricing_amount = peewee.IntegerField(default=0)
     tags = BinaryJSONField(default=[])
     is_published = peewee.BooleanField(default=False)
     created_at = peewee.DateTimeField(default=datetime.now)
@@ -67,6 +69,7 @@ class GeneratedResultModel(BaseModel):
     user = peewee.ForeignKeyField(UserModel, backref='generated_results', on_delete='CASCADE', null=True)
     style = peewee.ForeignKeyField(StyleModel)
     image_url = peewee.CharField()
+    custom_prompt = peewee.TextField(default="")
     lifecycle_state = peewee.CharField(default='draft', index=True)  # draft | published | superseded
     superseded_at = peewee.DateTimeField(null=True, index=True)
     published_at = peewee.DateTimeField(null=True, index=True)
@@ -154,6 +157,25 @@ class PortraitVideoAssetModel(BaseModel):
     class Meta:
         indexes = (
             (('actor', 'user', 'video_type', 'created_at'), False),
+        )
+
+
+class PortraitAudioAssetModel(BaseModel):
+    actor = peewee.ForeignKeyField(ActorModel, backref='portrait_audio_assets')
+    user = peewee.ForeignKeyField(UserModel, backref='portrait_audio_assets', on_delete='CASCADE')
+    is_published = peewee.BooleanField(default=False, index=True)
+    superseded_at = peewee.DateTimeField(null=True, index=True)
+    bucket_name = peewee.CharField()
+    object_key = peewee.CharField()
+    audio_url = peewee.CharField()
+    source_filename = peewee.CharField()
+    mime_type = peewee.CharField()
+    file_size = peewee.BigIntegerField(default=0)
+    created_at = peewee.DateTimeField(default=datetime.now, index=True)
+
+    class Meta:
+        indexes = (
+            (('actor', 'user', 'is_published', 'created_at'), False),
         )
 
 

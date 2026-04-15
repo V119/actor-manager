@@ -27,6 +27,8 @@ class Actor:
     bio: str
     tags: List[str] = field(default_factory=list)
     portraits: List[Portrait] = field(default_factory=list)
+    pricing_unit: str = "project"
+    pricing_amount: int = 0
     is_published: bool = False
     created_at: datetime = field(default_factory=datetime.now)
 

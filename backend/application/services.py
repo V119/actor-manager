@@ -27,6 +27,7 @@ from backend.infrastructure.config import settings
 from backend.infrastructure.orm_models import (
     ActorModel,
     GeneratedResultModel,
+    PortraitAudioAssetModel,
     PortraitComposeJobModel,
     PortraitUploadAssetModel,
     PortraitUploadSessionModel,
@@ -71,6 +72,12 @@ STYLE_CATALOG_DEFAULTS: list[dict[str, str]] = [
         "description": "油画纹理风格，突出笔触、颗粒与艺术化色彩。",
         "preview_url": "https://lh3.googleusercontent.com/aida-public/AB6AXuC9ipTxbm-qu6iG2QPAj3nqp4AOHKOW90w-SWgTR1EcK5dwWhFfyX8PJQPzY-B0OfbKxN2sgUtQJqqMKBXbUdMqUoBsQ9VeRE6gkRhc7fkFOz4sxTTopU3Dz1QFbGH05fD8X4y0PqFzcZxDo2LdCx-B4szCAnJHuUosFvTXKctdMun_ymrRWle9pKy63DTN_3mXGJQgmR4JcALzmtYRg8egVqJuPHExwmfjx31EOZvUgNbJvYcNahq54dK1nka59YiPX9SzSsrLJ4RE",
         "category": "oil-painting",
+    },
+    {
+        "name": "自定义",
+        "description": "手动上传自定义图片，统一管理展示、发布与删除状态。",
+        "preview_url": "/style-custom-preview.svg",
+        "category": "custom",
     },
 ]
 
@@ -146,13 +153,15 @@ class PortraitService:
                 settings.MINIO_PORTRAIT_RAW_BUCKET,
                 settings.MINIO_PORTRAIT_GENERATED_BUCKET,
                 settings.MINIO_PORTRAIT_VIDEO_BUCKET,
+                settings.MINIO_PORTRAIT_AUDIO_BUCKET,
             ]
         )
         logger.debug(
-            "PortraitService initialized with buckets raw=%s generated=%s video=%s worker_concurrency=%s",
+            "PortraitService initialized with buckets raw=%s generated=%s video=%s audio=%s worker_concurrency=%s",
             settings.MINIO_PORTRAIT_RAW_BUCKET,
             settings.MINIO_PORTRAIT_GENERATED_BUCKET,
             settings.MINIO_PORTRAIT_VIDEO_BUCKET,
+            settings.MINIO_PORTRAIT_AUDIO_BUCKET,
             settings.PORTRAIT_COMPOSE_WORKER_CONCURRENCY,
         )
 
@@ -1156,6 +1165,175 @@ class PortraitService:
         published = await self.get_published_videos_for_actor(actor_id)
         return self.pick_primary_published_video(published)
 
+    async def upload_portrait_audio_stream(
+        self,
+        user_id: int,
+        user_display_name: str,
+        upload_stream: BinaryIO,
+        filename: str,
+        content_type: str,
+        declared_size: int | None = None,
+    ) -> dict[str, Any]:
+        normalized_content_type = content_type or "application/octet-stream"
+        if not normalized_content_type.startswith("audio/"):
+            raise ValueError("请上传音频文件。")
+
+        actor_id = self._resolve_actor_for_user(user_id=user_id, user_display_name=user_display_name)
+        extension = Path(filename).suffix.lower().lstrip(".") or "mp3"
+        date_prefix = datetime.now().strftime("%Y/%m/%d")
+        object_key = (
+            f"portraits/audio/user_{user_id}/actor_{actor_id}/{date_prefix}/"
+            f"{uuid.uuid4().hex}.{extension}"
+        )
+        size = self._resolve_stream_size(upload_stream, declared_size)
+        logger.info(
+            "Portrait audio stream upload started user_id=%s actor_id=%s filename=%s size=%s content_type=%s",
+            user_id,
+            actor_id,
+            filename,
+            size,
+            normalized_content_type,
+        )
+        await self.storage_client.upload_file_stream(
+            object_key,
+            upload_stream,
+            length=size,
+            content_type=normalized_content_type,
+            bucket=settings.MINIO_PORTRAIT_AUDIO_BUCKET,
+            part_size=settings.STREAM_UPLOAD_PART_SIZE,
+        )
+        stat = self.storage_client.stat_object(
+            object_key,
+            bucket=settings.MINIO_PORTRAIT_AUDIO_BUCKET,
+        )
+        final_size = int(stat.get("size", size if size > 0 else 0))
+        return await self._create_audio_asset_record(
+            actor_id=actor_id,
+            user_id=user_id,
+            bucket_name=settings.MINIO_PORTRAIT_AUDIO_BUCKET,
+            object_key=object_key,
+            source_filename=filename or f"portrait_audio.{extension}",
+            mime_type=normalized_content_type,
+            file_size=final_size,
+        )
+
+    async def list_portrait_audios(
+        self,
+        user_id: int,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        with database.allow_sync():
+            assets = list(
+                PortraitAudioAssetModel.select()
+                .where(
+                    (PortraitAudioAssetModel.user_id == user_id)
+                    & PortraitAudioAssetModel.superseded_at.is_null(True)
+                )
+                .order_by(PortraitAudioAssetModel.created_at.desc())
+                .limit(limit)
+                .offset(offset)
+            )
+        logger.info(
+            "Portrait audios listed user_id=%s count=%s limit=%s offset=%s",
+            user_id,
+            len(assets),
+            limit,
+            offset,
+        )
+        return [self._serialize_audio_asset(asset) for asset in assets]
+
+    async def toggle_portrait_audio_publish(
+        self,
+        user_id: int,
+        user_display_name: str,
+        audio_id: int,
+        published: bool,
+    ) -> dict[str, Any]:
+        actor_id = self._resolve_actor_for_user(user_id=user_id, user_display_name=user_display_name)
+        with database.allow_sync():
+            asset = (
+                PortraitAudioAssetModel.select()
+                .where(
+                    (PortraitAudioAssetModel.id == audio_id)
+                    & (PortraitAudioAssetModel.user_id == user_id)
+                    & (PortraitAudioAssetModel.actor_id == actor_id)
+                    & PortraitAudioAssetModel.superseded_at.is_null(True)
+                )
+                .first()
+            )
+            if not asset:
+                raise ValueError("录音素材不存在或无权限操作。")
+
+            asset.is_published = bool(published)
+            asset.save()
+
+            if published:
+                (
+                    ActorModel.update(is_published=True)
+                    .where(ActorModel.id == actor_id)
+                    .execute()
+                )
+
+        logger.info(
+            "Portrait audio publish state changed user_id=%s actor_id=%s audio_id=%s published=%s",
+            user_id,
+            actor_id,
+            audio_id,
+            published,
+        )
+        return self._serialize_audio_asset(asset)
+
+    async def delete_portrait_audio(
+        self,
+        user_id: int,
+        user_display_name: str,
+        audio_id: int,
+    ) -> None:
+        actor_id = self._resolve_actor_for_user(user_id=user_id, user_display_name=user_display_name)
+        with database.allow_sync():
+            asset = (
+                PortraitAudioAssetModel.select()
+                .where(
+                    (PortraitAudioAssetModel.id == audio_id)
+                    & (PortraitAudioAssetModel.user_id == user_id)
+                    & (PortraitAudioAssetModel.actor_id == actor_id)
+                    & PortraitAudioAssetModel.superseded_at.is_null(True)
+                )
+                .first()
+            )
+            if not asset:
+                raise ValueError("录音素材不存在或已删除。")
+
+            bucket_name = str(asset.bucket_name or "")
+            object_key = str(asset.object_key or "")
+            asset.delete_instance()
+
+        if bucket_name and object_key:
+            try:
+                await self.storage_client.remove_object(object_key, bucket=bucket_name)
+            except Exception:
+                logger.exception(
+                    "Failed to delete portrait audio object bucket=%s object_key=%s audio_id=%s",
+                    bucket_name,
+                    object_key,
+                    audio_id,
+                )
+
+    async def get_published_audios_for_actor(self, actor_id: int, limit: int = 100) -> list[dict[str, Any]]:
+        with database.allow_sync():
+            assets = list(
+                PortraitAudioAssetModel.select()
+                .where(
+                    (PortraitAudioAssetModel.actor_id == actor_id)
+                    & (PortraitAudioAssetModel.is_published == True)  # noqa: E712
+                    & PortraitAudioAssetModel.superseded_at.is_null(True)
+                )
+                .order_by(PortraitAudioAssetModel.created_at.desc())
+                .limit(max(1, limit))
+            )
+        return [self._serialize_audio_asset(asset) for asset in assets]
+
     async def cleanup_three_view_history(self, user_id: int, purge_storage: bool = True) -> dict[str, int]:
         with database.allow_sync():
             history_sessions = list(
@@ -1847,6 +2025,8 @@ class PortraitService:
                     "acting_requirements": "",
                     "rejected_requirements": "",
                     "availability_note": "",
+                    "pricing_unit": "project",
+                    "pricing_amount": 0,
                     "tags": ["self-upload"],
                     "is_published": False,
                 },
@@ -1892,6 +2072,8 @@ class PortraitService:
             actor.acting_requirements = self._clamp_text(payload.get("acting_requirements"), max_len=2000)
             actor.rejected_requirements = self._clamp_text(payload.get("rejected_requirements"), max_len=2000)
             actor.availability_note = self._clamp_text(payload.get("availability_note"), max_len=1000)
+            actor.pricing_unit = self._normalize_pricing_unit(payload.get("pricing_unit"))
+            actor.pricing_amount = self._clamp_int(payload.get("pricing_amount"), min_value=0, max_value=100000000)
             actor.tags = self._normalize_tags(payload.get("tags"))
             actor.save()
 
@@ -1931,6 +2113,8 @@ class PortraitService:
             "acting_requirements": actor.acting_requirements or "",
             "rejected_requirements": actor.rejected_requirements or "",
             "availability_note": actor.availability_note or "",
+            "pricing_unit": self._normalize_pricing_unit(actor.pricing_unit),
+            "pricing_amount": int(actor.pricing_amount or 0),
             "avatar_url": avatar_url,
             "avatar_source": avatar_source,
             "created_at": actor.created_at,
@@ -1966,6 +2150,12 @@ class PortraitService:
             normalized.append(tag)
             if len(normalized) >= 20:
                 break
+        return normalized
+
+    def _normalize_pricing_unit(self, value: Any) -> str:
+        normalized = str(value or "").strip().lower()
+        if normalized not in {"day", "project"}:
+            return "project"
         return normalized
 
     def _validate_three_view_source_resolution(self, angle: str, width: int, height: int) -> None:
@@ -2139,6 +2329,58 @@ class PortraitService:
             "created_at": asset.created_at,
         }
 
+    async def _create_audio_asset_record(
+        self,
+        actor_id: int,
+        user_id: int,
+        bucket_name: str,
+        object_key: str,
+        source_filename: str,
+        mime_type: str,
+        file_size: int,
+    ) -> dict[str, Any]:
+        audio_url = f"{bucket_name}/{object_key}"
+        with database.allow_sync():
+            asset = PortraitAudioAssetModel.create(
+                actor_id=actor_id,
+                user_id=user_id,
+                is_published=False,
+                superseded_at=None,
+                bucket_name=bucket_name,
+                object_key=object_key,
+                audio_url=audio_url,
+                source_filename=source_filename,
+                mime_type=mime_type,
+                file_size=file_size,
+                created_at=datetime.now(),
+            )
+        logger.info(
+            "Portrait audio asset persisted user_id=%s actor_id=%s audio_id=%s bucket=%s object_key=%s",
+            user_id,
+            actor_id,
+            asset.id,
+            bucket_name,
+            object_key,
+        )
+        return self._serialize_audio_asset(asset)
+
+    def _serialize_audio_asset(self, asset: PortraitAudioAssetModel) -> dict[str, Any]:
+        return {
+            "id": asset.id,
+            "actor_id": asset.actor_id,
+            "user_id": asset.user_id,
+            "is_published": bool(asset.is_published),
+            "superseded_at": asset.superseded_at,
+            "bucket_name": asset.bucket_name,
+            "object_key": asset.object_key,
+            "audio_url": asset.audio_url,
+            "preview_url": self.storage_client.get_url(asset.object_key, bucket=asset.bucket_name),
+            "source_filename": asset.source_filename,
+            "mime_type": asset.mime_type,
+            "file_size": asset.file_size,
+            "created_at": asset.created_at,
+        }
+
 
 class StyleService:
     _image_generator: LangChainStyleImageGenerator | None = None
@@ -2174,11 +2416,19 @@ class StyleService:
                 ordered.append(style)
         return ordered
 
-    async def generate_result(self, user_id: int, user_display_name: str, style_id: int) -> dict[str, Any]:
+    async def generate_result(
+        self,
+        user_id: int,
+        user_display_name: str,
+        style_id: int,
+        custom_prompt: str = "",
+    ) -> dict[str, Any]:
         self._ensure_default_style_catalog()
         style = await self.style_repo.get_by_id(style_id)
         if not style:
             raise ValueError("风格不存在。")
+        if str(style.category or "").lower() == "custom":
+            raise ValueError("自定义风格仅支持图片上传。")
 
         actor_id = self._resolve_actor_for_user(user_id=user_id, user_display_name=user_display_name)
         published_session = self._get_published_portrait_session(user_id=user_id, actor_id=actor_id)
@@ -2194,6 +2444,7 @@ class StyleService:
             style_description=style.description,
             style_category=style.category,
             reference_images=reference_images,
+            custom_prompt=custom_prompt,
         )
 
         extension = self._guess_image_extension(generation.mime_type, generation.image_bytes)
@@ -2211,19 +2462,6 @@ class StyleService:
 
         with database.allow_sync():
             now = datetime.now()
-            (
-                GeneratedResultModel.update(
-                    lifecycle_state="superseded",
-                    superseded_at=now,
-                )
-                .where(
-                    (GeneratedResultModel.user_id == user_id)
-                    & (GeneratedResultModel.actor_id == actor_id)
-                    & (GeneratedResultModel.style_id == style_id)
-                    & (GeneratedResultModel.lifecycle_state == "draft")
-                )
-                .execute()
-            )
             saved = GeneratedResultModel.create(
                 actor_id=actor_id,
                 user_id=user_id,
@@ -2232,14 +2470,9 @@ class StyleService:
                 lifecycle_state="draft",
                 superseded_at=None,
                 published_at=None,
+                custom_prompt=self._sanitize_custom_prompt(custom_prompt),
                 created_at=now,
             )
-
-        await self._purge_superseded_style_versions(
-            user_id=user_id,
-            actor_id=actor_id,
-            style_id=style_id,
-        )
         logger.info(
             "Style generated user_id=%s actor_id=%s style_id=%s result_id=%s prompt_key=%s",
             user_id,
@@ -2247,6 +2480,66 @@ class StyleService:
             style_id,
             saved.id,
             generation.prompt_template_key,
+        )
+        return self._serialize_generated_result(saved, style)
+
+    async def upload_custom_result(
+        self,
+        user_id: int,
+        user_display_name: str,
+        style_id: int,
+        file_data: bytes,
+        filename: str,
+        content_type: str,
+    ) -> dict[str, Any]:
+        self._ensure_default_style_catalog()
+        style = await self.style_repo.get_by_id(style_id)
+        if not style:
+            raise ValueError("风格不存在。")
+        if str(style.category or "").lower() != "custom":
+            raise ValueError("仅自定义风格支持手动上传图片。")
+        if not file_data:
+            raise ValueError("请先选择一张图片后再上传。")
+        if content_type and not str(content_type).lower().startswith("image/"):
+            raise ValueError("上传文件必须是图片格式。")
+
+        self._validate_reference_image(file_data)
+        actor_id = self._resolve_actor_for_user(user_id=user_id, user_display_name=user_display_name)
+        extension = self._guess_image_extension(content_type, file_data)
+        date_prefix = datetime.now().strftime("%Y/%m/%d")
+        object_key = (
+            f"styles/generated/user_{user_id}/actor_{actor_id}/{date_prefix}/"
+            f"custom_style_{uuid.uuid4().hex}.{extension}"
+        )
+        image_url = await self.storage_client.upload_file(
+            object_key,
+            file_data,
+            content_type or "image/jpeg",
+            bucket=settings.MINIO_STYLE_GENERATED_BUCKET,
+        )
+
+        with database.allow_sync():
+            now = datetime.now()
+            saved = GeneratedResultModel.create(
+                actor_id=actor_id,
+                user_id=user_id,
+                style_id=style_id,
+                image_url=image_url,
+                lifecycle_state="draft",
+                superseded_at=None,
+                published_at=None,
+                custom_prompt="自定义上传图片",
+                created_at=now,
+            )
+
+        logger.info(
+            "Custom style image uploaded user_id=%s actor_id=%s style_id=%s result_id=%s filename=%s content_type=%s",
+            user_id,
+            actor_id,
+            style_id,
+            saved.id,
+            filename,
+            content_type,
         )
         return self._serialize_generated_result(saved, style)
 
@@ -2270,32 +2563,30 @@ class StyleService:
             for style in styles
             if style.id is not None
         }
-        grouped_state: dict[int, dict[str, dict[str, Any] | None]] = {}
+        grouped_state: dict[int, list[dict[str, Any]]] = {}
+        grouped_count: dict[int, int] = {}
         for row in rows:
             style = style_map.get(int(row.style_id))
             if not style:
                 continue
-            bucket = grouped_state.setdefault(
-                int(row.style_id),
-                {"draft": None, "published": None},
-            )
-            if row.lifecycle_state == "draft" and bucket["draft"] is None:
-                bucket["draft"] = self._serialize_generated_result(row, style)
-            elif row.lifecycle_state == "published" and bucket["published"] is None:
-                bucket["published"] = self._serialize_generated_result(row, style)
+            style_key = int(row.style_id)
+            current = grouped_count.get(style_key, 0)
+            if current >= max(1, int(limit_per_style)):
+                continue
+            bucket = grouped_state.setdefault(style_key, [])
+            bucket.append(self._serialize_generated_result(row, style))
+            grouped_count[style_key] = current + 1
 
         groups = []
         for style in styles:
             if style.id is None:
                 continue
-            state_bucket = grouped_state.get(int(style.id), {"draft": None, "published": None})
             groups.append(
                 {
                     "style_id": int(style.id),
                     "style_name": style.name,
                     "style_category": style.category,
-                    "draft_result": state_bucket["draft"],
-                    "published_result": state_bucket["published"],
+                    "results": grouped_state.get(int(style.id), []),
                 }
             )
         return {"groups": groups}
@@ -2323,20 +2614,6 @@ class StyleService:
             if not draft:
                 raise ValueError("该风格暂无可发布草稿，请先生成后再发布。")
 
-            (
-                GeneratedResultModel.update(
-                    lifecycle_state="superseded",
-                    superseded_at=now,
-                )
-                .where(
-                    (GeneratedResultModel.user_id == user_id)
-                    & (GeneratedResultModel.actor_id == actor_id)
-                    & (GeneratedResultModel.style_id == style_id)
-                    & (GeneratedResultModel.lifecycle_state == "published")
-                )
-                .execute()
-            )
-
             draft.lifecycle_state = "published"
             draft.superseded_at = None
             draft.published_at = now
@@ -2348,11 +2625,6 @@ class StyleService:
                 .execute()
             )
 
-        await self._purge_superseded_style_versions(
-            user_id=user_id,
-            actor_id=actor_id,
-            style_id=style_id,
-        )
         logger.info(
             "Style draft published user_id=%s actor_id=%s style_id=%s result_id=%s",
             user_id,
@@ -2361,6 +2633,86 @@ class StyleService:
             draft.id,
         )
         return self._serialize_generated_result(draft, style)
+
+    async def toggle_result_state(
+        self,
+        user_id: int,
+        user_display_name: str,
+        result_id: int,
+        published: bool,
+    ) -> dict[str, Any]:
+        self._ensure_default_style_catalog()
+        actor_id = self._resolve_actor_for_user(user_id=user_id, user_display_name=user_display_name)
+        with database.allow_sync():
+            row = (
+                GeneratedResultModel.select()
+                .where(
+                    (GeneratedResultModel.id == result_id)
+                    & (GeneratedResultModel.user_id == user_id)
+                    & (GeneratedResultModel.actor_id == actor_id)
+                    & (GeneratedResultModel.lifecycle_state.in_(["draft", "published"]))
+                )
+                .first()
+            )
+            if not row:
+                raise ValueError("图片不存在或无权限操作。")
+
+            now = datetime.now()
+            if published:
+                row.lifecycle_state = "published"
+                row.published_at = now
+            else:
+                row.lifecycle_state = "draft"
+                row.published_at = None
+            row.superseded_at = None
+            row.save()
+
+            if published:
+                (
+                    ActorModel.update(is_published=True)
+                    .where(ActorModel.id == actor_id)
+                    .execute()
+                )
+
+        style = await self.style_repo.get_by_id(int(row.style_id))
+        if not style:
+            raise ValueError("风格不存在。")
+        return self._serialize_generated_result(row, style)
+
+    async def delete_result(
+        self,
+        user_id: int,
+        user_display_name: str,
+        result_id: int,
+    ) -> None:
+        actor_id = self._resolve_actor_for_user(user_id=user_id, user_display_name=user_display_name)
+        with database.allow_sync():
+            row = (
+                GeneratedResultModel.select()
+                .where(
+                    (GeneratedResultModel.id == result_id)
+                    & (GeneratedResultModel.user_id == user_id)
+                    & (GeneratedResultModel.actor_id == actor_id)
+                    & (GeneratedResultModel.lifecycle_state.in_(["draft", "published"]))
+                )
+                .first()
+            )
+            if not row:
+                raise ValueError("图片不存在或无权限删除。")
+            image_url = str(row.image_url or "")
+            row.delete_instance()
+
+        bucket_name, object_key = self._split_bucket_object(image_url)
+        if bucket_name and object_key:
+            try:
+                await self.storage_client.remove_object(object_key, bucket=bucket_name)
+            except Exception:
+                logger.exception(
+                    "Failed to delete style image object bucket=%s object_key=%s result_id=%s",
+                    bucket_name,
+                    object_key,
+                    result_id,
+                )
 
     async def list_published_results_by_actor(self, actor_id: int, limit: int = 20) -> list[dict[str, Any]]:
         with database.allow_sync():
@@ -2557,10 +2909,15 @@ class StyleService:
             "style_category": style.category,
             "image_url": result.image_url,
             "preview_url": preview_url,
+            "custom_prompt": str(getattr(result, "custom_prompt", "") or ""),
             "lifecycle_state": getattr(result, "lifecycle_state", "published"),
             "published_at": getattr(result, "published_at", None),
             "created_at": result.created_at,
         }
+
+    @staticmethod
+    def _sanitize_custom_prompt(value: str) -> str:
+        return (value or "").strip()[:1000]
 
     @staticmethod
     def _split_bucket_object(image_url: str) -> tuple[str, str]:

@@ -89,6 +89,7 @@ class LangChainStyleImageGenerator:
         style_description: str,
         style_category: str,
         reference_images: list[StyleReferenceImage],
+        custom_prompt: str = "",
     ) -> StyledImageGenerationResult:
         self._validate_config()
         if not reference_images:
@@ -108,6 +109,9 @@ class LangChainStyleImageGenerator:
                 "style_category": style_category,
             },
         )
+        user_prompt = (custom_prompt or "").strip()
+        if user_prompt:
+            base_prompt = f"{base_prompt}\n\nUser custom prompt:\n{user_prompt}"
 
         final_prompt = base_prompt
         if settings.STYLE_LLM_PROMPT_MODEL:
@@ -118,6 +122,7 @@ class LangChainStyleImageGenerator:
                     style_name,
                     style_description,
                     style_category,
+                    user_prompt,
                 )
             except Exception as exc:
                 logger.warning("Prompt refinement failed, fallback to base prompt: %s", exc)
@@ -166,6 +171,7 @@ class LangChainStyleImageGenerator:
         style_name: str,
         style_description: str,
         style_category: str,
+        user_custom_prompt: str,
     ) -> str:
         try:
             from langchain_core.output_parsers import StrOutputParser
@@ -196,6 +202,7 @@ class LangChainStyleImageGenerator:
                     "Style name: {style_name}\n"
                     "Style description: {style_description}\n"
                     "Style category: {style_category}\n"
+                    "User custom prompt: {user_custom_prompt}\n"
                     "Reference constraints: keep exact same person identity from reference image.\n"
                     "Base prompt:\n{base_prompt}\n\n"
                     "Return only a single final English prompt without markdown.",
@@ -208,6 +215,7 @@ class LangChainStyleImageGenerator:
                 "style_name": style_name,
                 "style_description": style_description,
                 "style_category": style_category,
+                "user_custom_prompt": user_custom_prompt,
                 "base_prompt": base_prompt,
             }
         )
