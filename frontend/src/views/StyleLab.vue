@@ -218,6 +218,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ensureAgreementSignedForPublish, isAgreementBlockingErrorMessage } from '../lib/agreement'
 import { apiRequest } from '../lib/api'
 import { authStore } from '../lib/auth'
 
@@ -464,6 +465,19 @@ async function toggleResultState(item) {
   errorMessage.value = ''
   try {
     const targetPublished = item.lifecycle_state !== 'published'
+    if (targetPublished) {
+      const gate = await ensureAgreementSignedForPublish({
+        token: authStore.state.token,
+        router,
+        onBlocked(message) {
+          errorMessage.value = `${message} 系统已为你跳转到协议签署页。`
+        }
+      })
+      if (!gate.allowed) {
+        return
+      }
+    }
+
     await apiRequest('/styles/result-state', {
       method: 'POST',
       token: authStore.state.token,
@@ -474,7 +488,12 @@ async function toggleResultState(item) {
     })
     await loadStyleResults()
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : '状态切换失败，请稍后重试。'
+    const message = error instanceof Error ? error.message : '状态切换失败，请稍后重试。'
+    errorMessage.value = message
+    if (isAgreementBlockingErrorMessage(message)) {
+      errorMessage.value = `${message} 系统已为你跳转到协议签署页。`
+      await router.push('/actor-agreement')
+    }
   } finally {
     updatingResultId.value = null
   }

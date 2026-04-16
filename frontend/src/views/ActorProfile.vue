@@ -106,11 +106,14 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useRoute } from 'vue-router'
 import { apiRequest } from '../lib/api'
 import { authStore } from '../lib/auth'
+import { ensureEnterpriseAgreementSigned, isEnterpriseAgreementBlockingErrorMessage } from '../lib/enterpriseAgreement'
 
 const route = useRoute()
+const router = useRouter()
 const loading = ref(false)
 const errorMessage = ref('')
 const detail = ref(null)
@@ -154,13 +157,28 @@ async function loadDetail() {
   loading.value = true
   errorMessage.value = ''
   try {
+    const agreementResult = await ensureEnterpriseAgreementSigned({
+      token: authStore.state.token,
+      router,
+      onBlocked: (message) => {
+        errorMessage.value = message
+      }
+    })
+    if (!agreementResult.allowed) {
+      detail.value = null
+      return
+    }
     const actorId = Number(route.params.id)
     const payload = await apiRequest(`/enterprise/discovery/actors/${actorId}`, {
       token: authStore.state.token
     })
     detail.value = payload
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : '演员详情加载失败，请稍后重试。'
+    const nextMessage = error instanceof Error ? error.message : '演员详情加载失败，请稍后重试。'
+    errorMessage.value = nextMessage
+    if (isEnterpriseAgreementBlockingErrorMessage(nextMessage)) {
+      await router.push('/enterprise-agreement')
+    }
   } finally {
     loading.value = false
   }

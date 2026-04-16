@@ -119,19 +119,21 @@ const navItems = computed(() => {
   if (currentUser.value?.role === 'admin') {
     return [
       { to: '/admin/enterprise-users', label: '企业用户管理', icon: 'admin_panel_settings' },
+      { to: '/admin/agreement-template', label: '协议模板配置', icon: 'article' },
+      { to: '/admin/enterprise-agreement-template', label: '企业协议模板', icon: 'description' },
       { to: '/admin/portrait-guidance', label: '拍摄示例图管理', icon: 'photo_camera' }
     ]
   }
   if (currentUser.value?.role === 'enterprise') {
     return [
-      { to: '/discovery', label: '演员发布广场', icon: 'dashboard' },
-      { to: '/protocols', label: '协议管理', icon: 'description' }
+      { to: '/enterprise-agreement', label: '协议签署', icon: 'contract_edit' },
+      { to: '/discovery', label: '演员发布广场', icon: 'dashboard' }
     ]
   }
   return [
     { to: '/actor-basic-info', label: '基本信息', icon: 'person' },
+    { to: '/actor-agreement', label: '协议签署', icon: 'contract_edit' },
     { to: '/edit-portrait', label: '素材管理', icon: 'cloud_upload' },
-    { to: '/protocols', label: '协议管理', icon: 'description' },
     { to: '/style-lab', label: '风格实验室', icon: 'auto_awesome' }
   ]
 })

@@ -48,10 +48,10 @@ function setAuthFromResponse(payload) {
   state.restored = true
 }
 
-async function login(username, password) {
+async function login(account, password) {
   const payload = await apiRequest('/auth/login', {
     method: 'POST',
-    body: { username, password }
+    body: { username: account, password }
   })
   setAuthFromResponse(payload)
   return payload.user
@@ -66,10 +66,10 @@ async function adminLogin(username, password) {
   return payload.user
 }
 
-async function register({ username, password, display_name }) {
+async function register({ phone, password, confirm_password }) {
   const payload = await apiRequest('/auth/register', {
     method: 'POST',
-    body: { username, password, display_name }
+    body: { phone, password, confirm_password }
   })
   setAuthFromResponse(payload)
   return payload.user
@@ -97,7 +97,7 @@ function defaultRouteForRole(role) {
   if (role === 'admin') {
     return '/admin/enterprise-users'
   }
-  return role === 'enterprise' ? '/discovery' : '/edit-portrait'
+  return role === 'enterprise' ? '/enterprise-agreement' : '/edit-portrait'
 }
 
 export const authStore = {

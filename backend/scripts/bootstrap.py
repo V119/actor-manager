@@ -9,6 +9,10 @@ from backend.config import get_config
 from backend.infrastructure.config import settings
 from backend.infrastructure.orm_models import (
     ActorModel,
+    ActorAgreementModel,
+    AgreementTemplateConfigModel,
+    EnterpriseAgreementModel,
+    EnterpriseAgreementTemplateConfigModel,
     GeneratedResultModel,
     PortraitComposeJobModel,
     PortraitAudioAssetModel,
@@ -17,7 +21,6 @@ from backend.infrastructure.orm_models import (
     PortraitUploadAssetModel,
     PortraitUploadSessionModel,
     PortraitVideoAssetModel,
-    ProtocolModel,
     SessionModel,
     StyleModel,
     UserModel,
@@ -128,7 +131,10 @@ def ensure_tables() -> None:
                 GeneratedResultModel,
                 UserModel,
                 SessionModel,
-                ProtocolModel,
+                AgreementTemplateConfigModel,
+                ActorAgreementModel,
+                EnterpriseAgreementTemplateConfigModel,
+                EnterpriseAgreementModel,
             ],
             safe=True,
         )
@@ -244,35 +250,10 @@ def seed_data() -> dict[str, int]:
                 )
             style_created_count += int(created)
 
-        _, protocol_created = ProtocolModel.get_or_create(
-            actor=actor,
-            company_name="Glacier Studio",
-            title="Seed Portrait Licensing Agreement",
-            defaults={
-                "content": "This agreement is generated for local development data seeding.",
-                "status": "pending",
-                "created_at": datetime.now(),
-            },
-        )
-
-        _, assigned_protocol_created = ProtocolModel.get_or_create(
-            enterprise_user=enterprise_user,
-            target_user=individual_user,
-            title="企业签约样例协议",
-            defaults={
-                "actor": actor,
-                "company_name": enterprise_user.display_name,
-                "content": "示例企业向普通用户发起的签约协议，用于本地联调验证。",
-                "status": "pending",
-                "created_at": datetime.now(),
-            },
-        )
-
     summary = {
         "users_created": int(individual_created) + int(enterprise_created) + int(admin_created),
         "actors_created": int(actor_created),
         "styles_created": style_created_count,
-        "protocols_created": int(protocol_created) + int(assigned_protocol_created),
     }
     logger.info("Seeding completed summary=%s", summary)
     return summary
@@ -297,8 +278,7 @@ def main() -> None:
         "Created records:"
         f" users={summary['users_created']},"
         f" actors={summary['actors_created']},"
-        f" styles={summary['styles_created']},"
-        f" protocols={summary['protocols_created']}"
+        f" styles={summary['styles_created']}"
     )
 
 

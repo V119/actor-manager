@@ -68,6 +68,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiRequest } from '../lib/api'
 import { authStore } from '../lib/auth'
+import { ensureEnterpriseAgreementSigned, isEnterpriseAgreementBlockingErrorMessage } from '../lib/enterpriseAgreement'
 
 const router = useRouter()
 const loading = ref(false)
@@ -97,12 +98,27 @@ async function loadActors() {
   loading.value = true
   errorMessage.value = ''
   try {
+    const agreementResult = await ensureEnterpriseAgreementSigned({
+      token: authStore.state.token,
+      router,
+      onBlocked: (message) => {
+        errorMessage.value = message
+      }
+    })
+    if (!agreementResult.allowed) {
+      actors.value = []
+      return
+    }
     const payload = await apiRequest('/enterprise/discovery/actors', {
       token: authStore.state.token
     })
     actors.value = Array.isArray(payload) ? payload : []
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : '广场数据加载失败，请稍后重试。'
+    const nextMessage = error instanceof Error ? error.message : '广场数据加载失败，请稍后重试。'
+    errorMessage.value = nextMessage
+    if (isEnterpriseAgreementBlockingErrorMessage(nextMessage)) {
+      await router.push('/enterprise-agreement')
+    }
   } finally {
     loading.value = false
   }

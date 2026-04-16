@@ -1,21 +1,25 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import EditPortrait from '../views/EditPortrait.vue'
 import ActorBasicInfo from '../views/ActorBasicInfo.vue'
+import ActorAgreementSign from '../views/ActorAgreementSign.vue'
+import EnterpriseAgreementSign from '../views/EnterpriseAgreementSign.vue'
 import StyleLab from '../views/StyleLab.vue'
-import ProtocolManagement from '../views/ProtocolManagement.vue'
 import DiscoverySquare from '../views/DiscoverySquare.vue'
 import ActorProfile from '../views/ActorProfile.vue'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import AdminLoginView from '../views/AdminLoginView.vue'
 import AdminEnterpriseUsersView from '../views/AdminEnterpriseUsersView.vue'
+import AdminAgreementTemplateView from '../views/AdminAgreementTemplateView.vue'
+import AdminEnterpriseAgreementTemplateView from '../views/AdminEnterpriseAgreementTemplateView.vue'
 import AdminPortraitGuidanceView from '../views/AdminPortraitGuidanceView.vue'
 import { authStore } from '../lib/auth'
 
 const PUBLIC_LOGIN_PATHS = new Set([
   '/login/individual',
   '/login/enterprise',
-  '/admin/login'
+  '/admin/login',
+  '/register'
 ])
 
 function loginPathForRoute(to) {
@@ -68,9 +72,27 @@ const routes = [
     meta: { requiresAuth: true, roles: ['admin'] }
   },
   {
+    path: '/admin/agreement-template',
+    name: 'AdminAgreementTemplate',
+    component: AdminAgreementTemplateView,
+    meta: { requiresAuth: true, roles: ['admin'] }
+  },
+  {
+    path: '/admin/enterprise-agreement-template',
+    name: 'AdminEnterpriseAgreementTemplate',
+    component: AdminEnterpriseAgreementTemplateView,
+    meta: { requiresAuth: true, roles: ['admin'] }
+  },
+  {
     path: '/actor-basic-info',
     name: 'ActorBasicInfo',
     component: ActorBasicInfo,
+    meta: { requiresAuth: true, roles: ['individual'] }
+  },
+  {
+    path: '/actor-agreement',
+    name: 'ActorAgreementSign',
+    component: ActorAgreementSign,
     meta: { requiresAuth: true, roles: ['individual'] }
   },
   {
@@ -86,10 +108,10 @@ const routes = [
     meta: { requiresAuth: true, roles: ['individual'] }
   },
   {
-    path: '/protocols',
-    name: 'ProtocolManagement',
-    component: ProtocolManagement,
-    meta: { requiresAuth: true, roles: ['individual', 'enterprise'] }
+    path: '/enterprise-agreement',
+    name: 'EnterpriseAgreementSign',
+    component: EnterpriseAgreementSign,
+    meta: { requiresAuth: true, roles: ['enterprise'] }
   },
   {
     path: '/discovery',

@@ -14,15 +14,19 @@ import uuid
 
 from PIL import Image, ImageOps
 
-from backend.domain.models import Actor, GeneratedResult, Portrait, Protocol, Style
+from backend.domain.models import Actor, GeneratedResult, Portrait, Style
 from backend.domain.repositories import (
     ActorRepository,
     GeneratedResultRepository,
     PortraitRepository,
-    ProtocolRepository,
     StyleRepository,
 )
 from backend.application.style_generation import LangChainStyleImageGenerator, StyleReferenceImage
+from backend.application.agreement_service import (
+    ensure_actor_agreement_signed,
+    ensure_enterprise_agreement_signed,
+    is_actor_agreement_currently_signed,
+)
 from backend.infrastructure.config import settings
 from backend.infrastructure.orm_models import (
     ActorModel,
@@ -702,6 +706,7 @@ class PortraitService:
 
     async def publish_current_three_view(self, user_id: int, user_display_name: str) -> dict[str, Any]:
         actor_id = self._resolve_actor_for_user(user_id=user_id, user_display_name=user_display_name)
+        ensure_actor_agreement_signed(actor_id)
         with database.allow_sync():
             now = datetime.now()
             draft_session = (
@@ -1082,6 +1087,7 @@ class PortraitService:
 
     async def publish_current_video(self, user_id: int, user_display_name: str, video_type: str) -> dict[str, Any]:
         actor_id = self._resolve_actor_for_user(user_id=user_id, user_display_name=user_display_name)
+        ensure_actor_agreement_signed(actor_id)
         normalized_video_type = self._normalize_video_type(video_type)
         with database.allow_sync():
             now = datetime.now()
@@ -1251,6 +1257,8 @@ class PortraitService:
         published: bool,
     ) -> dict[str, Any]:
         actor_id = self._resolve_actor_for_user(user_id=user_id, user_display_name=user_display_name)
+        if published:
+            ensure_actor_agreement_signed(actor_id)
         with database.allow_sync():
             asset = (
                 PortraitAudioAssetModel.select()
@@ -2598,6 +2606,7 @@ class StyleService:
             raise ValueError("风格不存在。")
 
         actor_id = self._resolve_actor_for_user(user_id=user_id, user_display_name=user_display_name)
+        ensure_actor_agreement_signed(actor_id)
         with database.allow_sync():
             now = datetime.now()
             draft = (
@@ -2643,6 +2652,8 @@ class StyleService:
     ) -> dict[str, Any]:
         self._ensure_default_style_catalog()
         actor_id = self._resolve_actor_for_user(user_id=user_id, user_display_name=user_display_name)
+        if published:
+            ensure_actor_agreement_signed(actor_id)
         with database.allow_sync():
             row = (
                 GeneratedResultModel.select()
@@ -3015,20 +3026,3 @@ class StyleService:
             "deleted_objects": int(deleted_objects),
             "skipped_objects": int(len(skipped_objects)),
         }
-
-
-class ProtocolService:
-    def __init__(self, protocol_repo: ProtocolRepository):
-        self.protocol_repo = protocol_repo
-
-    async def list_protocols(self, actor_id: int) -> List[Protocol]:
-        return await self.protocol_repo.list_by_actor(actor_id)
-
-    async def get_protocol(self, protocol_id: int) -> Optional[Protocol]:
-        return await self.protocol_repo.get_by_id(protocol_id)
-
-    async def sign_protocol(self, protocol_id: int) -> bool:
-        return await self.protocol_repo.update_status(protocol_id, "signed")
-
-    async def reject_protocol(self, protocol_id: int) -> bool:
-        return await self.protocol_repo.update_status(protocol_id, "rejected")

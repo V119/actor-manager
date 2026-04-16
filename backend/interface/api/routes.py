@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 import logging
 from typing import List, Literal, Optional
+from backend.application.agreement_service import ensure_enterprise_agreement_signed, is_actor_agreement_currently_signed
 from backend.interface.api.schemas import (
     ActorBasicInfoSchema,
     ActorBasicInfoUpdateRequest,
@@ -21,7 +22,6 @@ from backend.interface.api.schemas import (
     PortraitVideoPublishRequest,
     PortraitVideoSchema,
     PortraitVideoStateSchema,
-    ProtocolSchema,
     StylePublishRequest,
     StyleResultStateToggleRequest,
     StyleResultGroupListSchema,
@@ -34,11 +34,11 @@ from backend.interface.api.schemas import (
     ThreeViewStateSchema,
     ThreeViewUploadSchema,
 )
-from backend.application.services import ActorService, PortraitService, StyleService, ProtocolService
+from backend.application.services import ActorService, PortraitService, StyleService
 from backend.interface.api.auth_routes import require_enterprise_user, require_individual_user
 from backend.infrastructure.repositories import (
     PeeweeActorRepository, PeeweePortraitRepository,
-    PeeweeStyleRepository, PeeweeProtocolRepository,
+    PeeweeStyleRepository,
     PeeweeGeneratedResultRepository
 )
 from backend.infrastructure.orm_models import ActorModel, UserModel, database
@@ -78,9 +78,6 @@ def get_style_service():
         PeeweeGeneratedResultRepository(),
         storage_client,
     )
-
-def get_protocol_service():
-    return ProtocolService(PeeweeProtocolRepository())
 
 @router.get("/actors", response_model=List[ActorSchema])
 async def list_actors(
@@ -138,8 +135,12 @@ async def list_published_actor_cards(
     limit: int = Query(default=100, ge=1, le=500),
     portrait_service: PortraitService = Depends(get_portrait_service),
     style_service: StyleService = Depends(get_style_service),
-    _current_user: UserModel = Depends(require_enterprise_user),
+    current_user: UserModel = Depends(require_enterprise_user),
 ):
+    try:
+        ensure_enterprise_agreement_signed(current_user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     with database.allow_sync():
         actors = list(
             ActorModel.select()
@@ -150,6 +151,8 @@ async def list_published_actor_cards(
 
     cards: list[dict] = []
     for actor in actors:
+        if not is_actor_agreement_currently_signed(int(actor.id)):
+            continue
         published_three = await portrait_service.get_published_three_view_for_actor(actor.id)
         published_videos = await portrait_service.get_published_videos_for_actor(actor.id)
         published_video = portrait_service.pick_primary_published_video(published_videos)
@@ -210,10 +213,16 @@ async def get_published_actor_detail(
     actor_service: ActorService = Depends(get_actor_service),
     portrait_service: PortraitService = Depends(get_portrait_service),
     style_service: StyleService = Depends(get_style_service),
-    _current_user: UserModel = Depends(require_enterprise_user),
+    current_user: UserModel = Depends(require_enterprise_user),
 ):
+    try:
+        ensure_enterprise_agreement_signed(current_user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     actor = await actor_service.get_actor(actor_id)
     if not actor:
+        raise HTTPException(status_code=404, detail="Actor not found")
+    if not is_actor_agreement_currently_signed(actor_id):
         raise HTTPException(status_code=404, detail="Actor not found")
 
     published_three = await portrait_service.get_published_three_view_for_actor(actor_id)
@@ -821,18 +830,3 @@ async def list_style_results(
         user_display_name=current_user.display_name,
         limit_per_style=limit_per_style,
     )
-
-@router.get("/protocols", response_model=List[ProtocolSchema])
-async def list_protocols(actor_id: int, service: ProtocolService = Depends(get_protocol_service)):
-    protocols = await service.list_protocols(actor_id)
-    logger.info("Legacy protocols listed actor_id=%s count=%s", actor_id, len(protocols))
-    return protocols
-
-@router.post("/protocols/{protocol_id}/sign")
-async def sign_protocol(protocol_id: int, service: ProtocolService = Depends(get_protocol_service)):
-    success = await service.sign_protocol(protocol_id)
-    if not success:
-        logger.warning("Legacy sign protocol failed protocol_id=%s", protocol_id)
-        raise HTTPException(status_code=400, detail="Failed to sign protocol")
-    logger.info("Legacy sign protocol success protocol_id=%s", protocol_id)
-    return {"message": "Protocol signed successfully"}

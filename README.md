@@ -124,22 +124,40 @@ uv run python -m backend.scripts.bootstrap
 - Alembic migration（`alembic upgrade head`）
 - 缺失表兜底创建（safe create）
 - MinIO bucket（默认 `glacier`）创建
-- 种子数据写入（User/Actor/Style/Protocol）
+- 种子数据写入（User/Actor/Style）
 
 该步骤是幂等的，可重复执行。
 
-### 初始化后的默认账号
+### 初始化后的默认三端登录入口与账号
 
-- 普通用户：读取 `seed.users.individual`（默认 `actor_user` / `123456`）
-- 企业用户：读取 `seed.users.enterprise`（默认 `enterprise_user` / `123456`）
+登录路径（路由）：
+- 普通演员端：`/login/individual`
+- 企业用户端：`/login/enterprise`
+- 后台管理端：`/admin/login`
+
+本地前端开发环境（`http://127.0.0.1:5173`）可直接访问：
+- `http://127.0.0.1:5173/login/individual`
+- `http://127.0.0.1:5173/login/enterprise`
+- `http://127.0.0.1:5173/admin/login`
+
+若使用一体化部署（Nginx，默认 `http://127.0.0.1:8000`），对应访问路径相同：
+- `http://127.0.0.1:8000/login/individual`
+- `http://127.0.0.1:8000/login/enterprise`
+- `http://127.0.0.1:8000/admin/login`
+
+默认账号密码来自配置（`seed.users.*` 与 `auth.admin.*`）：
+- 普通演员端：`actor_user` / `123456`
+- 企业用户端：`enterprise_user` / `123456`
+- 后台管理端：`admin` / `Admin@123456`
 
 ## 5.1 角色权限说明
 
-- 普通用户登录后可访问：`肖像上传`、`协议管理`、`风格实验室`
-- 企业用户登录后可访问：`演员发布广场`、`协议管理`
+- 普通用户登录后可访问：`基本信息`、`协议签署`、`素材管理`、`风格实验室`
+- 企业用户登录后可访问：`协议签署`、`演员发布广场`
 - 协议流程：
-  - 企业用户在协议管理中创建协议并指定普通用户
-  - 普通用户在协议管理中签署企业指定协议
+  - 管理员配置演员协议模板与企业协议模板
+  - 演员签署平台与演员协议后，才可发布资料与素材
+  - 企业签署平台与企业协议后，才可访问演员发布广场与演员详情
 
 ## 6. 启动后端
 
@@ -204,7 +222,7 @@ curl http://127.0.0.1:8000/
 - 请求链路日志：`request.start` / `request.end` / `request.error`
   - 包含：`request_id`、`trace_id`、`method`、`path`、`status`、`duration_ms`
 - 鉴权与权限日志：注册/登录/登出、角色校验失败、会话失效
-- 业务日志：三视图上传、视频上传、协议创建与签署、历史查询
+- 业务日志：三视图上传、视频上传、协议签署、历史查询
 - 存储日志：MinIO bucket 创建、对象上传开始与完成
 - 初始化日志：bootstrap 的迁移、建表、分桶、种子数据
 

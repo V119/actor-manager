@@ -1,16 +1,17 @@
 from datetime import datetime, timedelta
 import logging
 from pathlib import Path
+import re
 from typing import List, Optional
 import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 
+from backend.application.agreement_service import AgreementFieldValidationError, AgreementService
 from backend.config import get_config
 from backend.infrastructure.config import settings
 from backend.infrastructure.orm_models import (
     PortraitGuidanceSampleModel,
-    ProtocolModel,
     SessionModel,
     UserModel,
     database,
@@ -19,16 +20,21 @@ from backend.infrastructure.security import generate_session_token, hash_passwor
 from backend.infrastructure.storage import StorageClient
 from backend.interface.api.auth_schemas import (
     AdminCreateEnterpriseUserRequest,
+    AdminAgreementTemplateUpdateRequest,
     AdminEnterpriseUserSchema,
     AdminUpdateEnterpriseUserRequest,
+    ActorAgreementSignRequest,
+    ActorAgreementViewSchema,
+    EnterpriseAgreementSignRequest,
+    EnterpriseAgreementViewSchema,
+    AgreementStatusSchema,
+    AgreementTemplateSchema,
     AuthResponse,
-    CreateProtocolRequest,
     LoginRequest,
     MessageResponse,
     PortraitGuidanceSampleSchema,
     PortraitGuidanceSampleStateSchema,
     RegisterRequest,
-    RoleProtocolSchema,
     UserSchema,
 )
 
@@ -39,6 +45,18 @@ DEFAULT_ADMIN_USERNAME = str(get_config("auth.admin.username", "admin"))
 DEFAULT_ADMIN_PASSWORD = str(get_config("auth.admin.password", "Admin@123456"))
 DEFAULT_ADMIN_DISPLAY_NAME = str(get_config("auth.admin.display_name", "系统管理员"))
 logger = logging.getLogger(__name__)
+PHONE_PATTERN = re.compile(r"^1\d{10}$")
+
+
+def _normalize_phone(value: str) -> str:
+    return "".join(ch for ch in value if ch.isdigit())
+
+
+def _validate_phone(value: str) -> str:
+    phone = _normalize_phone(value)
+    if not PHONE_PATTERN.fullmatch(phone):
+        raise HTTPException(status_code=422, detail="手机号格式不正确")
+    return phone
 
 
 def _to_user_schema(user: UserModel) -> UserSchema:
@@ -146,22 +164,6 @@ def _ensure_default_admin_user() -> UserModel:
     return admin_user
 
 
-def _to_protocol_schema(protocol: ProtocolModel, target_user: Optional[UserModel] = None) -> RoleProtocolSchema:
-    return RoleProtocolSchema(
-        id=protocol.id,
-        company_name=protocol.company_name,
-        title=protocol.title,
-        content=protocol.content,
-        status=protocol.status,
-        created_at=protocol.created_at,
-        signed_at=protocol.signed_at,
-        enterprise_user_id=protocol.enterprise_user_id,
-        target_user_id=protocol.target_user_id,
-        target_user_display_name=target_user.display_name if target_user else None,
-        target_username=target_user.username if target_user else None,
-    )
-
-
 def _get_storage_client() -> StorageClient:
     return StorageClient(
         settings.MINIO_ENDPOINT,
@@ -222,17 +224,21 @@ def _guidance_extension(filename: str, content_type: str) -> str:
 
 @router.post("/auth/register", response_model=AuthResponse)
 async def register(req: RegisterRequest):
+    phone = _validate_phone(req.phone)
+    if req.password != req.confirm_password:
+        raise HTTPException(status_code=422, detail="两次输入的密码不一致")
+
     with database.allow_sync():
-        existing = UserModel.get_or_none(UserModel.username == req.username)
+        existing = UserModel.get_or_none(UserModel.username == phone)
         if existing:
-            logger.warning("Register failed: username already exists username=%s", req.username)
-            raise HTTPException(status_code=409, detail="Username already exists")
+            logger.warning("Register failed: phone already exists phone=%s", phone)
+            raise HTTPException(status_code=409, detail="手机号已被注册")
 
         user = UserModel.create(
-            username=req.username,
+            username=phone,
             password_hash=hash_password(req.password),
             role="individual",
-            display_name=req.display_name or req.username,
+            display_name=phone,
             company_intro="",
         )
         token = _create_session(user)
@@ -243,11 +249,12 @@ async def register(req: RegisterRequest):
 
 @router.post("/auth/login", response_model=AuthResponse)
 async def login(req: LoginRequest):
+    username = req.username.strip()
     with database.allow_sync():
-        user = UserModel.get_or_none(UserModel.username == req.username)
+        user = UserModel.get_or_none(UserModel.username == username)
         if not user or not verify_password(req.password, user.password_hash):
-            logger.warning("Login failed username=%s", req.username)
-            raise HTTPException(status_code=401, detail="Invalid username or password")
+            logger.warning("Login failed username=%s", username)
+            raise HTTPException(status_code=401, detail="用户名或密码错误")
         token = _create_session(user)
     logger.info("User login success user_id=%s username=%s role=%s", user.id, user.username, user.role)
     return AuthResponse(token=token, user=_to_user_schema(user))
@@ -443,97 +450,117 @@ async def list_individual_users(current_user: UserModel = Depends(require_enterp
     return [_to_user_schema(user) for user in users]
 
 
-@router.post("/enterprise/protocols", response_model=RoleProtocolSchema)
-async def create_enterprise_protocol(
-    req: CreateProtocolRequest,
-    current_user: UserModel = Depends(require_enterprise_user),
+def get_agreement_service() -> AgreementService:
+    return AgreementService()
+
+
+@router.get("/admin/agreement/template", response_model=AgreementTemplateSchema)
+async def get_admin_agreement_template(
+    service: AgreementService = Depends(get_agreement_service),
+    _current_user: UserModel = Depends(require_admin_user),
 ):
-    with database.allow_sync():
-        target_user = UserModel.get_or_none(
-            (UserModel.id == req.target_user_id) & (UserModel.role == "individual")
-        )
-        if not target_user:
-            logger.warning(
-                "Create protocol failed: target user not found enterprise_user_id=%s target_user_id=%s",
-                current_user.id,
-                req.target_user_id,
-            )
-            raise HTTPException(status_code=404, detail="Target individual user not found")
-
-        protocol = ProtocolModel.create(
-            actor=None,
-            enterprise_user=current_user,
-            target_user=target_user,
-            company_name=current_user.display_name,
-            title=req.title,
-            content=req.content,
-            status="pending",
-        )
-    logger.info(
-        "Protocol created protocol_id=%s enterprise_user_id=%s target_user_id=%s",
-        protocol.id,
-        current_user.id,
-        target_user.id,
-    )
-    return _to_protocol_schema(protocol, target_user=target_user)
+    return service.get_admin_template()
 
 
-@router.get("/enterprise/protocols", response_model=List[RoleProtocolSchema])
-async def list_enterprise_protocols(current_user: UserModel = Depends(require_enterprise_user)):
-    with database.allow_sync():
-        protocols = list(
-            ProtocolModel.select()
-            .where(ProtocolModel.enterprise_user == current_user)
-            .order_by(ProtocolModel.created_at.desc())
-        )
-        target_ids = [p.target_user_id for p in protocols if p.target_user_id]
-        target_map = {}
-        if target_ids:
-            target_map = {
-                user.id: user
-                for user in UserModel.select().where(UserModel.id.in_(target_ids))
-            }
-    logger.info(
-        "Enterprise listed protocols enterprise_user_id=%s count=%s",
-        current_user.id,
-        len(protocols),
-    )
-    return [_to_protocol_schema(p, target_map.get(p.target_user_id)) for p in protocols]
+@router.put("/admin/agreement/template", response_model=AgreementTemplateSchema)
+async def update_admin_agreement_template(
+    req: AdminAgreementTemplateUpdateRequest,
+    service: AgreementService = Depends(get_agreement_service),
+    _current_user: UserModel = Depends(require_admin_user),
+):
+    try:
+        return service.update_admin_template(req.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/user/protocols", response_model=List[RoleProtocolSchema])
-async def list_user_protocols(current_user: UserModel = Depends(require_individual_user)):
-    with database.allow_sync():
-        protocols = list(
-            ProtocolModel.select()
-            .where(ProtocolModel.target_user == current_user)
-            .order_by(ProtocolModel.created_at.desc())
-        )
-    logger.info("Individual listed protocols user_id=%s count=%s", current_user.id, len(protocols))
-    return [_to_protocol_schema(p, current_user) for p in protocols]
+@router.get("/admin/enterprise-agreement/template", response_model=AgreementTemplateSchema)
+async def get_admin_enterprise_agreement_template(
+    service: AgreementService = Depends(get_agreement_service),
+    _current_user: UserModel = Depends(require_admin_user),
+):
+    return service.get_admin_enterprise_template()
 
 
-@router.post("/user/protocols/{protocol_id}/sign", response_model=RoleProtocolSchema)
-async def sign_user_protocol(
-    protocol_id: int,
+@router.put("/admin/enterprise-agreement/template", response_model=AgreementTemplateSchema)
+async def update_admin_enterprise_agreement_template(
+    req: AdminAgreementTemplateUpdateRequest,
+    service: AgreementService = Depends(get_agreement_service),
+    _current_user: UserModel = Depends(require_admin_user),
+):
+    try:
+        return service.update_admin_enterprise_template(req.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/actor/agreement", response_model=ActorAgreementViewSchema)
+async def get_actor_agreement(
+    service: AgreementService = Depends(get_agreement_service),
     current_user: UserModel = Depends(require_individual_user),
 ):
-    with database.allow_sync():
-        protocol = ProtocolModel.get_or_none(
-            (ProtocolModel.id == protocol_id) & (ProtocolModel.target_user == current_user)
-        )
-        if not protocol:
-            logger.warning(
-                "Sign protocol failed: protocol not found protocol_id=%s user_id=%s",
-                protocol_id,
-                current_user.id,
-            )
-            raise HTTPException(status_code=404, detail="Protocol not found")
+    return service.get_actor_agreement_view(current_user)
 
-        if protocol.status != "signed":
-            protocol.status = "signed"
-            protocol.signed_at = datetime.now()
-            protocol.save()
 
-    logger.info("Protocol signed protocol_id=%s user_id=%s", protocol.id, current_user.id)
-    return _to_protocol_schema(protocol, current_user)
+@router.get("/actor/agreement/status", response_model=AgreementStatusSchema)
+async def get_actor_agreement_status(
+    service: AgreementService = Depends(get_agreement_service),
+    current_user: UserModel = Depends(require_individual_user),
+):
+    return service.get_actor_agreement_status(current_user)
+
+
+@router.post("/actor/agreement/sign", response_model=ActorAgreementViewSchema)
+async def sign_actor_agreement(
+    req: ActorAgreementSignRequest,
+    service: AgreementService = Depends(get_agreement_service),
+    current_user: UserModel = Depends(require_individual_user),
+):
+    try:
+        return service.sign_actor_agreement(current_user, req.model_dump())
+    except AgreementFieldValidationError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": exc.message,
+                "field_errors": exc.field_errors,
+            },
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/enterprise/agreement", response_model=EnterpriseAgreementViewSchema)
+async def get_enterprise_agreement(
+    service: AgreementService = Depends(get_agreement_service),
+    current_user: UserModel = Depends(require_enterprise_user),
+):
+    return service.get_enterprise_agreement_view(current_user)
+
+
+@router.get("/enterprise/agreement/status", response_model=AgreementStatusSchema)
+async def get_enterprise_agreement_status(
+    service: AgreementService = Depends(get_agreement_service),
+    current_user: UserModel = Depends(require_enterprise_user),
+):
+    return service.get_enterprise_agreement_status(current_user)
+
+
+@router.post("/enterprise/agreement/sign", response_model=EnterpriseAgreementViewSchema)
+async def sign_enterprise_agreement(
+    req: EnterpriseAgreementSignRequest,
+    service: AgreementService = Depends(get_agreement_service),
+    current_user: UserModel = Depends(require_enterprise_user),
+):
+    try:
+        return service.sign_enterprise_agreement(current_user, req.model_dump())
+    except AgreementFieldValidationError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": exc.message,
+                "field_errors": exc.field_errors,
+            },
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

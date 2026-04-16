@@ -98,6 +98,70 @@ class ProtocolModel(BaseModel):
     signed_at = peewee.DateTimeField(null=True)
 
 
+class AgreementTemplateConfigModel(BaseModel):
+    version = peewee.IntegerField(default=1)
+    source_document_name = peewee.CharField(default="")
+    party_a_company_name = peewee.CharField(default="")
+    party_a_credit_code = peewee.CharField(default="")
+    party_a_registered_address = peewee.TextField(default="")
+    authorization_date_mode = peewee.CharField(default="fixed")
+    authorization_term_months = peewee.IntegerField(null=True)
+    authorization_start_date = peewee.DateField(null=True)
+    authorization_end_date = peewee.DateField(null=True)
+    party_a_signature_label = peewee.CharField(default="")
+    party_a_signed_date = peewee.DateField(null=True)
+    created_at = peewee.DateTimeField(default=datetime.now)
+    updated_at = peewee.DateTimeField(default=datetime.now, index=True)
+
+
+class EnterpriseAgreementTemplateConfigModel(BaseModel):
+    version = peewee.IntegerField(default=1)
+    source_document_name = peewee.CharField(default="")
+    party_a_company_name = peewee.CharField(default="")
+    party_a_credit_code = peewee.CharField(default="")
+    party_a_registered_address = peewee.TextField(default="")
+    authorization_date_mode = peewee.CharField(default="fixed")
+    authorization_term_months = peewee.IntegerField(null=True)
+    authorization_start_date = peewee.DateField(null=True)
+    authorization_end_date = peewee.DateField(null=True)
+    party_a_signature_label = peewee.CharField(default="")
+    party_a_signed_date = peewee.DateField(null=True)
+    created_at = peewee.DateTimeField(default=datetime.now)
+    updated_at = peewee.DateTimeField(default=datetime.now, index=True)
+
+
+class ActorAgreementModel(BaseModel):
+    actor = peewee.ForeignKeyField(ActorModel, backref='agreement_record', unique=True)
+    user = peewee.ForeignKeyField(UserModel, backref='agreement_record', on_delete='CASCADE', unique=True)
+    template_version = peewee.IntegerField(default=1, index=True)
+    status = peewee.CharField(default='pending', index=True)
+    party_b_name = peewee.CharField()
+    party_b_gender = peewee.CharField()
+    party_b_identity_number = peewee.CharField()
+    party_b_contact_address = peewee.TextField()
+    party_b_phone = peewee.CharField()
+    party_b_email = peewee.CharField()
+    party_b_signature_data_url = peewee.TextField()
+    party_b_signed_date = peewee.DateField(null=True)
+    signed_at = peewee.DateTimeField(null=True, index=True)
+    created_at = peewee.DateTimeField(default=datetime.now)
+    updated_at = peewee.DateTimeField(default=datetime.now, index=True)
+
+
+class EnterpriseAgreementModel(BaseModel):
+    user = peewee.ForeignKeyField(UserModel, backref='enterprise_agreement_record', on_delete='CASCADE', unique=True)
+    template_version = peewee.IntegerField(default=1, index=True)
+    status = peewee.CharField(default='pending', index=True)
+    party_b_company_name = peewee.CharField()
+    party_b_credit_code = peewee.CharField()
+    party_b_registered_address = peewee.TextField()
+    party_b_signature_data_url = peewee.TextField()
+    party_b_signed_date = peewee.DateField(null=True)
+    signed_at = peewee.DateTimeField(null=True, index=True)
+    created_at = peewee.DateTimeField(default=datetime.now)
+    updated_at = peewee.DateTimeField(default=datetime.now, index=True)
+
+
 class PortraitUploadSessionModel(BaseModel):
     actor = peewee.ForeignKeyField(ActorModel, backref='portrait_upload_sessions')
     user = peewee.ForeignKeyField(UserModel, backref='portrait_upload_sessions', on_delete='CASCADE')

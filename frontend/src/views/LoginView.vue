@@ -9,12 +9,12 @@
 
       <form class="space-y-5" @submit.prevent="submit">
         <label class="block">
-          <span class="text-xs text-on-surface-variant">用户名</span>
+          <span class="text-xs text-on-surface-variant">{{ accountLabel }}</span>
           <input
-            v-model="form.username"
-            type="text"
+            v-model="form.account"
+            :type="accountInputType"
             class="mt-2 w-full bg-surface/40 border border-sky-400/15 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/60 focus:border-sky-300/40"
-            placeholder="请输入用户名"
+            :placeholder="accountPlaceholder"
             required
           />
         </label>
@@ -41,8 +41,12 @@
         </button>
       </form>
 
-      <p class="text-sm text-on-surface-variant mt-6">
-        如需新账号，请联系系统管理员创建。
+      <p v-if="expectedRole === 'individual'" class="text-sm text-on-surface-variant mt-6">
+        还没有账号？
+        <RouterLink to="/register" class="text-sky-300 hover:text-sky-200">立即注册</RouterLink>
+      </p>
+      <p v-else class="text-sm text-on-surface-variant mt-6">
+        企业账号由后台管理员创建。
       </p>
       <p class="text-xs text-on-surface-variant mt-3">
         {{ switchHint }}
@@ -61,7 +65,7 @@ const router = useRouter()
 const route = useRoute()
 
 const form = reactive({
-  username: '',
+  account: '',
   password: ''
 })
 
@@ -71,8 +75,8 @@ const expectedRole = computed(() => route.meta.loginRole === 'enterprise' ? 'ent
 const pageTitle = computed(() => expectedRole.value === 'enterprise' ? '企业用户登录' : '普通演员登录')
 const pageSubtitle = computed(() => (
   expectedRole.value === 'enterprise'
-    ? '登录后进入演员发布广场与协议管理。企业账号由后台管理员创建。'
-    : '登录后进入肖像上传、协议管理和风格实验室。'
+    ? '登录后进入企业协议签署与演员发布广场。企业账号由后台管理员创建。'
+    : '登录后进入基本信息、协议签署、素材管理和风格实验室。'
 ))
 const switchLoginPath = computed(() => (
   expectedRole.value === 'enterprise' ? '/login/individual' : '/login/enterprise'
@@ -83,17 +87,24 @@ const switchHint = computed(() => (
 const switchLabel = computed(() => (
   expectedRole.value === 'enterprise' ? '演员登录入口' : '企业登录入口'
 ))
+const accountLabel = computed(() => (
+  expectedRole.value === 'enterprise' ? '用户名' : '手机号'
+))
+const accountPlaceholder = computed(() => (
+  expectedRole.value === 'enterprise' ? '请输入用户名' : '请输入手机号'
+))
+const accountInputType = computed(() => (
+  expectedRole.value === 'enterprise' ? 'text' : 'tel'
+))
 
 async function submit() {
   loading.value = true
   errorMessage.value = ''
   try {
-    const user = await authStore.login(form.username, form.password)
+    const user = await authStore.login(form.account, form.password)
     if (user.role !== expectedRole.value) {
       await authStore.logout()
-      errorMessage.value = expectedRole.value === 'enterprise'
-        ? '该账号不是企业用户，请使用演员登录入口。'
-        : '该账号不是普通演员用户，请使用企业登录入口。'
+      errorMessage.value = '用户名或密码错误'
       return
     }
     const redirect = typeof route.query.redirect === 'string'
@@ -101,7 +112,7 @@ async function submit() {
       : authStore.defaultRouteForRole(user.role)
     await router.replace(redirect)
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : '登录失败，请稍后重试'
+    errorMessage.value = '用户名或密码错误'
   } finally {
     loading.value = false
   }

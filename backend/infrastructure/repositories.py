@@ -1,10 +1,10 @@
 from typing import List, Optional
-from backend.domain.models import Actor, Portrait, Style, GeneratedResult, Protocol, ProtocolStatus
+from backend.domain.models import Actor, Portrait, Style, GeneratedResult
 from backend.domain.repositories import (
     ActorRepository, PortraitRepository, StyleRepository,
-    GeneratedResultRepository, ProtocolRepository
+    GeneratedResultRepository
 )
-from backend.infrastructure.orm_models import ActorModel, PortraitModel, StyleModel, GeneratedResultModel, ProtocolModel
+from backend.infrastructure.orm_models import ActorModel, PortraitModel, StyleModel, GeneratedResultModel
 
 class PeeweeActorRepository(ActorRepository):
     async def get_by_id(self, actor_id: int) -> Optional[Actor]:
@@ -127,38 +127,4 @@ class PeeweeGeneratedResultRepository(GeneratedResultRepository):
             style_id=model.style_id,
             image_url=model.image_url,
             created_at=model.created_at
-        )
-
-class PeeweeProtocolRepository(ProtocolRepository):
-    async def list_by_actor(self, actor_id: int) -> List[Protocol]:
-        query = ProtocolModel.select().where(ProtocolModel.actor_id == actor_id)
-        models = await query.aio_execute()
-        return [self._to_domain(m) for m in models]
-
-    async def get_by_id(self, protocol_id: int) -> Optional[Protocol]:
-        try:
-            model = await ProtocolModel.aio_get(ProtocolModel.id == protocol_id)
-            return self._to_domain(model)
-        except ProtocolModel.DoesNotExist:
-            return None
-
-    async def update_status(self, protocol_id: int, status: str) -> bool:
-        from datetime import datetime
-        update_data = {'status': status}
-        if status == 'signed':
-            update_data['signed_at'] = datetime.now()
-
-        updated = await ProtocolModel.update(**update_data).where(ProtocolModel.id == protocol_id).aio_execute()
-        return updated > 0
-
-    def _to_domain(self, model: ProtocolModel) -> Protocol:
-        return Protocol(
-            id=model.id,
-            actor_id=model.actor_id,
-            company_name=model.company_name,
-            title=model.title,
-            content=model.content,
-            status=ProtocolStatus(model.status),
-            created_at=model.created_at,
-            signed_at=model.signed_at
         )

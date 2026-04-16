@@ -389,8 +389,12 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { ensureAgreementSignedForPublish, isAgreementBlockingErrorMessage } from '../lib/agreement'
 import { apiRequest } from '../lib/api'
 import { authStore } from '../lib/auth'
+
+const router = useRouter()
 
 const loadingExisting = ref(false)
 
@@ -863,6 +867,17 @@ async function publishLatestThreeView() {
   imageErrorMessage.value = ''
   imageSuccessMessage.value = ''
   try {
+    const gate = await ensureAgreementSignedForPublish({
+      token: authStore.state.token,
+      router,
+      onBlocked(message) {
+        imageErrorMessage.value = `${message} 系统已为你跳转到协议签署页。`
+      }
+    })
+    if (!gate.allowed) {
+      return
+    }
+
     const hadExisting = hasExistingSession.value
     const selectedFiles = {}
     if (images.left.file) selectedFiles.left = images.left.file
@@ -970,6 +985,17 @@ async function publishVideoDraft(videoType) {
   form.error = ''
   form.success = ''
   try {
+    const gate = await ensureAgreementSignedForPublish({
+      token: authStore.state.token,
+      router,
+      onBlocked(message) {
+        form.error = `${message} 系统已为你跳转到协议签署页。`
+      }
+    })
+    if (!gate.allowed) {
+      return
+    }
+
     const published = await apiRequest('/portraits/videos/publish', {
       method: 'POST',
       token: authStore.state.token,
@@ -981,7 +1007,12 @@ async function publishVideoDraft(videoType) {
     videoDrafts.value[videoType] = null
     form.success = '视频草稿已发布，企业用户可在广场查看。'
   } catch (error) {
-    form.error = error instanceof Error ? error.message : '视频发布失败，请稍后重试。'
+    const message = error instanceof Error ? error.message : '视频发布失败，请稍后重试。'
+    form.error = message
+    if (isAgreementBlockingErrorMessage(message)) {
+      form.error = `${message} 系统已为你跳转到协议签署页。`
+      await router.push('/actor-agreement')
+    }
   } finally {
     form.publishing = false
   }
@@ -1034,6 +1065,19 @@ async function toggleAudioPublish(asset) {
   audioActionLoadingId.value = asset.id
   audioListError.value = ''
   try {
+    if (!asset.is_published) {
+      const gate = await ensureAgreementSignedForPublish({
+        token: authStore.state.token,
+        router,
+        onBlocked(message) {
+          audioListError.value = `${message} 系统已为你跳转到协议签署页。`
+        }
+      })
+      if (!gate.allowed) {
+        return
+      }
+    }
+
     const updated = await apiRequest('/portraits/audios/state', {
       method: 'POST',
       token: authStore.state.token,
@@ -1048,7 +1092,12 @@ async function toggleAudioPublish(asset) {
       existing.superseded_at = updated.superseded_at
     }
   } catch (error) {
-    audioListError.value = error instanceof Error ? error.message : '录音发布状态切换失败，请稍后重试。'
+    const message = error instanceof Error ? error.message : '录音发布状态切换失败，请稍后重试。'
+    audioListError.value = message
+    if (isAgreementBlockingErrorMessage(message)) {
+      audioListError.value = `${message} 系统已为你跳转到协议签署页。`
+      await router.push('/actor-agreement')
+    }
   } finally {
     audioActionLoadingId.value = null
   }

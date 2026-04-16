@@ -98,19 +98,6 @@ class GeneratedResultSchema(BaseModel):
     published_at: Optional[datetime]
     created_at: datetime
 
-class ProtocolSchema(BaseModel):
-    id: int
-    actor_id: Optional[int]
-    company_name: str
-    title: str
-    content: str
-    status: str
-    created_at: datetime
-    signed_at: Optional[datetime]
-
-    class Config:
-        from_attributes = True
-
 class GenerateStyleRequest(BaseModel):
     style_id: int
     custom_prompt: str = ""

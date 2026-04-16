@@ -9,23 +9,13 @@
 
       <form class="space-y-5" @submit.prevent="submit">
         <label class="block">
-          <span class="text-xs text-on-surface-variant">用户名</span>
+          <span class="text-xs text-on-surface-variant">手机号</span>
           <input
-            v-model="form.username"
-            type="text"
+            v-model="form.phone"
+            type="tel"
             class="mt-2 w-full bg-surface/40 border border-sky-400/15 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/60 focus:border-sky-300/40"
-            placeholder="请输入用户名"
+            placeholder="请输入手机号"
             required
-          />
-        </label>
-
-        <label class="block">
-          <span class="text-xs text-on-surface-variant">显示名称</span>
-          <input
-            v-model="form.display_name"
-            type="text"
-            class="mt-2 w-full bg-surface/40 border border-sky-400/15 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/60 focus:border-sky-300/40"
-            placeholder="例如：星界影业 / 苏长生"
           />
         </label>
 
@@ -36,6 +26,17 @@
             type="password"
             class="mt-2 w-full bg-surface/40 border border-sky-400/15 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/60 focus:border-sky-300/40"
             placeholder="至少 6 位"
+            required
+          />
+        </label>
+
+        <label class="block">
+          <span class="text-xs text-on-surface-variant">确认密码</span>
+          <input
+            v-model="form.confirm_password"
+            type="password"
+            class="mt-2 w-full bg-surface/40 border border-sky-400/15 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/60 focus:border-sky-300/40"
+            placeholder="请再次输入密码"
             required
           />
         </label>
@@ -53,11 +54,11 @@
 
       <p class="text-sm text-on-surface-variant mt-6">
         已有账号？
-        <RouterLink to="/login/individual" class="text-sky-300 hover:text-sky-200">演员登录</RouterLink>
-        /
-        <RouterLink to="/login/enterprise" class="text-sky-300 hover:text-sky-200">企业登录</RouterLink>
-        /
-        <RouterLink to="/admin/login" class="text-sky-300 hover:text-sky-200">后台管理</RouterLink>
+        <RouterLink to="/login/individual" class="text-sky-300 hover:text-sky-200">去登录</RouterLink>
+      </p>
+      <p class="text-xs text-on-surface-variant mt-3">
+        企业用户请使用
+        <RouterLink to="/login/enterprise" class="text-sky-300 hover:text-sky-200">企业登录入口</RouterLink>
       </p>
     </div>
   </div>
@@ -71,9 +72,9 @@ import { authStore } from '../lib/auth'
 const router = useRouter()
 
 const form = reactive({
-  username: '',
-  display_name: '',
-  password: ''
+  phone: '',
+  password: '',
+  confirm_password: ''
 })
 
 const loading = ref(false)
