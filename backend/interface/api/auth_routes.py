@@ -25,6 +25,8 @@ from backend.interface.api.auth_schemas import (
     AdminUpdateEnterpriseUserRequest,
     ActorAgreementSignRequest,
     ActorAgreementViewSchema,
+    EnterpriseBasicInfoSchema,
+    EnterpriseBasicInfoUpdateRequest,
     EnterpriseAgreementSignRequest,
     EnterpriseAgreementViewSchema,
     AgreementStatusSchema,
@@ -76,6 +78,36 @@ def _to_admin_enterprise_user_schema(user: UserModel) -> AdminEnterpriseUserSche
         username=user.username,
         company_name=user.display_name,
         company_intro=user.company_intro or "",
+        created_at=user.created_at,
+    )
+
+
+def _enterprise_basic_info_field_errors(payload: dict) -> dict[str, str]:
+    company_name = str(payload.get("company_name") or "").strip()
+    credit_code = str(payload.get("credit_code") or "").strip()
+    registered_address = str(payload.get("registered_address") or "").strip()
+
+    errors: dict[str, str] = {}
+    if not company_name:
+        errors["company_name"] = "请填写企业名称。"
+    if not credit_code:
+        errors["credit_code"] = "请填写统一社会信用代码。"
+    if not registered_address:
+        errors["registered_address"] = "请填写注册地址。"
+    return errors
+
+
+def _to_enterprise_basic_info_schema(user: UserModel) -> EnterpriseBasicInfoSchema:
+    company_name = str(user.display_name or "").strip()
+    credit_code = str(getattr(user, "company_credit_code", "") or "").strip()
+    registered_address = str(getattr(user, "company_registered_address", "") or "").strip()
+    return EnterpriseBasicInfoSchema(
+        user_id=user.id,
+        company_name=company_name,
+        company_intro=user.company_intro or "",
+        credit_code=credit_code,
+        registered_address=registered_address,
+        is_ready_for_agreement=bool(company_name and credit_code and registered_address),
         created_at=user.created_at,
     )
 
@@ -297,6 +329,41 @@ async def logout(
 async def me(current_user: UserModel = Depends(get_current_user)):
     logger.debug("Session check for user_id=%s", current_user.id)
     return _to_user_schema(current_user)
+
+
+@router.get("/enterprise/basic-info", response_model=EnterpriseBasicInfoSchema)
+async def get_enterprise_basic_info(current_user: UserModel = Depends(require_enterprise_user)):
+    with database.allow_sync():
+        user = UserModel.get_by_id(current_user.id)
+    return _to_enterprise_basic_info_schema(user)
+
+
+@router.put("/enterprise/basic-info", response_model=EnterpriseBasicInfoSchema)
+async def update_enterprise_basic_info(
+    req: EnterpriseBasicInfoUpdateRequest,
+    current_user: UserModel = Depends(require_enterprise_user),
+):
+    payload = req.model_dump()
+    field_errors = _enterprise_basic_info_field_errors(payload)
+    if field_errors:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "请完善企业基本信息中的必填项后再保存。",
+                "field_errors": field_errors,
+            },
+        )
+
+    with database.allow_sync():
+        user = UserModel.get_by_id(current_user.id)
+        user.display_name = str(payload.get("company_name") or "").strip()
+        user.company_intro = str(payload.get("company_intro") or "").strip()
+        user.company_credit_code = str(payload.get("credit_code") or "").strip()
+        user.company_registered_address = str(payload.get("registered_address") or "").strip()
+        user.save()
+
+    logger.info("Enterprise basic info updated user_id=%s", current_user.id)
+    return _to_enterprise_basic_info_schema(user)
 
 
 @router.get("/portrait-guidance/samples", response_model=PortraitGuidanceSampleStateSchema)

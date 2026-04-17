@@ -54,6 +54,23 @@ class AdminUpdateEnterpriseUserRequest(BaseModel):
     company_intro: str = Field(default="", max_length=4000)
 
 
+class EnterpriseBasicInfoSchema(BaseModel):
+    user_id: int
+    company_name: str
+    company_intro: str
+    credit_code: str
+    registered_address: str
+    is_ready_for_agreement: bool
+    created_at: datetime
+
+
+class EnterpriseBasicInfoUpdateRequest(BaseModel):
+    company_name: str = Field(default="", max_length=64)
+    company_intro: str = Field(default="", max_length=4000)
+    credit_code: str = Field(default="", max_length=64)
+    registered_address: str = Field(default="", max_length=512)
+
+
 class PortraitGuidanceSampleSchema(BaseModel):
     view_angle: Literal["left", "front", "right"]
     image_url: str

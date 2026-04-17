@@ -6,9 +6,6 @@
           <div>
             <p class="text-xs tracking-[0.2em] uppercase text-sky-300">Enterprise Agreement</p>
             <h1 class="mt-2 text-3xl font-bold tracking-tight">企业协议签署</h1>
-            <p class="mt-3 text-sm text-on-surface-variant max-w-3xl leading-relaxed">
-              协议正文展示内容基于《AI肖像权转授权与内容制作合作协议.docx》。请完善乙方企业信息并完成盖章/签字，签署完成后方可访问演员广场与演员详情。
-            </p>
           </div>
           <div class="min-w-[220px] rounded-2xl border border-sky-300/20 bg-slate-900/45 p-4">
             <p class="text-xs text-on-surface-variant">当前状态</p>
@@ -16,18 +13,18 @@
               class="mt-2 text-sm font-semibold"
               :class="agreementStatus.is_signed ? 'text-emerald-300' : 'text-amber-300'"
             >
-              {{ agreementStatus.is_signed ? '已签署当前版本' : '待签署 / 待重签' }}
+              {{ agreementStatus.is_signed ? '已签署' : '未签署' }}
             </p>
             <p class="mt-2 text-xs text-on-surface-variant leading-relaxed">{{ agreementStatus.message || '请完成企业协议签署。' }}</p>
-            <p class="mt-3 text-[11px] text-on-surface-variant">
-              模板版本：V{{ agreementStatus.template_version || agreement.template?.version || 1 }}
-            </p>
           </div>
         </div>
       </header>
 
       <section v-if="errorMessage" class="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
         {{ errorMessage }}
+      </section>
+      <section v-if="entryNoticeMessage" class="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+        {{ entryNoticeMessage }}
       </section>
       <section v-if="successMessage" class="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
         {{ successMessage }}
@@ -37,57 +34,90 @@
         正在加载协议内容...
       </section>
 
-      <section v-else class="rounded-[28px] border border-sky-400/12 bg-[#f9f4ea] text-[#1f1a14] shadow-[0_24px_80px_rgba(15,23,42,0.28)] overflow-hidden">
-        <div class="border-b border-[#d9cfbc] bg-[linear-gradient(135deg,rgba(255,249,240,0.95),rgba(245,236,220,0.92))] px-6 py-5 md:px-10">
-          <p class="text-xs tracking-[0.18em] uppercase text-[#7a6544]">DOCX Rendered Template</p>
-          <p class="mt-2 text-sm text-[#66563d]">
-            甲方信息由平台管理端配置，乙方企业信息与签字由企业用户填写。
-          </p>
-        </div>
+      <template v-else>
+        <section
+          v-if="!isAgreementLocked && !isEnterpriseBasicInfoReady"
+          class="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-5 py-4"
+        >
+          <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <p class="text-sm leading-6 text-amber-100">
+              请先前往“企业基本信息”页面补全企业名称、统一社会信用代码和注册地址，再继续完成协议签署。
+            </p>
+            <button type="button" class="secondary-button secondary-button-dark" @click="goToEnterpriseBasicInfo">
+              前往企业基本信息
+            </button>
+          </div>
+        </section>
 
-        <div class="px-6 py-8 md:px-10 md:py-10">
-          <article class="mx-auto max-w-3xl space-y-4 text-[15px] leading-8">
-            <h2 class="text-center text-[28px] font-bold tracking-[0.08em] text-[#1f1a14]">AI肖像权转授权与内容制作合作协议</h2>
+        <section class="rounded-[28px] border border-sky-400/12 bg-[#f9f4ea] text-[#1f1a14] shadow-[0_24px_80px_rgba(15,23,42,0.28)] overflow-hidden">
+          <div class="border-b border-[#d9cfbc] bg-[linear-gradient(135deg,rgba(255,249,240,0.95),rgba(245,236,220,0.92))] px-6 py-5 md:px-10">
+            <p class="text-xs tracking-[0.18em] uppercase text-[#7a6544]">DOCX Rendered Template</p>
+            <p class="mt-2 text-sm text-[#66563d]">
+              甲方信息由平台管理端配置，乙方企业信息与签字由企业用户填写。
+            </p>
+          </div>
 
-            <div class="space-y-2 pt-4">
-              <p><strong>甲方：</strong></p>
-              <p>公司名称：<span class="inline-flex min-w-[220px] border-b border-[#54452f] px-2">{{ displayOrPlaceholder(agreement.template?.party_a_company_name) }}</span></p>
-              <p>统一社会信用代码：<span class="inline-flex min-w-[220px] border-b border-[#54452f] px-2">{{ displayOrPlaceholder(agreement.template?.party_a_credit_code) }}</span></p>
-              <p>住所地：<span class="inline-flex min-w-[320px] border-b border-[#54452f] px-2">{{ displayOrPlaceholder(agreement.template?.party_a_registered_address) }}</span></p>
-            </div>
+          <div class="px-6 py-8 md:px-10 md:py-10">
+            <article class="mx-auto max-w-3xl space-y-4 text-[15px] leading-8">
+              <h2 class="text-center text-[28px] font-bold tracking-[0.08em] text-[#1f1a14]">AI肖像权转授权与内容制作合作协议</h2>
 
-            <div class="space-y-2 pt-2">
-              <p><strong>乙方：</strong></p>
-              <div class="agreement-field-block">
-                <p class="agreement-inline-row">
-                  <span class="agreement-inline-label">公司名称：</span>
-                  <span class="agreement-inline-field agreement-inline-field-lg" :class="{ 'agreement-inline-field-error': fieldErrors.party_b_company_name }">
-                    <input v-model="form.party_b_company_name" :disabled="isAgreementLocked" type="text" maxlength="128" class="agreement-inline-input" :class="{ 'agreement-inline-input-locked': isAgreementLocked }" />
-                  </span>
-                </p>
-                <p v-if="fieldErrors.party_b_company_name" class="agreement-field-error-text">{{ fieldErrors.party_b_company_name }}</p>
+              <div class="space-y-2 pt-4">
+                <p><strong>甲方：</strong></p>
+                <p>公司名称：<span class="inline-flex min-w-[220px] border-b border-[#54452f] px-2">{{ displayOrPlaceholder(agreement.template?.party_a_company_name) }}</span></p>
+                <p>统一社会信用代码：<span class="inline-flex min-w-[220px] border-b border-[#54452f] px-2">{{ displayOrPlaceholder(agreement.template?.party_a_credit_code) }}</span></p>
+                <p>住所地：<span class="inline-flex min-w-[320px] border-b border-[#54452f] px-2">{{ displayOrPlaceholder(agreement.template?.party_a_registered_address) }}</span></p>
               </div>
-              <div class="agreement-field-block">
-                <p class="agreement-inline-row">
-                  <span class="agreement-inline-label">统一社会信用代码：</span>
-                  <span class="agreement-inline-field agreement-inline-field-lg" :class="{ 'agreement-inline-field-error': fieldErrors.party_b_credit_code }">
-                    <input v-model="form.party_b_credit_code" :disabled="isAgreementLocked" type="text" maxlength="64" class="agreement-inline-input" :class="{ 'agreement-inline-input-locked': isAgreementLocked }" />
-                  </span>
-                </p>
-                <p v-if="fieldErrors.party_b_credit_code" class="agreement-field-error-text">{{ fieldErrors.party_b_credit_code }}</p>
-              </div>
-              <div class="agreement-field-block">
-                <p class="agreement-inline-row">
-                  <span class="agreement-inline-label">住所地：</span>
-                  <span class="agreement-inline-field agreement-inline-field-lg" :class="{ 'agreement-inline-field-error': fieldErrors.party_b_registered_address }">
-                    <input v-model="form.party_b_registered_address" :disabled="isAgreementLocked" type="text" maxlength="512" class="agreement-inline-input" :class="{ 'agreement-inline-input-locked': isAgreementLocked }" />
-                  </span>
-                </p>
-                <p v-if="fieldErrors.party_b_registered_address" class="agreement-field-error-text">{{ fieldErrors.party_b_registered_address }}</p>
-              </div>
-            </div>
 
-            <div class="space-y-2 pt-3 agreement-copy">
+              <div class="space-y-2 pt-2">
+                <p><strong>乙方：</strong></p>
+                <div class="agreement-field-block">
+                  <p class="agreement-inline-row">
+                    <span class="agreement-inline-label">公司名称：</span>
+                    <span
+                      class="agreement-inline-field agreement-inline-field-lg agreement-inline-display"
+                      :class="{
+                        'agreement-inline-field-error': fieldErrors.party_b_company_name,
+                        'agreement-inline-placeholder': !hasFilledText(form.party_b_company_name)
+                      }"
+                    >
+                      {{ displayAgreementField(form.party_b_company_name, '请前往企业基本信息页填写企业名称') }}
+                    </span>
+                  </p>
+                  <p v-if="fieldErrors.party_b_company_name" class="agreement-field-error-text">{{ fieldErrors.party_b_company_name }}</p>
+                </div>
+                <div class="agreement-field-block">
+                  <p class="agreement-inline-row">
+                    <span class="agreement-inline-label">统一社会信用代码：</span>
+                    <span
+                      class="agreement-inline-field agreement-inline-field-lg agreement-inline-display"
+                      :class="{
+                        'agreement-inline-field-error': fieldErrors.party_b_credit_code,
+                        'agreement-inline-placeholder': !hasFilledText(form.party_b_credit_code)
+                      }"
+                    >
+                      {{ displayAgreementField(form.party_b_credit_code, '请前往企业基本信息页填写统一社会信用代码') }}
+                    </span>
+                  </p>
+                  <p v-if="fieldErrors.party_b_credit_code" class="agreement-field-error-text">{{ fieldErrors.party_b_credit_code }}</p>
+                </div>
+                <div class="agreement-field-block">
+                  <p class="agreement-inline-row">
+                    <span class="agreement-inline-label">住所地：</span>
+                    <span
+                      class="agreement-inline-field agreement-inline-field-lg agreement-inline-display agreement-inline-display-multiline"
+                      :class="{
+                        'agreement-inline-field-error': fieldErrors.party_b_registered_address,
+                        'agreement-inline-placeholder': !hasFilledText(form.party_b_registered_address)
+                      }"
+                    >
+                      {{ displayAgreementField(form.party_b_registered_address, '请前往企业基本信息页填写企业注册地址') }}
+                    </span>
+                  </p>
+                  <p v-if="fieldErrors.party_b_registered_address" class="agreement-field-error-text">{{ fieldErrors.party_b_registered_address }}</p>
+                </div>
+              </div>
+
+              <div class="space-y-2 pt-3 agreement-copy">
               <p><strong>第一条 合作背景与转授权依据</strong></p>
               <p>1.1 甲方已与对应演员（肖像权人）签订合法有效的《AI肖像权独家授权合作协议》，依法获得演员肖像权独家授权及转授权权利，有权将演员肖像权转授权给乙方用于合规商业制作。</p>
               <p>1.2 乙方因自身业务需要，需使用演员肖像权制作AI短剧、AI长剧、商业广告、直播相关内容，自愿通过甲方平台下单选定演员，接受甲方转授权，严格按照协议约定使用肖像并支付费用。</p>
@@ -107,9 +137,9 @@
               <p>□独家授权：在本项目范围内，甲方不得再向其他第三方授予该演员的相同权利，收费标准为：                 。</p>
               <p>
                 2.4 本协议授权期限自
-                <span class="inline-flex min-w-[140px] border-b border-[#54452f] px-2">{{ formatDateText(agreement.template?.authorization_start_date) }}</span>
+                <span class="inline-flex min-w-[140px] border-b border-[#54452f] px-2">{{ formatDateText(displayAuthorizationWindow.start) }}</span>
                 起至
-                <span class="inline-flex min-w-[140px] border-b border-[#54452f] px-2">{{ formatDateText(agreement.template?.authorization_end_date) }}</span>
+                <span class="inline-flex min-w-[140px] border-b border-[#54452f] px-2">{{ formatDateText(displayAuthorizationWindow.end) }}</span>
                 止。授权期限届满，本协议自动终止。若项目制作周期延长，转授权期限自动顺延至项目制作完成之日，顺延期间费用按双方签订的《项目订单》继续执行。
               </p>
               <p>2.5 授权地域：全球。</p>
@@ -152,83 +182,84 @@
               <p>（以下无正文）</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 pt-6">
-              <div class="space-y-4">
-                <p class="agreement-inline-row agreement-signoff-row">
-                  <span class="agreement-inline-label">甲方（盖章）：</span>
-                  <span class="agreement-inline-field agreement-inline-field-md">
-                    {{ displayOrPlaceholder(agreement.template?.party_a_signature_label || agreement.template?.party_a_company_name) }}
-                  </span>
-                </p>
-                <p class="agreement-inline-row agreement-signoff-row">
-                  <span class="agreement-inline-label">日期：</span>
-                  <span class="agreement-inline-field agreement-inline-field-sm">
-                    {{ formatDateText(agreement.template?.party_a_signed_date) }}
-                  </span>
-                </p>
-              </div>
-
-              <div class="space-y-4">
-                <div>
-                  <p class="agreement-inline-row agreement-signoff-row mb-2">
-                    <span class="agreement-inline-label">乙方（盖章）：</span>
-                    <span class="agreement-inline-field agreement-inline-field-signature">
-                      <span class="sr-only">乙方盖章区域</span>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-10 pt-6">
+                <div class="space-y-4">
+                  <p class="agreement-inline-row agreement-signoff-row">
+                    <span class="agreement-inline-label">甲方（盖章）：</span>
+                    <span class="agreement-inline-field agreement-inline-field-md">
+                      {{ displayOrPlaceholder(agreement.template?.party_a_signature_label || agreement.template?.party_a_company_name) }}
                     </span>
                   </p>
-                  <div
-                    ref="signatureCard"
-                    class="agreement-signature-card rounded-md border bg-white p-2"
-                    :class="[
-                      signatureHint.visible ? 'agreement-signature-card-active' : 'border-[#8a7553]',
-                      fieldErrors.party_b_signature_data_url ? 'agreement-signature-card-error' : '',
-                      isAgreementLocked ? 'agreement-signature-card-locked' : ''
-                    ]"
-                  >
-                    <canvas
-                      ref="signatureCanvas"
-                      class="agreement-signature-canvas"
-                    />
-                  </div>
-                  <p v-if="fieldErrors.party_b_signature_data_url" class="agreement-field-error-text mt-2">
-                    {{ fieldErrors.party_b_signature_data_url }}
-                  </p>
-                  <transition name="agreement-hint">
-                    <div
-                      v-if="signatureHint.visible"
-                      class="mt-3 rounded-2xl border border-amber-300/60 bg-amber-100/90 px-4 py-3 text-sm text-amber-900 shadow-[0_10px_30px_rgba(120,53,15,0.12)]"
-                      role="alert"
-                    >
-                      <p class="font-semibold">{{ signatureHint.title }}</p>
-                      <p class="mt-1 leading-6">{{ signatureHint.message }}</p>
-                    </div>
-                  </transition>
-                  <div class="mt-3 flex flex-wrap gap-3">
-                    <button v-if="!isAgreementLocked" type="button" class="secondary-button" @click="clearSignature">清空签名</button>
-                    <span class="text-xs text-[#7a6544]">
-                      {{ isAgreementLocked ? '协议已签署，盖章/签字内容已锁定。' : '请使用手写签名或盖章样式完成乙方签署。' }}
-                    </span>
-                  </div>
-                </div>
-                <div class="agreement-field-block">
                   <p class="agreement-inline-row agreement-signoff-row">
                     <span class="agreement-inline-label">日期：</span>
-                    <span class="agreement-inline-field agreement-inline-field-sm" :class="{ 'agreement-inline-field-error': fieldErrors.party_b_signed_date }">
-                      <input v-model="form.party_b_signed_date" :disabled="isAgreementLocked" type="date" class="agreement-inline-input agreement-inline-date-input" :class="{ 'agreement-inline-input-locked': isAgreementLocked }" />
+                    <span class="agreement-inline-field agreement-inline-field-sm">
+                      {{ formatDateText(agreement.template?.party_a_signed_date) }}
                     </span>
                   </p>
-                  <p v-if="fieldErrors.party_b_signed_date" class="agreement-field-error-text">{{ fieldErrors.party_b_signed_date }}</p>
+                </div>
+
+                <div class="space-y-4">
+                  <div>
+                    <p class="agreement-inline-row agreement-signoff-row mb-2">
+                      <span class="agreement-inline-label">乙方（盖章）：</span>
+                      <span class="agreement-inline-field agreement-inline-field-signature">
+                        <span class="sr-only">乙方盖章区域</span>
+                      </span>
+                    </p>
+                    <div
+                      ref="signatureCard"
+                      class="agreement-signature-card rounded-md border bg-white p-2"
+                      :class="[
+                        signatureHint.visible ? 'agreement-signature-card-active' : 'border-[#8a7553]',
+                        fieldErrors.party_b_signature_data_url ? 'agreement-signature-card-error' : '',
+                        isAgreementLocked ? 'agreement-signature-card-locked' : ''
+                      ]"
+                    >
+                      <canvas
+                        ref="signatureCanvas"
+                        class="agreement-signature-canvas"
+                      />
+                    </div>
+                    <p v-if="fieldErrors.party_b_signature_data_url" class="agreement-field-error-text mt-2">
+                      {{ fieldErrors.party_b_signature_data_url }}
+                    </p>
+                    <transition name="agreement-hint">
+                      <div
+                        v-if="signatureHint.visible"
+                        class="mt-3 rounded-2xl border border-amber-300/60 bg-amber-100/90 px-4 py-3 text-sm text-amber-900 shadow-[0_10px_30px_rgba(120,53,15,0.12)]"
+                        role="alert"
+                      >
+                        <p class="font-semibold">{{ signatureHint.title }}</p>
+                        <p class="mt-1 leading-6">{{ signatureHint.message }}</p>
+                      </div>
+                    </transition>
+                    <div class="mt-3 flex flex-wrap gap-3">
+                      <button v-if="!isAgreementLocked" type="button" class="secondary-button" @click="clearSignature">清空签名</button>
+                      <span class="text-xs text-[#7a6544]">
+                        {{ isAgreementLocked ? '协议已签署，盖章/签字内容已锁定。' : '请使用手写签名或盖章样式完成乙方签署。' }}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="agreement-field-block">
+                    <p class="agreement-inline-row agreement-signoff-row">
+                      <span class="agreement-inline-label">日期：</span>
+                      <span class="agreement-inline-field agreement-inline-field-sm" :class="{ 'agreement-inline-field-error': fieldErrors.party_b_signed_date }">
+                        <input v-model="form.party_b_signed_date" :disabled="isAgreementLocked" type="date" class="agreement-inline-input agreement-inline-date-input" :class="{ 'agreement-inline-input-locked': isAgreementLocked }" />
+                      </span>
+                    </p>
+                    <p v-if="fieldErrors.party_b_signed_date" class="agreement-field-error-text">{{ fieldErrors.party_b_signed_date }}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          </article>
-        </div>
-      </section>
+            </article>
+          </div>
+        </section>
+      </template>
 
-      <section v-if="!isAgreementLocked" class="flex justify-end">
+      <section v-if="!loading && !isAgreementLocked" class="flex justify-end">
         <button
           type="button"
-          :disabled="submitting || !agreement.template?.is_ready"
+          :disabled="submitting || !agreement.template?.is_ready || !isEnterpriseBasicInfoReady"
           class="rounded-full bg-sky-400 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
           @click="submitAgreement"
         >
@@ -241,13 +272,17 @@
 
 <script setup>
 import SignaturePad from 'signature_pad'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { apiRequest } from '../lib/api'
 import { authStore } from '../lib/auth'
 
+const route = useRoute()
+const router = useRouter()
 const loading = ref(false)
 const submitting = ref(false)
 const errorMessage = ref('')
+const entryNoticeMessage = ref('')
 const successMessage = ref('')
 const agreement = ref({
   template: null,
@@ -288,10 +323,25 @@ const signatureHint = reactive({
   message: ''
 })
 const isAgreementLocked = computed(() => Boolean(agreementStatus.value?.is_signed))
+const displayAuthorizationWindow = computed(() => resolveAuthorizationWindow(
+  agreement.value?.template,
+  form.party_b_signed_date,
+))
+const isEnterpriseBasicInfoReady = computed(() => (
+  hasFilledText(form.party_b_company_name)
+  && hasFilledText(form.party_b_credit_code)
+  && hasFilledText(form.party_b_registered_address)
+))
 
 function resetMessages() {
   errorMessage.value = ''
   successMessage.value = ''
+}
+
+function syncEntryNotice() {
+  entryNoticeMessage.value = typeof route.query.notice === 'string'
+    ? route.query.notice
+    : ''
 }
 
 function resetFieldErrors() {
@@ -335,9 +385,42 @@ function showSignatureHint({
   })
 }
 
+function scrollToSignatureSection() {
+  nextTick(() => {
+    signatureCard.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  })
+}
+
+function scrollToPageTop() {
+  nextTick(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  })
+}
+
+async function goToEnterpriseBasicInfo() {
+  await router.push('/enterprise-basic-info')
+}
+
+function hasBasicInfoFieldErrors(errors = fieldErrors) {
+  return Boolean(
+    errors.party_b_company_name
+    || errors.party_b_credit_code
+    || errors.party_b_registered_address
+  )
+}
+
+function hasFilledText(value) {
+  return Boolean(String(value || '').trim())
+}
+
 function displayOrPlaceholder(value) {
   const normalized = String(value || '').trim()
   return normalized || '待管理员配置'
+}
+
+function displayAgreementField(value, placeholder) {
+  const normalized = String(value || '').trim()
+  return normalized || placeholder
 }
 
 function formatDateText(value) {
@@ -347,13 +430,118 @@ function formatDateText(value) {
   return `${year}年${month}月${day}日`
 }
 
+function resolveAuthorizationWindow(template, signedDateValue) {
+  const dateMode = template?.authorization_date_mode || 'fixed'
+  if (dateMode !== 'relative_months') {
+    return {
+      start: template?.authorization_start_date || '',
+      end: template?.authorization_end_date || ''
+    }
+  }
+
+  const normalizedSignedDate = normalizeDateString(signedDateValue) || formatDate(new Date())
+  const termMonths = Number(template?.authorization_term_months) || 0
+  if (termMonths < 1) {
+    return {
+      start: normalizedSignedDate,
+      end: ''
+    }
+  }
+
+  const startDate = parseDateString(normalizedSignedDate)
+  if (!startDate) {
+    return {
+      start: normalizedSignedDate,
+      end: ''
+    }
+  }
+
+  return {
+    start: normalizedSignedDate,
+    end: formatDate(addMonths(startDate, termMonths))
+  }
+}
+
+function normalizeDateString(value) {
+  if (!value) return ''
+  const normalized = String(value).trim()
+  return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : ''
+}
+
+function parseDateString(value) {
+  const normalized = normalizeDateString(value)
+  if (!normalized) return null
+  const [year, month, day] = normalized.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function addMonths(baseDate, months) {
+  const year = baseDate.getFullYear()
+  const monthIndex = baseDate.getMonth()
+  const day = baseDate.getDate()
+  const totalMonthIndex = monthIndex + months
+  const targetYear = year + Math.floor(totalMonthIndex / 12)
+  const targetMonthIndex = totalMonthIndex % 12
+  const lastDay = new Date(targetYear, targetMonthIndex + 1, 0).getDate()
+  return new Date(targetYear, targetMonthIndex, Math.min(day, lastDay))
+}
+
+function formatDate(value) {
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function syncForm(payload) {
   const defaults = payload?.form_values || {}
-  form.party_b_company_name = defaults.party_b_company_name || ''
+  form.party_b_company_name = defaults.party_b_company_name || authStore.state.user?.display_name || ''
   form.party_b_credit_code = defaults.party_b_credit_code || ''
   form.party_b_registered_address = defaults.party_b_registered_address || ''
   form.party_b_signed_date = defaults.party_b_signed_date || ''
   form.party_b_signature_data_url = defaults.party_b_signature_data_url || ''
+}
+
+function validateBeforeSubmit() {
+  resetFieldErrors()
+  hideSignatureHint()
+  let isValid = true
+
+  if (!form.party_b_company_name.trim()) {
+    fieldErrors.party_b_company_name = '请先在企业基本信息中填写企业名称。'
+    isValid = false
+  }
+  if (!form.party_b_credit_code.trim()) {
+    fieldErrors.party_b_credit_code = '请先在企业基本信息中填写统一社会信用代码。'
+    isValid = false
+  }
+  if (!form.party_b_registered_address.trim()) {
+    fieldErrors.party_b_registered_address = '请先在企业基本信息中填写注册地址。'
+    isValid = false
+  }
+  if (!form.party_b_signed_date) {
+    fieldErrors.party_b_signed_date = '请选择签署日期。'
+    isValid = false
+  }
+
+  const isSignatureEmpty = !signaturePad || signaturePad.isEmpty()
+  if (isSignatureEmpty) {
+    fieldErrors.party_b_signature_data_url = '请完成乙方盖章/签字。'
+    isValid = false
+  }
+
+  if (hasBasicInfoFieldErrors(fieldErrors)) {
+    errorMessage.value = '请先前往企业基本信息页完善企业资料，再继续签署协议。'
+    scrollToPageTop()
+  } else if (fieldErrors.party_b_signed_date || fieldErrors.party_b_signature_data_url) {
+    scrollToSignatureSection()
+  }
+
+  if (fieldErrors.party_b_signature_data_url && !hasBasicInfoFieldErrors(fieldErrors)) {
+    showSignatureHint()
+  }
+
+  return isValid
 }
 
 function resizeSignatureCanvas() {
@@ -439,21 +627,15 @@ async function loadAgreement() {
 async function submitAgreement() {
   if (!authStore.state.token) return
   if (isAgreementLocked.value) return
+  resetMessages()
   if (!agreement.value?.template?.is_ready) {
     errorMessage.value = '企业协议模板尚未配置完成，请联系管理员后再签署。'
     return
   }
-  if (!signaturePad || signaturePad.isEmpty()) {
-    resetMessages()
-    resetFieldErrors()
-    fieldErrors.party_b_signature_data_url = '请完成乙方盖章/签字。'
-    showSignatureHint()
+  if (!validateBeforeSubmit()) {
     return
   }
   submitting.value = true
-  resetMessages()
-  resetFieldErrors()
-  hideSignatureHint()
   try {
     const signatureDataUrl = signaturePad && !signaturePad.isEmpty()
       ? signaturePad.toDataURL('image/png')
@@ -477,13 +659,14 @@ async function submitAgreement() {
       form.party_b_signature_data_url = signaturePad.toDataURL('image/png')
       signaturePad.off()
     }
+    entryNoticeMessage.value = ''
     successMessage.value = '企业协议已签署成功，现在可以访问演员广场与演员详情了。'
   } catch (error) {
     const detail = error && typeof error === 'object' ? error.detail : null
     const nextFieldErrors = detail && typeof detail === 'object' && detail.field_errors ? detail.field_errors : null
     if (nextFieldErrors) {
       applyFieldErrors(nextFieldErrors)
-      errorMessage.value = detail.message || '请检查协议中的填写内容。'
+      errorMessage.value = detail.message || '请检查标记出的企业信息或签署内容。'
     } else {
       const nextMessage = error instanceof Error ? error.message : '企业协议签署失败'
       if (nextMessage.includes('签字') || nextMessage.includes('盖章')) {
@@ -493,7 +676,12 @@ async function submitAgreement() {
         errorMessage.value = nextMessage
       }
     }
-    if (fieldErrors.party_b_signature_data_url) {
+    if (hasBasicInfoFieldErrors(fieldErrors)) {
+      scrollToPageTop()
+    } else if (fieldErrors.party_b_signed_date || fieldErrors.party_b_signature_data_url) {
+      scrollToSignatureSection()
+    }
+    if (fieldErrors.party_b_signature_data_url && !hasBasicInfoFieldErrors(fieldErrors)) {
       showSignatureHint({
         title: '签字还没有完成',
         message: fieldErrors.party_b_signature_data_url
@@ -509,9 +697,17 @@ function handleResize() {
 }
 
 onMounted(async () => {
+  syncEntryNotice()
   await loadAgreement()
   window.addEventListener('resize', handleResize)
 })
+
+watch(
+  () => route.query.notice,
+  () => {
+    syncEntryNotice()
+  }
+)
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
@@ -572,6 +768,20 @@ onBeforeUnmount(() => {
 
 .agreement-inline-field-error {
   border-bottom-color: #b42318;
+}
+
+.agreement-inline-display {
+  line-height: 1.5;
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+}
+
+.agreement-inline-display-multiline {
+  align-items: flex-start;
+}
+
+.agreement-inline-placeholder {
+  color: #8d7b60;
 }
 
 .agreement-inline-input {
@@ -653,6 +863,16 @@ onBeforeUnmount(() => {
 
 .secondary-button:hover {
   background: rgba(84, 69, 47, 0.14);
+}
+
+.secondary-button-dark {
+  border-color: rgba(125, 211, 252, 0.22);
+  background: rgba(14, 116, 144, 0.12);
+  color: #e0f2fe;
+}
+
+.secondary-button-dark:hover {
+  background: rgba(14, 116, 144, 0.2);
 }
 
 .sr-only {

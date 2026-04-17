@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 import logging
 from typing import List, Literal, Optional
@@ -6,6 +8,8 @@ from backend.interface.api.schemas import (
     ActorBasicInfoSchema,
     ActorBasicInfoUpdateRequest,
     ActorSchema,
+    EnterpriseActorSigningActionSchema,
+    EnterpriseSignedActorCardSchema,
     GenerateStyleRequest,
     GeneratedResultSchema,
     HistoryCleanupResultSchema,
@@ -25,6 +29,7 @@ from backend.interface.api.schemas import (
     StylePublishRequest,
     StyleResultStateToggleRequest,
     StyleResultGroupListSchema,
+    SignedEnterpriseSchema,
     StyleSchema,
     ThreeViewComposeJobCreateRequest,
     ThreeViewComposeJobSchema,
@@ -41,7 +46,7 @@ from backend.infrastructure.repositories import (
     PeeweeStyleRepository,
     PeeweeGeneratedResultRepository
 )
-from backend.infrastructure.orm_models import ActorModel, UserModel, database
+from backend.infrastructure.orm_models import ActorModel, EnterpriseActorSigningModel, UserModel, database
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -78,6 +83,81 @@ def get_style_service():
         PeeweeGeneratedResultRepository(),
         storage_client,
     )
+
+
+async def _build_actor_card_payload(
+    actor: ActorModel,
+    portrait_service: PortraitService,
+    style_service: StyleService,
+    *,
+    require_visible_materials: bool,
+    signed_at: datetime | None = None,
+) -> dict | None:
+    published_three = await portrait_service.get_published_three_view_for_actor(actor.id)
+    published_videos = await portrait_service.get_published_videos_for_actor(actor.id)
+    published_video = portrait_service.pick_primary_published_video(published_videos)
+    published_audios = await portrait_service.get_published_audios_for_actor(actor.id)
+    style_preview, style_count = await style_service.get_published_result_summary_for_actor(actor.id)
+    has_visible_materials = bool(published_three or published_video or style_preview or published_audios)
+    if require_visible_materials and not has_visible_materials:
+        return None
+
+    cover_image_url = None
+    if style_preview:
+        cover_image_url = style_preview.get("preview_url") or style_preview.get("image_url")
+    elif published_three:
+        cover_image_url = published_three.get("composite_preview_url") or published_three.get("composite_image_url")
+    elif published_video:
+        cover_image_url = published_video.get("preview_url") or published_video.get("video_url")
+
+    updated_at = actor.created_at
+    timestamps = []
+    if published_three and published_three.get("created_at"):
+        timestamps.append(published_three["created_at"])
+    for video in published_videos:
+        if video.get("created_at"):
+            timestamps.append(video["created_at"])
+    for audio in published_audios:
+        if audio.get("created_at"):
+            timestamps.append(audio["created_at"])
+    if style_preview and style_preview.get("published_at"):
+        timestamps.append(style_preview["published_at"])
+    if timestamps:
+        updated_at = max(timestamps)
+
+    payload = {
+        "actor_id": actor.id,
+        "name": actor.name,
+        "external_id": actor.external_id,
+        "tags": actor.tags or [],
+        "cover_image_url": cover_image_url,
+        "published_three_view_url": (
+            published_three.get("composite_preview_url")
+            if published_three else None
+        ),
+        "published_video_url": (
+            published_video.get("preview_url")
+            if published_video else None
+        ),
+        "published_style_count": int(style_count),
+        "published_audio_count": len(published_audios),
+        "updated_at": updated_at,
+    }
+    if signed_at is not None:
+        payload["signed_at"] = signed_at
+    return payload
+
+
+def _serialize_signed_enterprise(user: UserModel, signed_at: datetime) -> dict:
+    return {
+        "enterprise_user_id": int(user.id),
+        "company_name": user.display_name,
+        "company_intro": user.company_intro or "",
+        "credit_code": str(getattr(user, "company_credit_code", "") or ""),
+        "registered_address": str(getattr(user, "company_registered_address", "") or ""),
+        "signed_at": signed_at,
+        "created_at": user.created_at,
+    }
 
 @router.get("/actors", response_model=List[ActorSchema])
 async def list_actors(
@@ -153,64 +233,20 @@ async def list_published_actor_cards(
     for actor in actors:
         if not is_actor_agreement_currently_signed(int(actor.id)):
             continue
-        published_three = await portrait_service.get_published_three_view_for_actor(actor.id)
-        published_videos = await portrait_service.get_published_videos_for_actor(actor.id)
-        published_video = portrait_service.pick_primary_published_video(published_videos)
-        published_audios = await portrait_service.get_published_audios_for_actor(actor.id)
-        style_preview, style_count = await style_service.get_published_result_summary_for_actor(actor.id)
-        if not published_three and not published_video and not style_preview and not published_audios:
-            continue
-
-        cover_image_url = None
-        if style_preview:
-            cover_image_url = style_preview.get("preview_url") or style_preview.get("image_url")
-        elif published_three:
-            cover_image_url = published_three.get("composite_preview_url") or published_three.get("composite_image_url")
-        elif published_video:
-            cover_image_url = published_video.get("preview_url") or published_video.get("video_url")
-
-        updated_at = actor.created_at
-        timestamps = []
-        if published_three and published_three.get("created_at"):
-            timestamps.append(published_three["created_at"])
-        for video in published_videos:
-            if video.get("created_at"):
-                timestamps.append(video["created_at"])
-        for audio in published_audios:
-            if audio.get("created_at"):
-                timestamps.append(audio["created_at"])
-        if style_preview and style_preview.get("published_at"):
-            timestamps.append(style_preview["published_at"])
-        if timestamps:
-            updated_at = max(timestamps)
-
-        cards.append(
-            {
-                "actor_id": actor.id,
-                "name": actor.name,
-                "external_id": actor.external_id,
-                "tags": actor.tags or [],
-                "cover_image_url": cover_image_url,
-                "published_three_view_url": (
-                    published_three.get("composite_preview_url")
-                    if published_three else None
-                ),
-                "published_video_url": (
-                    published_video.get("preview_url")
-                    if published_video else None
-                ),
-                "published_style_count": int(style_count),
-                "published_audio_count": len(published_audios),
-                "updated_at": updated_at,
-            }
+        payload = await _build_actor_card_payload(
+            actor,
+            portrait_service,
+            style_service,
+            require_visible_materials=True,
         )
+        if payload:
+            cards.append(payload)
     return cards
 
 
 @router.get("/enterprise/discovery/actors/{actor_id}", response_model=PublishedActorDetailSchema)
 async def get_published_actor_detail(
     actor_id: int,
-    actor_service: ActorService = Depends(get_actor_service),
     portrait_service: PortraitService = Depends(get_portrait_service),
     style_service: StyleService = Depends(get_style_service),
     current_user: UserModel = Depends(require_enterprise_user),
@@ -219,10 +255,19 @@ async def get_published_actor_detail(
         ensure_enterprise_agreement_signed(current_user.id)
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
-    actor = await actor_service.get_actor(actor_id)
+    actor = await portrait_service.get_actor_basic_info_by_actor_id(actor_id)
     if not actor:
         raise HTTPException(status_code=404, detail="Actor not found")
-    if not is_actor_agreement_currently_signed(actor_id):
+
+    with database.allow_sync():
+        is_signed_by_current_enterprise = bool(
+            EnterpriseActorSigningModel.get_or_none(
+                (EnterpriseActorSigningModel.enterprise_user == current_user.id)
+                & (EnterpriseActorSigningModel.actor == actor_id)
+            )
+        )
+    is_publicly_visible = is_actor_agreement_currently_signed(actor_id)
+    if not is_publicly_visible and not is_signed_by_current_enterprise:
         raise HTTPException(status_code=404, detail="Actor not found")
 
     published_three = await portrait_service.get_published_three_view_for_actor(actor_id)
@@ -230,7 +275,7 @@ async def get_published_actor_detail(
     published_video = portrait_service.pick_primary_published_video(published_videos)
     published_audios = await portrait_service.get_published_audios_for_actor(actor_id)
     published_styles = await style_service.list_published_results_by_actor(actor_id=actor_id, limit=200)
-    if not published_three and not published_video and not published_audios and not published_styles:
+    if not published_three and not published_video and not published_audios and not published_styles and not is_signed_by_current_enterprise:
         raise HTTPException(status_code=404, detail="No published materials for this actor")
 
     return {
@@ -240,7 +285,121 @@ async def get_published_actor_detail(
         "published_videos": published_videos,
         "published_audios": published_audios,
         "published_styles": published_styles,
+        "is_signed_by_current_enterprise": is_signed_by_current_enterprise,
     }
+
+
+@router.post("/enterprise/signed-actors/{actor_id}", response_model=EnterpriseActorSigningActionSchema)
+async def sign_actor_for_enterprise(
+    actor_id: int,
+    current_user: UserModel = Depends(require_enterprise_user),
+):
+    try:
+        ensure_enterprise_agreement_signed(current_user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+    with database.allow_sync():
+        actor = ActorModel.get_or_none(ActorModel.id == actor_id)
+        if not actor or not actor.is_published:
+            raise HTTPException(status_code=404, detail="演员不存在或暂不可签约。")
+    if not is_actor_agreement_currently_signed(actor_id):
+        raise HTTPException(status_code=400, detail="该演员当前未完成协议签署，暂不可签约。")
+
+    with database.allow_sync():
+        signing, created = EnterpriseActorSigningModel.get_or_create(
+            enterprise_user=current_user,
+            actor=actor,
+            defaults={"signed_at": datetime.now()},
+        )
+
+    return {
+        "actor_id": int(actor.id),
+        "enterprise_user_id": int(current_user.id),
+        "signed_at": signing.signed_at,
+        "already_signed": not created,
+        "message": "已签约该演员，可在签约演员中查看。" if created else "该演员已在签约列表中。",
+    }
+
+
+@router.get("/enterprise/signed-actors", response_model=List[EnterpriseSignedActorCardSchema])
+async def list_enterprise_signed_actors(
+    portrait_service: PortraitService = Depends(get_portrait_service),
+    style_service: StyleService = Depends(get_style_service),
+    current_user: UserModel = Depends(require_enterprise_user),
+):
+    try:
+        ensure_enterprise_agreement_signed(current_user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+    with database.allow_sync():
+        signings = list(
+            EnterpriseActorSigningModel.select(EnterpriseActorSigningModel, ActorModel)
+            .join(ActorModel)
+            .where(EnterpriseActorSigningModel.enterprise_user == current_user.id)
+            .order_by(EnterpriseActorSigningModel.signed_at.desc())
+        )
+
+    cards: list[dict] = []
+    for signing in signings:
+        payload = await _build_actor_card_payload(
+            signing.actor,
+            portrait_service,
+            style_service,
+            require_visible_materials=False,
+            signed_at=signing.signed_at,
+        )
+        if payload:
+            cards.append(payload)
+    return cards
+
+
+@router.get("/actors/me/signed-enterprises", response_model=List[SignedEnterpriseSchema])
+async def list_actor_signed_enterprises(
+    current_user: UserModel = Depends(require_individual_user),
+):
+    actor_external_id = f"USER-{current_user.id}"
+    with database.allow_sync():
+        actor = ActorModel.get_or_none(ActorModel.external_id == actor_external_id)
+        if not actor:
+            return []
+        signings = list(
+            EnterpriseActorSigningModel.select(EnterpriseActorSigningModel, UserModel)
+            .join(UserModel, on=(EnterpriseActorSigningModel.enterprise_user == UserModel.id))
+            .where(EnterpriseActorSigningModel.actor == actor.id)
+            .order_by(EnterpriseActorSigningModel.signed_at.desc())
+        )
+
+    return [
+        _serialize_signed_enterprise(signing.enterprise_user, signing.signed_at)
+        for signing in signings
+    ]
+
+
+@router.get("/actors/me/signed-enterprises/{enterprise_user_id}", response_model=SignedEnterpriseSchema)
+async def get_actor_signed_enterprise_detail(
+    enterprise_user_id: int,
+    current_user: UserModel = Depends(require_individual_user),
+):
+    actor_external_id = f"USER-{current_user.id}"
+    with database.allow_sync():
+        actor = ActorModel.get_or_none(ActorModel.external_id == actor_external_id)
+        if not actor:
+            raise HTTPException(status_code=404, detail="未找到当前演员资料。")
+        signing = (
+            EnterpriseActorSigningModel.select(EnterpriseActorSigningModel, UserModel)
+            .join(UserModel, on=(EnterpriseActorSigningModel.enterprise_user == UserModel.id))
+            .where(
+                (EnterpriseActorSigningModel.actor == actor.id)
+                & (EnterpriseActorSigningModel.enterprise_user == enterprise_user_id)
+            )
+            .first()
+        )
+    if not signing:
+        raise HTTPException(status_code=404, detail="未找到该企业的签约记录。")
+
+    return _serialize_signed_enterprise(signing.enterprise_user, signing.signed_at)
 
 @router.post("/portraits", response_model=PortraitSchema)
 async def upload_portrait(

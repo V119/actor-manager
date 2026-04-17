@@ -2054,6 +2054,14 @@ class PortraitService:
             avatar_session = self._get_recompose_base_session(user_id=user_id, actor_id=actor_id)
         return self._serialize_actor_basic_info(actor=actor, avatar_session=avatar_session)
 
+    async def get_actor_basic_info_by_actor_id(self, actor_id: int) -> dict[str, Any] | None:
+        with database.allow_sync():
+            actor = ActorModel.get_or_none(ActorModel.id == actor_id)
+            if not actor:
+                return None
+            avatar_session = self._get_latest_actor_avatar_session(actor_id=actor_id)
+        return self._serialize_actor_basic_info(actor=actor, avatar_session=avatar_session)
+
     async def update_actor_basic_info(
         self,
         user_id: int,
@@ -2201,6 +2209,29 @@ class PortraitService:
             .where(
                 (PortraitUploadSessionModel.user_id == user_id)
                 & (PortraitUploadSessionModel.actor_id == actor_id)
+                & (PortraitUploadSessionModel.is_current == False)  # noqa: E712
+                & PortraitUploadSessionModel.superseded_at.is_null(True)
+            )
+            .order_by(PortraitUploadSessionModel.created_at.desc())
+            .first()
+        )
+
+    def _get_latest_actor_avatar_session(self, actor_id: int) -> PortraitUploadSessionModel | None:
+        current_session = (
+            PortraitUploadSessionModel.select()
+            .where(
+                (PortraitUploadSessionModel.actor_id == actor_id)
+                & (PortraitUploadSessionModel.is_current == True)  # noqa: E712
+            )
+            .order_by(PortraitUploadSessionModel.created_at.desc())
+            .first()
+        )
+        if current_session:
+            return current_session
+        return (
+            PortraitUploadSessionModel.select()
+            .where(
+                (PortraitUploadSessionModel.actor_id == actor_id)
                 & (PortraitUploadSessionModel.is_current == False)  # noqa: E712
                 & PortraitUploadSessionModel.superseded_at.is_null(True)
             )

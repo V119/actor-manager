@@ -169,7 +169,11 @@ class AgreementService:
                     unsigned_message="请先完成企业协议签署后再访问演员广场。",
                 ),
                 "agreement": _serialize_enterprise_agreement_record(agreement),
-                "form_values": _serialize_enterprise_form_values(user=user, agreement=agreement),
+                "form_values": _serialize_enterprise_form_values(
+                    user=user,
+                    agreement=agreement,
+                    current_template_version=config.version,
+                ),
             }
 
     def get_enterprise_agreement_status(self, user: UserModel) -> dict[str, Any]:
@@ -235,7 +239,11 @@ class AgreementService:
                     unsigned_message="请先完成企业协议签署后再访问演员广场。",
                 ),
                 "agreement": _serialize_enterprise_agreement_record(agreement),
-                "form_values": _serialize_enterprise_form_values(user=user, agreement=agreement),
+                "form_values": _serialize_enterprise_form_values(
+                    user=user,
+                    agreement=agreement,
+                    current_template_version=config.version,
+                ),
             }
 
 
@@ -413,43 +421,64 @@ def _update_template_config(config: Any, payload: dict[str, Any], source_documen
 
 
 def _template_fingerprint(config: Any) -> tuple[Any, ...]:
+    authorization_date_mode = getattr(config, "authorization_date_mode", "fixed") or "fixed"
+    authorization_start_date, authorization_end_date = _fingerprint_authorization_dates(
+        authorization_date_mode,
+        getattr(config, "authorization_start_date", None),
+        getattr(config, "authorization_end_date", None),
+    )
     return (
         config.party_a_company_name,
         config.party_a_credit_code,
         config.party_a_registered_address,
         config.party_a_signature_label,
-        getattr(config, "authorization_date_mode", "fixed"),
+        authorization_date_mode,
         getattr(config, "authorization_term_months", None),
-        config.authorization_start_date,
-        config.authorization_end_date,
+        authorization_start_date,
+        authorization_end_date,
         config.party_a_signed_date,
     )
 
 
 def _is_template_ready(config: Any) -> bool:
+    authorization_date_mode = getattr(config, "authorization_date_mode", "fixed") or "fixed"
+    has_authorization_window = False
+    if authorization_date_mode == "relative_months":
+        has_authorization_window = getattr(config, "authorization_term_months", None) is not None
+    else:
+        has_authorization_window = (
+            getattr(config, "authorization_start_date", None) is not None
+            and getattr(config, "authorization_end_date", None) is not None
+        )
+
     return all(
         [
             _has_text(config.party_a_company_name),
             _has_text(config.party_a_credit_code),
             _has_text(config.party_a_registered_address),
-            config.authorization_start_date is not None,
-            config.authorization_end_date is not None,
+            has_authorization_window,
             config.party_a_signed_date is not None,
         ]
     )
 
 
 def _serialize_template_config(config: Any, source_document_name: str) -> dict[str, Any]:
+    authorization_date_mode = getattr(config, "authorization_date_mode", "fixed") or "fixed"
+    authorization_start_date, authorization_end_date = _display_authorization_dates(
+        authorization_date_mode,
+        config.authorization_start_date,
+        config.authorization_end_date,
+    )
     return {
         "version": int(config.version or 1),
         "source_document_name": config.source_document_name or source_document_name,
         "party_a_company_name": config.party_a_company_name or "",
         "party_a_credit_code": config.party_a_credit_code or "",
         "party_a_registered_address": config.party_a_registered_address or "",
-        "authorization_date_mode": getattr(config, "authorization_date_mode", "fixed") or "fixed",
+        "authorization_date_mode": authorization_date_mode,
         "authorization_term_months": getattr(config, "authorization_term_months", None),
-        "authorization_start_date": config.authorization_start_date,
-        "authorization_end_date": config.authorization_end_date,
+        "authorization_start_date": authorization_start_date,
+        "authorization_end_date": authorization_end_date,
         "party_a_signature_label": config.party_a_signature_label or config.party_a_company_name or "",
         "party_a_signed_date": config.party_a_signed_date,
         "is_ready": _is_template_ready(config),
@@ -582,17 +611,29 @@ def _serialize_actor_form_values(
 def _serialize_enterprise_form_values(
     user: UserModel,
     agreement: EnterpriseAgreementModel | None,
+    current_template_version: int,
 ) -> dict[str, Any]:
-    default_company_name = agreement.party_b_company_name if agreement else ""
-    if not default_company_name:
-        default_company_name = (user.display_name or user.username or "").strip()
+    is_current_signed_agreement = bool(
+        agreement
+        and agreement.status == "signed"
+        and int(agreement.template_version or 0) == int(current_template_version or 0)
+    )
+
+    default_company_name = (user.display_name or user.username or "").strip()
+    default_credit_code = (getattr(user, "company_credit_code", "") or "").strip()
+    default_registered_address = (getattr(user, "company_registered_address", "") or "").strip()
+
+    if is_current_signed_agreement:
+        default_company_name = agreement.party_b_company_name or default_company_name
+        default_credit_code = agreement.party_b_credit_code or default_credit_code
+        default_registered_address = agreement.party_b_registered_address or default_registered_address
 
     return {
         "party_b_company_name": default_company_name,
-        "party_b_credit_code": agreement.party_b_credit_code if agreement else "",
-        "party_b_registered_address": agreement.party_b_registered_address if agreement else "",
-        "party_b_signature_data_url": agreement.party_b_signature_data_url if agreement else "",
-        "party_b_signed_date": agreement.party_b_signed_date if agreement and agreement.party_b_signed_date else date.today(),
+        "party_b_credit_code": default_credit_code,
+        "party_b_registered_address": default_registered_address,
+        "party_b_signature_data_url": agreement.party_b_signature_data_url if is_current_signed_agreement and agreement else "",
+        "party_b_signed_date": agreement.party_b_signed_date if is_current_signed_agreement and agreement and agreement.party_b_signed_date else date.today(),
     }
 
 
@@ -733,12 +774,7 @@ def _resolve_authorization_dates(
 
     if term_months is None:
         raise ValueError("请选择授权期限月数。")
-
-    resolved_start = date.today()
-    resolved_end = _add_months(resolved_start, term_months)
-    if resolved_start > resolved_end:
-        raise ValueError("授权截止日期不能早于开始日期。")
-    return resolved_start, resolved_end
+    return None, None
 
 
 def _add_months(base_date: date, months: int) -> date:
@@ -747,3 +783,23 @@ def _add_months(base_date: date, months: int) -> date:
     month = total_month % 12 + 1
     day = min(base_date.day, monthrange(year, month)[1])
     return date(year, month, day)
+
+
+def _fingerprint_authorization_dates(
+    authorization_date_mode: str,
+    authorization_start_date: date | None,
+    authorization_end_date: date | None,
+) -> tuple[date | None, date | None]:
+    if authorization_date_mode == "relative_months":
+        return None, None
+    return authorization_start_date, authorization_end_date
+
+
+def _display_authorization_dates(
+    authorization_date_mode: str,
+    authorization_start_date: date | None,
+    authorization_end_date: date | None,
+) -> tuple[date | None, date | None]:
+    if authorization_date_mode == "relative_months":
+        return None, None
+    return authorization_start_date, authorization_end_date

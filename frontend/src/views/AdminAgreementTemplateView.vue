@@ -77,7 +77,7 @@
               class="w-full rounded-xl border border-amber-300/20 bg-slate-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-amber-300/60"
             >
               <option value="fixed">指定开始时间和结束时间</option>
-              <option value="relative_months">当前时间 + N个月</option>
+              <option value="relative_months">签署时间 + N个月</option>
             </select>
           </label>
 
@@ -115,9 +115,9 @@
             v-else
             class="space-y-2 rounded-xl border border-amber-300/15 bg-slate-950/20 px-4 py-3 text-sm text-on-surface-variant"
           >
-            <p>保存时将自动按当前日期生成授权起止时间。</p>
-            <p>预计开始日期：<span class="text-amber-200">{{ relativeDatePreview.start }}</span></p>
-            <p>预计结束日期：<span class="text-amber-200">{{ relativeDatePreview.end }}</span></p>
+            <p>开始日期将在演员签署协议当天自动取签署日期，结束日期按签署日期顺延对应月数。</p>
+            <p>若今日签署，预计开始日期：<span class="text-amber-200">{{ relativeDatePreview.start }}</span></p>
+            <p>若今日签署，预计结束日期：<span class="text-amber-200">{{ relativeDatePreview.end }}</span></p>
           </div>
 
           <label class="space-y-1">

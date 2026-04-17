@@ -97,7 +97,7 @@ function defaultRouteForRole(role) {
   if (role === 'admin') {
     return '/admin/enterprise-users'
   }
-  return role === 'enterprise' ? '/enterprise-agreement' : '/edit-portrait'
+  return role === 'enterprise' ? '/enterprise-basic-info' : '/edit-portrait'
 }
 
 export const authStore = {

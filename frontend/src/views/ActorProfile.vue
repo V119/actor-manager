@@ -6,30 +6,108 @@
 
       <template v-else-if="detail">
         <section class="bg-surface/60 backdrop-blur-xl border border-sky-400/10 p-6 rounded-xl">
-          <div class="flex flex-col md:flex-row gap-6 items-start">
-            <div class="w-40 h-52 rounded-xl overflow-hidden border border-sky-300/20 bg-slate-950/30">
-              <img :src="coverImage" :alt="detail.actor.name" class="w-full h-full object-cover" />
+          <div class="flex flex-col xl:flex-row gap-6 items-start xl:justify-between">
+            <div class="flex flex-col md:flex-row gap-6 items-start flex-1">
+              <div class="w-40 h-52 rounded-xl overflow-hidden border border-sky-300/20 bg-slate-950/30">
+                <img :src="coverImage" :alt="detail.actor.name" class="w-full h-full object-cover" />
+              </div>
+              <div class="space-y-3">
+                <h1 class="text-3xl font-bold text-on-surface">{{ detail.actor.name }}</h1>
+                <p class="text-xs text-on-surface-variant">ID: {{ detail.actor.external_id }}</p>
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    v-for="tag in detail.actor.tags"
+                    :key="tag"
+                    class="px-2.5 py-0.5 text-[10px] font-semibold rounded bg-sky-400/10 text-sky-300 border border-sky-400/20"
+                  >
+                    {{ tag }}
+                  </span>
+                </div>
+                <p class="text-sm text-on-surface-variant max-w-3xl">{{ detail.actor.bio }}</p>
+              </div>
             </div>
-            <div class="space-y-3">
-              <h1 class="text-3xl font-bold text-on-surface">{{ detail.actor.name }}</h1>
-              <p class="text-xs text-on-surface-variant">ID: {{ detail.actor.external_id }}</p>
-              <div class="flex flex-wrap gap-2">
+
+            <div class="w-full xl:w-80 rounded-2xl border border-emerald-300/20 bg-emerald-500/5 p-4 space-y-3">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <p class="text-[11px] tracking-[0.18em] uppercase text-emerald-200/80">签约状态</p>
+                  <p class="mt-2 text-sm text-on-surface-variant">
+                    {{ detail.is_signed_by_current_enterprise ? '该演员已加入当前企业的签约列表。' : '确认签约后，可在左侧“签约演员”中随时查看。' }}
+                  </p>
+                </div>
+                <span
+                  class="rounded-full border px-3 py-1 text-xs font-semibold"
+                  :class="detail.is_signed_by_current_enterprise ? 'border-emerald-300/25 bg-emerald-500/15 text-emerald-200' : 'border-amber-300/25 bg-amber-500/10 text-amber-100'"
+                >
+                  {{ detail.is_signed_by_current_enterprise ? '已签约' : '待签约' }}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                class="w-full rounded-xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+                :class="detail.is_signed_by_current_enterprise ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-300/25' : 'bg-sky-400 text-slate-950 hover:brightness-110'"
+                :disabled="detail.is_signed_by_current_enterprise || signing"
+                @click="handleSignActor"
+              >
+                {{ detail.is_signed_by_current_enterprise ? '已签约' : signing ? '签约中...' : '签约' }}
+              </button>
+
+              <p v-if="signActionMessage" class="text-sm text-emerald-200 leading-6">{{ signActionMessage }}</p>
+              <p v-if="signActionError" class="rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-200 leading-6">
+                {{ signActionError }}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="grid xl:grid-cols-[1.2fr_1fr] gap-6">
+          <div class="bg-surface/60 border border-sky-400/15 rounded-xl p-5">
+            <h2 class="text-lg font-semibold">演员基本信息</h2>
+            <div class="mt-4 grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+              <div
+                v-for="item in basicInfoItems"
+                :key="item.label"
+                class="rounded-xl border border-sky-300/15 bg-slate-950/20 px-4 py-3"
+              >
+                <p class="text-[11px] tracking-[0.16em] uppercase text-slate-400">{{ item.label }}</p>
+                <p class="mt-2 text-sm font-medium text-sky-50 break-words">{{ item.value }}</p>
+              </div>
+            </div>
+
+            <div class="mt-5 rounded-xl border border-sky-300/15 bg-slate-950/20 px-4 py-4">
+              <p class="text-[11px] tracking-[0.16em] uppercase text-slate-400">擅长标签</p>
+              <div v-if="detail.actor.tags?.length" class="mt-3 flex flex-wrap gap-2">
                 <span
                   v-for="tag in detail.actor.tags"
                   :key="tag"
-                  class="px-2.5 py-0.5 text-[10px] font-semibold rounded bg-sky-400/10 text-sky-300 border border-sky-400/20"
+                  class="px-2.5 py-1 text-xs font-semibold rounded-full bg-sky-400/10 text-sky-300 border border-sky-400/20"
                 >
                   {{ tag }}
                 </span>
               </div>
-              <p class="text-sm text-on-surface-variant max-w-3xl">{{ detail.actor.bio }}</p>
+              <p v-else class="mt-3 text-sm text-on-surface-variant">未填写擅长标签</p>
+            </div>
+          </div>
+
+          <div class="bg-surface/60 border border-sky-400/15 rounded-xl p-5">
+            <h2 class="text-lg font-semibold">合作偏好与说明</h2>
+            <div class="mt-4 space-y-4">
+              <div
+                v-for="item in profileTextBlocks"
+                :key="item.label"
+                class="rounded-xl border border-sky-300/15 bg-slate-950/20 px-4 py-4"
+              >
+                <p class="text-[11px] tracking-[0.16em] uppercase text-slate-400">{{ item.label }}</p>
+                <p class="mt-2 text-sm leading-7 text-on-surface-variant whitespace-pre-wrap">{{ item.value }}</p>
+              </div>
             </div>
           </div>
         </section>
 
         <section class="grid lg:grid-cols-2 gap-6">
           <div class="bg-surface/60 border border-emerald-300/20 rounded-xl p-4">
-            <h2 class="text-lg font-semibold mb-3">已发布三视图</h2>
+            <h2 class="text-lg font-semibold mb-3">三视图</h2>
             <div v-if="detail.published_three_view" class="space-y-4">
               <div class="aspect-[4/3] rounded-lg overflow-hidden border border-emerald-300/20">
                 <img
@@ -38,21 +116,15 @@
                   class="w-full h-full object-cover"
                 />
               </div>
-              <div class="grid grid-cols-3 gap-3">
-                <div
-                  v-for="img in detail.published_three_view.raw_images"
-                  :key="img.id"
-                  class="aspect-[9/16] rounded-lg overflow-hidden border border-sky-300/20"
-                >
-                  <img :src="img.preview_url" :alt="img.view_angle" class="w-full h-full object-cover" />
-                </div>
-              </div>
+              <p class="text-xs leading-6 text-on-surface-variant">
+                展示当前已发布的三视图合成图。
+              </p>
             </div>
             <div v-else class="text-xs text-on-surface-variant">暂无已发布三视图。</div>
           </div>
 
           <div class="bg-surface/60 border border-emerald-300/20 rounded-xl p-4">
-            <h2 class="text-lg font-semibold mb-3">已发布视频</h2>
+            <h2 class="text-lg font-semibold mb-3">视频</h2>
             <div v-if="publishedVideos.length" class="space-y-4">
               <div
                 v-for="video in publishedVideos"
@@ -75,16 +147,26 @@
             <div
               v-for="item in detail.published_styles"
               :key="item.id"
-              class="break-inside-avoid rounded-lg overflow-hidden border border-emerald-300/20"
+              class="break-inside-avoid rounded-lg overflow-hidden border border-emerald-300/20 bg-slate-950/20"
             >
-              <img :src="item.preview_url || item.image_url" :alt="item.style_name" class="w-full h-auto" />
+              <div class="relative">
+                <img :src="item.preview_url || item.image_url" :alt="item.style_name" class="w-full h-auto" />
+                <div class="absolute left-3 top-3 flex flex-wrap gap-2">
+                  <span class="rounded-full border border-sky-300/35 bg-slate-950/75 px-2.5 py-1 text-[11px] font-semibold text-sky-100 backdrop-blur">
+                    {{ item.style_name }}
+                  </span>
+                  <span class="rounded-full border border-emerald-300/30 bg-slate-950/75 px-2.5 py-1 text-[11px] font-semibold text-emerald-100 backdrop-blur">
+                    {{ styleCategoryLabelMap[item.style_category] || item.style_category || '未分类' }}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
           <div v-else class="text-xs text-on-surface-variant">暂无已发布风格图。</div>
         </section>
 
         <section class="bg-surface/60 border border-emerald-300/20 rounded-xl p-4">
-          <h2 class="text-lg font-semibold mb-3">已发布录音</h2>
+          <h2 class="text-lg font-semibold mb-3">录音</h2>
           <div v-if="publishedAudios.length" class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
             <div
               v-for="audio in publishedAudios"
@@ -110,16 +192,32 @@ import { useRouter } from 'vue-router'
 import { useRoute } from 'vue-router'
 import { apiRequest } from '../lib/api'
 import { authStore } from '../lib/auth'
-import { ensureEnterpriseAgreementSigned, isEnterpriseAgreementBlockingErrorMessage } from '../lib/enterpriseAgreement'
+import {
+  ENTERPRISE_ACTOR_DETAIL_BLOCKED_NOTICE,
+  buildEnterpriseAgreementRoute,
+  ensureEnterpriseAgreementSigned,
+  isEnterpriseAgreementBlockingErrorMessage
+} from '../lib/enterpriseAgreement'
 
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const errorMessage = ref('')
 const detail = ref(null)
+const signing = ref(false)
+const signActionMessage = ref('')
+const signActionError = ref('')
 const videoLabelMap = {
   intro: '真人自我介绍',
   showreel: '妆造风格/演戏混剪'
+}
+const styleCategoryLabelMap = {
+  cinematic: '电影感',
+  commercial: '商业感',
+  'sci-fi': '科幻感',
+  noir: '黑色电影',
+  'oil-painting': '油画感',
+  custom: '自定义'
 }
 
 const fallbackCover = 'https://lh3.googleusercontent.com/aida-public/AB6AXuD9xOeWWM-jWAGILA81XqH26NeDYHoqtGJWE9brsTAGIiWw7kgjEJmhS9d25ZDEFQybXpSuk9M_jCEvPBHtXPid3MZ5GZKW2JezdodqzKL0BgEEX6Hj4IlvV5mgXkbks3cx4bd8E19xJxVGT1tENU9rYe3gtZ2xAs7dkwy2hkTeuysJ7qzuM90wWoIhgFKDYdLY5ylh0wX45zCP4PKhlDQBAr0mu0zk4x0jVLSNsJZAacfBelDO38vlM_4rieH1BZ0uq7nQpgs-BsoA'
@@ -152,14 +250,92 @@ const coverImage = computed(() => {
   return fallbackCover
 })
 
+const basicInfoItems = computed(() => {
+  const actor = detail.value?.actor
+  if (!actor) return []
+  return [
+    { label: '年龄', value: formatNumberField(actor.age, '岁') },
+    { label: '身高', value: formatNumberField(actor.height, 'cm') },
+    { label: '体重', value: formatNumberField(actor.weight_kg, 'kg') },
+    { label: '常驻地', value: formatTextField(actor.location) },
+    { label: '籍贯', value: formatTextField(actor.hometown) },
+    { label: '鞋码', value: formatTextField(actor.shoe_size) },
+    { label: '胸围', value: formatNumberField(actor.bust_cm, 'cm') },
+    { label: '腰围', value: formatNumberField(actor.waist_cm, 'cm') },
+    { label: '臀围', value: formatNumberField(actor.hip_cm, 'cm') },
+    { label: '基础报价', value: formatPricing(actor.pricing_amount, actor.pricing_unit) }
+  ]
+})
+
+const profileTextBlocks = computed(() => {
+  const actor = detail.value?.actor
+  if (!actor) return []
+  return [
+    { label: '个人简介', value: formatTextField(actor.bio, '未填写个人简介') },
+    { label: '接戏要求', value: formatTextField(actor.acting_requirements, '未填写接戏要求') },
+    { label: '不接内容', value: formatTextField(actor.rejected_requirements, '未填写不接内容') },
+    { label: '档期说明', value: formatTextField(actor.availability_note, '未填写档期说明') }
+  ]
+})
+
+function formatTextField(value, emptyText = '未填写') {
+  const normalized = String(value || '').trim()
+  return normalized || emptyText
+}
+
+function formatNumberField(value, suffix) {
+  const number = Number(value || 0)
+  if (!Number.isFinite(number) || number <= 0) {
+    return '未填写'
+  }
+  return `${number}${suffix}`
+}
+
+function formatPricing(amount, unit) {
+  const number = Number(amount || 0)
+  if (!Number.isFinite(number) || number <= 0) {
+    return '未填写'
+  }
+  return `￥${number}/${unit === 'day' ? '天' : '项目'}`
+}
+
+async function handleSignActor() {
+  if (!authStore.state.token || !detail.value?.actor?.actor_id || signing.value) return
+  signing.value = true
+  signActionMessage.value = ''
+  signActionError.value = ''
+  try {
+    const payload = await apiRequest(`/enterprise/signed-actors/${detail.value.actor.actor_id}`, {
+      method: 'POST',
+      token: authStore.state.token
+    })
+    detail.value = {
+      ...detail.value,
+      is_signed_by_current_enterprise: true
+    }
+    signActionMessage.value = payload?.message || '已签约该演员。'
+  } catch (error) {
+    const nextMessage = error instanceof Error ? error.message : '签约失败，请稍后重试。'
+    signActionError.value = nextMessage
+    if (isEnterpriseAgreementBlockingErrorMessage(nextMessage)) {
+      await router.push(buildEnterpriseAgreementRoute(ENTERPRISE_ACTOR_DETAIL_BLOCKED_NOTICE))
+    }
+  } finally {
+    signing.value = false
+  }
+}
+
 async function loadDetail() {
   if (!authStore.state.token) return
   loading.value = true
   errorMessage.value = ''
+  signActionMessage.value = ''
+  signActionError.value = ''
   try {
     const agreementResult = await ensureEnterpriseAgreementSigned({
       token: authStore.state.token,
       router,
+      blockedNotice: ENTERPRISE_ACTOR_DETAIL_BLOCKED_NOTICE,
       onBlocked: (message) => {
         errorMessage.value = message
       }
@@ -177,7 +353,7 @@ async function loadDetail() {
     const nextMessage = error instanceof Error ? error.message : '演员详情加载失败，请稍后重试。'
     errorMessage.value = nextMessage
     if (isEnterpriseAgreementBlockingErrorMessage(nextMessage)) {
-      await router.push('/enterprise-agreement')
+      await router.push(buildEnterpriseAgreementRoute(ENTERPRISE_ACTOR_DETAIL_BLOCKED_NOTICE))
     }
   } finally {
     loading.value = false

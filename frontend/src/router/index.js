@@ -2,10 +2,14 @@ import { createRouter, createWebHistory } from 'vue-router'
 import EditPortrait from '../views/EditPortrait.vue'
 import ActorBasicInfo from '../views/ActorBasicInfo.vue'
 import ActorAgreementSign from '../views/ActorAgreementSign.vue'
+import EnterpriseBasicInfo from '../views/EnterpriseBasicInfo.vue'
 import EnterpriseAgreementSign from '../views/EnterpriseAgreementSign.vue'
 import StyleLab from '../views/StyleLab.vue'
 import DiscoverySquare from '../views/DiscoverySquare.vue'
 import ActorProfile from '../views/ActorProfile.vue'
+import EnterpriseSignedActors from '../views/EnterpriseSignedActors.vue'
+import ActorSignedEnterprises from '../views/ActorSignedEnterprises.vue'
+import ActorSignedEnterpriseDetail from '../views/ActorSignedEnterpriseDetail.vue'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import AdminLoginView from '../views/AdminLoginView.vue'
@@ -108,6 +112,12 @@ const routes = [
     meta: { requiresAuth: true, roles: ['individual'] }
   },
   {
+    path: '/enterprise-basic-info',
+    name: 'EnterpriseBasicInfo',
+    component: EnterpriseBasicInfo,
+    meta: { requiresAuth: true, roles: ['enterprise'] }
+  },
+  {
     path: '/enterprise-agreement',
     name: 'EnterpriseAgreementSign',
     component: EnterpriseAgreementSign,
@@ -120,11 +130,30 @@ const routes = [
     meta: { requiresAuth: true, roles: ['enterprise'] }
   },
   {
+    path: '/enterprise-signed-actors',
+    name: 'EnterpriseSignedActors',
+    component: EnterpriseSignedActors,
+    meta: { requiresAuth: true, roles: ['enterprise'] }
+  },
+  {
     path: '/actor/:id',
     name: 'ActorProfile',
     component: ActorProfile,
     props: true,
     meta: { requiresAuth: true, roles: ['enterprise'] }
+  },
+  {
+    path: '/actor-signed-enterprises',
+    name: 'ActorSignedEnterprises',
+    component: ActorSignedEnterprises,
+    meta: { requiresAuth: true, roles: ['individual'] }
+  },
+  {
+    path: '/actor-signed-enterprises/:enterpriseUserId',
+    name: 'ActorSignedEnterpriseDetail',
+    component: ActorSignedEnterpriseDetail,
+    props: true,
+    meta: { requiresAuth: true, roles: ['individual'] }
   }
 ]
 

@@ -310,10 +310,33 @@ class PublishedActorCardSchema(BaseModel):
     updated_at: datetime
 
 
+class EnterpriseSignedActorCardSchema(PublishedActorCardSchema):
+    signed_at: datetime
+
+
+class EnterpriseActorSigningActionSchema(BaseModel):
+    actor_id: int
+    enterprise_user_id: int
+    signed_at: datetime
+    already_signed: bool
+    message: str
+
+
+class SignedEnterpriseSchema(BaseModel):
+    enterprise_user_id: int
+    company_name: str
+    company_intro: str
+    credit_code: str
+    registered_address: str
+    signed_at: datetime
+    created_at: datetime
+
+
 class PublishedActorDetailSchema(BaseModel):
-    actor: ActorSchema
+    actor: ActorBasicInfoSchema
     published_three_view: Optional[ThreeViewUploadSchema]
     published_video: Optional[PortraitVideoSchema]
     published_videos: List[PortraitVideoSchema]
     published_audios: List[PortraitAudioSchema]
     published_styles: List[GeneratedResultSchema]
+    is_signed_by_current_enterprise: bool = False

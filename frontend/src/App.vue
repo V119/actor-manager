@@ -98,7 +98,7 @@ const roleSubtitle = computed(() => {
   if (currentUser.value?.role === 'admin') {
     return '系统管理控制台'
   }
-  return currentUser.value?.role === 'enterprise' ? '企业协议工作台' : '演员用户工作台'
+  return currentUser.value?.role === 'enterprise' ? '企业资料与协议工作台' : '演员用户工作台'
 })
 const profileSubtitle = computed(() => {
   if (currentUser.value?.role === 'enterprise') {
@@ -126,13 +126,16 @@ const navItems = computed(() => {
   }
   if (currentUser.value?.role === 'enterprise') {
     return [
+      { to: '/enterprise-basic-info', label: '企业基本信息', icon: 'business' },
       { to: '/enterprise-agreement', label: '协议签署', icon: 'contract_edit' },
-      { to: '/discovery', label: '演员发布广场', icon: 'dashboard' }
+      { to: '/discovery', label: '演员发布广场', icon: 'dashboard' },
+      { to: '/enterprise-signed-actors', label: '签约演员', icon: 'group' }
     ]
   }
   return [
     { to: '/actor-basic-info', label: '基本信息', icon: 'person' },
     { to: '/actor-agreement', label: '协议签署', icon: 'contract_edit' },
+    { to: '/actor-signed-enterprises', label: '签约', icon: 'handshake' },
     { to: '/edit-portrait', label: '素材管理', icon: 'cloud_upload' },
     { to: '/style-lab', label: '风格实验室', icon: 'auto_awesome' }
   ]

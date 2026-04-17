@@ -6,9 +6,6 @@
           <div>
             <p class="text-xs tracking-[0.2em] uppercase text-sky-300">Agreement Sign</p>
             <h1 class="mt-2 text-3xl font-bold tracking-tight">协议签署</h1>
-            <p class="mt-3 text-sm text-on-surface-variant max-w-3xl leading-relaxed">
-              协议正文展示内容基于《AI肖像权独家授权合作协议.docx》。请完善乙方信息并完成手写签名，签署完成后才可发布演员资料、三视图、视频、录音与风格图。
-            </p>
           </div>
           <div class="min-w-[220px] rounded-2xl border border-sky-300/20 bg-slate-900/45 p-4">
             <p class="text-xs text-on-surface-variant">当前状态</p>
@@ -16,11 +13,7 @@
               class="mt-2 text-sm font-semibold"
               :class="agreementStatus.is_signed ? 'text-emerald-300' : 'text-amber-300'"
             >
-              {{ agreementStatus.is_signed ? '已签署当前版本' : '待签署 / 待重签' }}
-            </p>
-            <p class="mt-2 text-xs text-on-surface-variant leading-relaxed">{{ agreementStatus.message || '请完成协议签署。' }}</p>
-            <p class="mt-3 text-[11px] text-on-surface-variant">
-              模板版本：V{{ agreementStatus.template_version || agreement.template?.version || 1 }}
+              {{ agreementStatus.is_signed ? '已签署' : '未签署' }}
             </p>
           </div>
         </div>
@@ -133,9 +126,9 @@
               <p>（8）甲方及甲方转授权的第三方有权利用AI技术让乙方的数字分身做出乙方本人未曾做出的表情、动作、台词，将乙方的肖像替换到任何角色或场景中（法律法规禁止的除外）。</p>
               <p>
                 2.3 本协议的授权期限自
-                <span class="inline-flex min-w-[140px] border-b border-[#54452f] px-2">{{ formatDateText(agreement.template?.authorization_start_date) }}</span>
+                <span class="inline-flex min-w-[140px] border-b border-[#54452f] px-2">{{ formatDateText(displayAuthorizationWindow.start) }}</span>
                 起至
-                <span class="inline-flex min-w-[140px] border-b border-[#54452f] px-2">{{ formatDateText(agreement.template?.authorization_end_date) }}</span>
+                <span class="inline-flex min-w-[140px] border-b border-[#54452f] px-2">{{ formatDateText(displayAuthorizationWindow.end) }}</span>
                 止，协议到期自动终止。
               </p>
               <p><strong>2.4 甲方有权将本合同项下的部分或全部权利转授权给第三方行使，包括但不限于授权第三方使用AI模型、AI作品进行播出、发行、代言推广等商业活动。</strong></p>
@@ -316,6 +309,10 @@ const signatureHint = reactive({
   message: ''
 })
 const isAgreementLocked = computed(() => Boolean(agreementStatus.value?.is_signed))
+const displayAuthorizationWindow = computed(() => resolveAuthorizationWindow(
+  agreement.value?.template,
+  form.party_b_signed_date,
+))
 
 function resetMessages() {
   errorMessage.value = ''
@@ -379,6 +376,69 @@ function formatDateText(value) {
   const [year, month, day] = String(value).split('-')
   if (!year || !month || !day) return String(value)
   return `${year}年${month}月${day}日`
+}
+
+function resolveAuthorizationWindow(template, signedDateValue) {
+  const dateMode = template?.authorization_date_mode || 'fixed'
+  if (dateMode !== 'relative_months') {
+    return {
+      start: template?.authorization_start_date || '',
+      end: template?.authorization_end_date || ''
+    }
+  }
+
+  const normalizedSignedDate = normalizeDateString(signedDateValue) || formatDate(new Date())
+  const termMonths = Number(template?.authorization_term_months) || 0
+  if (termMonths < 1) {
+    return {
+      start: normalizedSignedDate,
+      end: ''
+    }
+  }
+
+  const startDate = parseDateString(normalizedSignedDate)
+  if (!startDate) {
+    return {
+      start: normalizedSignedDate,
+      end: ''
+    }
+  }
+
+  return {
+    start: normalizedSignedDate,
+    end: formatDate(addMonths(startDate, termMonths))
+  }
+}
+
+function normalizeDateString(value) {
+  if (!value) return ''
+  const normalized = String(value).trim()
+  return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : ''
+}
+
+function parseDateString(value) {
+  const normalized = normalizeDateString(value)
+  if (!normalized) return null
+  const [year, month, day] = normalized.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function addMonths(baseDate, months) {
+  const year = baseDate.getFullYear()
+  const monthIndex = baseDate.getMonth()
+  const day = baseDate.getDate()
+  const totalMonthIndex = monthIndex + months
+  const targetYear = year + Math.floor(totalMonthIndex / 12)
+  const targetMonthIndex = totalMonthIndex % 12
+  const lastDay = new Date(targetYear, targetMonthIndex + 1, 0).getDate()
+  return new Date(targetYear, targetMonthIndex, Math.min(day, lastDay))
+}
+
+function formatDate(value) {
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function syncForm(payload) {

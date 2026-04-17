@@ -49,6 +49,8 @@ class UserModel(BaseModel):
     role = peewee.CharField()  # "individual" | "enterprise" | "admin"
     display_name = peewee.CharField()
     company_intro = peewee.TextField(default="")
+    company_credit_code = peewee.CharField(default="")
+    company_registered_address = peewee.TextField(default="")
     created_at = peewee.DateTimeField(default=datetime.now)
 
 
@@ -160,6 +162,19 @@ class EnterpriseAgreementModel(BaseModel):
     signed_at = peewee.DateTimeField(null=True, index=True)
     created_at = peewee.DateTimeField(default=datetime.now)
     updated_at = peewee.DateTimeField(default=datetime.now, index=True)
+
+
+class EnterpriseActorSigningModel(BaseModel):
+    enterprise_user = peewee.ForeignKeyField(UserModel, backref='actor_signings', on_delete='CASCADE')
+    actor = peewee.ForeignKeyField(ActorModel, backref='enterprise_signings', on_delete='CASCADE')
+    signed_at = peewee.DateTimeField(default=datetime.now, index=True)
+
+    class Meta:
+        indexes = (
+            (('enterprise_user', 'actor'), True),
+            (('enterprise_user', 'signed_at'), False),
+            (('actor', 'signed_at'), False),
+        )
 
 
 class PortraitUploadSessionModel(BaseModel):
