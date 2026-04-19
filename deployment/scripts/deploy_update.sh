@@ -8,11 +8,13 @@ DATA_ROOT="${DATA_ROOT:-/opt/actor-manager/data}"
 BRANCH="${BRANCH:-main}"
 
 BACKEND_PORT="${BACKEND_PORT:-18000}"
-PUBLIC_PORT="${PUBLIC_PORT:-8000}"
+PUBLIC_HTTP_PORT="${PUBLIC_HTTP_PORT:-80}"
+PUBLIC_HTTPS_PORT="${PUBLIC_HTTPS_PORT:-443}"
 PYTHON_VERSION="${PYTHON_VERSION:-3.12}"
 UV_INDEX_URL="${UV_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
 VITE_API_BASE_URL="${VITE_API_BASE_URL:-/api}"
 MINIO_PUBLIC_BASE_URL="${MINIO_PUBLIC_BASE_URL:-/minio}"
+TLS_CERT_DIR="${TLS_CERT_DIR:-$RUNTIME_ROOT/nginx/certs}"
 
 POSTGRES_IMAGE_SOURCE="${POSTGRES_IMAGE_SOURCE:-docker.1ms.run/postgres:15.17}"
 POSTGRES_IMAGE_LOCAL="${POSTGRES_IMAGE_LOCAL:-postgres:15.17}"
@@ -77,7 +79,7 @@ wait_for_nginx_auth() {
   local retries=60
   local code
   while (( retries > 0 )); do
-    code="$(curl -s -o /tmp/actor-manager-auth-check.json -w '%{http_code}' "http://127.0.0.1:${PUBLIC_PORT}/api/auth/me" || true)"
+    code="$(curl -s -o /tmp/actor-manager-auth-check.json -w '%{http_code}' "http://127.0.0.1:${PUBLIC_HTTP_PORT}/api/auth/me" || true)"
     if [[ "$code" == "401" ]]; then
       return 0
     fi
@@ -119,7 +121,7 @@ git checkout "$BRANCH"
 git pull --ff-only origin "$BRANCH"
 
 log "Preparing runtime directories"
-mkdir -p "$DATA_ROOT/postgres" "$DATA_ROOT/minio" "$RUNTIME_ROOT/nginx"
+mkdir -p "$DATA_ROOT/postgres" "$DATA_ROOT/minio" "$RUNTIME_ROOT/nginx" "$TLS_CERT_DIR"
 mkdir -p /opt/actor-manager/logs/backend /opt/actor-manager/logs/nginx
 touch /opt/actor-manager/logs/backend/backend.log
 touch /opt/actor-manager/logs/nginx/access.log /opt/actor-manager/logs/nginx/error.log
@@ -127,6 +129,11 @@ chmod 755 /opt/actor-manager/logs /opt/actor-manager/logs/backend /opt/actor-man
 chmod 644 /opt/actor-manager/logs/backend/backend.log
 chown 101:101 /opt/actor-manager/logs/nginx /opt/actor-manager/logs/nginx/access.log /opt/actor-manager/logs/nginx/error.log || true
 chmod 664 /opt/actor-manager/logs/nginx/access.log /opt/actor-manager/logs/nginx/error.log
+
+if [[ ! -f "$TLS_CERT_DIR/fullchain.pem" || ! -f "$TLS_CERT_DIR/privkey.pem" ]]; then
+  echo "Missing TLS cert files in $TLS_CERT_DIR (required: fullchain.pem, privkey.pem)" >&2
+  exit 1
+fi
 
 log "Pulling and tagging images"
 docker pull "$POSTGRES_IMAGE_SOURCE"
@@ -189,11 +196,13 @@ docker rm -f actor-manager-nginx >/dev/null 2>&1 || true
 docker run -d \
   --name actor-manager-nginx \
   --restart unless-stopped \
-  -p "${PUBLIC_PORT}:80" \
+  -p "${PUBLIC_HTTP_PORT}:80" \
+  -p "${PUBLIC_HTTPS_PORT}:443" \
   --add-host=host.docker.internal:host-gateway \
   -v "$RUNTIME_ROOT/nginx/nginx.conf:/etc/nginx/nginx.conf:ro" \
   -v "$RUNTIME_ROOT/nginx/conf.d:/etc/nginx/conf.d:ro" \
   -v "$RUNTIME_ROOT/nginx/snippets:/etc/nginx/snippets:ro" \
+  -v "$TLS_CERT_DIR:/etc/nginx/certs:ro" \
   -v "/opt/actor-manager/logs/nginx:/var/log/nginx" \
   -v "$APP_ROOT/frontend/dist:/srv/actor-manager/frontend-dist:ro" \
   "$NGINX_IMAGE_LOCAL" >/dev/null
@@ -238,11 +247,13 @@ install -m 0644 "$APP_ROOT/deployment/logrotate/actor-manager-backend" /etc/logr
 install -m 0644 "$APP_ROOT/deployment/logrotate/actor-manager-nginx" /etc/logrotate.d/actor-manager-nginx
 
 log "Running health checks"
-curl -fsS "http://127.0.0.1:${PUBLIC_PORT}/healthz" >/dev/null
-curl -fsS "http://127.0.0.1:${PUBLIC_PORT}/" >/dev/null
+curl -fsS "http://127.0.0.1:${PUBLIC_HTTP_PORT}/healthz" >/dev/null
+curl -fsS "http://127.0.0.1:${PUBLIC_HTTP_PORT}/" >/dev/null
+curl -kfsS "https://127.0.0.1:${PUBLIC_HTTPS_PORT}/healthz" >/dev/null
 wait_for_nginx_auth
 
 log "Deployment completed"
 docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' | awk 'NR==1 || $1 ~ /^actor-manager-/'
 systemctl --no-pager --full status actor-manager-backend | sed -n '1,12p'
-log "Entry URL: http://<server-ip>:${PUBLIC_PORT}"
+log "Entry URL: http://<server-ip>:${PUBLIC_HTTP_PORT}"
+log "Entry URL: https://<server-ip>:${PUBLIC_HTTPS_PORT}"

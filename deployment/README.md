@@ -52,9 +52,11 @@ bash deployment/scripts/deploy_update.sh
 - `RUNTIME_ROOT`（默认 `/opt/actor-manager/runtime`）
 - `DATA_ROOT`（默认 `/opt/actor-manager/data`）
 - `BRANCH`（默认 `main`）
-- `PUBLIC_PORT`（默认 `8000`）
+- `PUBLIC_HTTP_PORT`（默认 `80`）
+- `PUBLIC_HTTPS_PORT`（默认 `443`）
 - `BACKEND_PORT`（默认 `18000`）
 - `MINIO_PUBLIC_BASE_URL`（默认 `/minio`，用于后端返回给前端的 MinIO 公开访问前缀）
+- `TLS_CERT_DIR`（默认 `$RUNTIME_ROOT/nginx/certs`，目录内需有 `fullchain.pem` 与 `privkey.pem`）
 
 ## Nginx 配置能力（对应当前功能）
 
@@ -76,14 +78,20 @@ bash deployment/scripts/deploy_update.sh
   - `X-Frame-Options`
   - `Referrer-Policy`
   - `Permissions-Policy`
+- TLS：
+  - 同时监听 `80/443`
+  - 证书路径固定为容器内 `/etc/nginx/certs/fullchain.pem` 与 `/etc/nginx/certs/privkey.pem`
 
 ## 部署前准备
 
 1. 后端可访问地址与端口（默认）：`host.docker.internal:18000`（Nginx 容器回源宿主机）
 2. MinIO 可访问地址与端口（默认）：`host.docker.internal:9000`（Nginx 容器回源宿主机）
 3. 前端构建产物目录：`frontend/dist`
-4. 后端需要设置 `ACTOR_MANAGER_CONFIG_MINIO_PUBLIC_BASE_URL=/minio`，一键部署脚本已默认设置。
-5. 如果前后端拆分部署：
+4. TLS 证书文件：
+   - 默认目录：`/opt/actor-manager/runtime/nginx/certs`
+   - 必需文件：`fullchain.pem`、`privkey.pem`
+5. 后端需要设置 `ACTOR_MANAGER_CONFIG_MINIO_PUBLIC_BASE_URL=/minio`，一键部署脚本已默认设置。
+6. 如果前后端拆分部署：
    - 修改 `deployment/nginx/conf.d/upstreams.conf` 中的 `server` 地址为真实后端地址。
    - 同时确保 `minio.public_base_url` 指向浏览器可访问的 MinIO 统一入口。
 
@@ -118,6 +126,7 @@ docker run --rm \
   -v /Users/haoyang/src/python/actor-manager/deployment/nginx/nginx.conf:/etc/nginx/nginx.conf:ro \
   -v /Users/haoyang/src/python/actor-manager/deployment/nginx/conf.d:/etc/nginx/conf.d:ro \
   -v /Users/haoyang/src/python/actor-manager/deployment/nginx/snippets:/etc/nginx/snippets:ro \
+  -v /opt/actor-manager/runtime/nginx/certs:/etc/nginx/certs:ro \
   nginx:1.27-alpine nginx -t
 ```
 
@@ -127,11 +136,13 @@ docker run --rm \
 
 ```bash
 docker run -d --name actor-manager-nginx \
-  -p 8000:80 \
+  -p 80:80 \
+  -p 443:443 \
   --add-host=host.docker.internal:host-gateway \
   -v /Users/haoyang/src/python/actor-manager/deployment/nginx/nginx.conf:/etc/nginx/nginx.conf:ro \
   -v /Users/haoyang/src/python/actor-manager/deployment/nginx/conf.d:/etc/nginx/conf.d:ro \
   -v /Users/haoyang/src/python/actor-manager/deployment/nginx/snippets:/etc/nginx/snippets:ro \
+  -v /opt/actor-manager/runtime/nginx/certs:/etc/nginx/certs:ro \
   -v /Users/haoyang/src/python/actor-manager/frontend/dist:/srv/actor-manager/frontend-dist:ro \
   nginx:1.27-alpine
 ```
@@ -139,14 +150,15 @@ docker run -d --name actor-manager-nginx \
 ## 验收清单
 
 1. 基础健康检查：
-   - `curl -i http://127.0.0.1:8000/healthz` 返回 `200 ok`
+   - `curl -i http://127.0.0.1:80/healthz` 返回 `200 ok`
+   - `curl -k -i https://127.0.0.1:443/healthz` 返回 `200 ok`
 2. 前端入口：
-   - 访问 `http://127.0.0.1:8000/login/individual` 可正常返回页面
-   - 刷新 `http://127.0.0.1:8000/login/enterprise` 不应 404（SPA 回退生效）
+   - 访问 `http://127.0.0.1:80/login/individual` 可正常返回页面
+   - 刷新 `https://127.0.0.1:443/login/enterprise` 不应 404（SPA 回退生效）
 3. API 转发：
-   - `curl -i http://127.0.0.1:8000/api/auth/me`（未登录应返回 401，但路径应命中后端）
+   - `curl -i http://127.0.0.1:80/api/auth/me`（未登录应返回 401，但路径应命中后端）
 4. MinIO 代理：
-   - `curl -i http://127.0.0.1:8000/minio/minio/health/live` 返回 MinIO 健康检查结果
+   - `curl -i http://127.0.0.1:80/minio/minio/health/live` 返回 MinIO 健康检查结果
    - 登录后上传/预览接口返回的 `preview_url` / `upload_url` 不应再包含 `localhost:9000`
 5. Trace 链路：
    - API 响应头包含 `X-Trace-Id` 与 `X-Request-Id`
