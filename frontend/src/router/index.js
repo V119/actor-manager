@@ -1,9 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import EditPortrait from '../views/EditPortrait.vue'
 import ActorBasicInfo from '../views/ActorBasicInfo.vue'
-import ActorAgreementSign from '../views/ActorAgreementSign.vue'
 import EnterpriseBasicInfo from '../views/EnterpriseBasicInfo.vue'
-import EnterpriseAgreementSign from '../views/EnterpriseAgreementSign.vue'
 import StyleLab from '../views/StyleLab.vue'
 import DiscoverySquare from '../views/DiscoverySquare.vue'
 import ActorProfile from '../views/ActorProfile.vue'
@@ -93,12 +91,7 @@ const routes = [
     component: ActorBasicInfo,
     meta: { requiresAuth: true, roles: ['individual'] }
   },
-  {
-    path: '/actor-agreement',
-    name: 'ActorAgreementSign',
-    component: ActorAgreementSign,
-    meta: { requiresAuth: true, roles: ['individual'] }
-  },
+  { path: '/actor-agreement', redirect: '/actor-basic-info' },
   {
     path: '/edit-portrait',
     name: 'EditPortrait',
@@ -117,12 +110,7 @@ const routes = [
     component: EnterpriseBasicInfo,
     meta: { requiresAuth: true, roles: ['enterprise'] }
   },
-  {
-    path: '/enterprise-agreement',
-    name: 'EnterpriseAgreementSign',
-    component: EnterpriseAgreementSign,
-    meta: { requiresAuth: true, roles: ['enterprise'] }
-  },
+  { path: '/enterprise-agreement', redirect: '/enterprise-basic-info' },
   {
     path: '/discovery',
     name: 'DiscoverySquare',

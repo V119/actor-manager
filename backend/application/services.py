@@ -24,8 +24,6 @@ from backend.domain.repositories import (
 from backend.application.style_generation import LangChainStyleImageGenerator, StyleReferenceImage
 from backend.application.agreement_service import (
     ensure_actor_agreement_signed,
-    ensure_enterprise_agreement_signed,
-    is_actor_agreement_currently_signed,
 )
 from backend.infrastructure.config import settings
 from backend.infrastructure.orm_models import (

@@ -193,10 +193,7 @@ import { useRoute } from 'vue-router'
 import { apiRequest } from '../lib/api'
 import { authStore } from '../lib/auth'
 import {
-  ENTERPRISE_ACTOR_DETAIL_BLOCKED_NOTICE,
-  buildEnterpriseAgreementRoute,
-  ensureEnterpriseAgreementSigned,
-  isEnterpriseAgreementBlockingErrorMessage
+  ensureEnterpriseAgreementSigned
 } from '../lib/enterpriseAgreement'
 
 const route = useRoute()
@@ -315,11 +312,7 @@ async function handleSignActor() {
     }
     signActionMessage.value = payload?.message || '已签约该演员。'
   } catch (error) {
-    const nextMessage = error instanceof Error ? error.message : '签约失败，请稍后重试。'
-    signActionError.value = nextMessage
-    if (isEnterpriseAgreementBlockingErrorMessage(nextMessage)) {
-      await router.push(buildEnterpriseAgreementRoute(ENTERPRISE_ACTOR_DETAIL_BLOCKED_NOTICE))
-    }
+    signActionError.value = error instanceof Error ? error.message : '签约失败，请稍后重试。'
   } finally {
     signing.value = false
   }
@@ -333,12 +326,7 @@ async function loadDetail() {
   signActionError.value = ''
   try {
     const agreementResult = await ensureEnterpriseAgreementSigned({
-      token: authStore.state.token,
-      router,
-      blockedNotice: ENTERPRISE_ACTOR_DETAIL_BLOCKED_NOTICE,
-      onBlocked: (message) => {
-        errorMessage.value = message
-      }
+      token: authStore.state.token
     })
     if (!agreementResult.allowed) {
       detail.value = null
@@ -350,11 +338,7 @@ async function loadDetail() {
     })
     detail.value = payload
   } catch (error) {
-    const nextMessage = error instanceof Error ? error.message : '演员详情加载失败，请稍后重试。'
-    errorMessage.value = nextMessage
-    if (isEnterpriseAgreementBlockingErrorMessage(nextMessage)) {
-      await router.push(buildEnterpriseAgreementRoute(ENTERPRISE_ACTOR_DETAIL_BLOCKED_NOTICE))
-    }
+    errorMessage.value = error instanceof Error ? error.message : '演员详情加载失败，请稍后重试。'
   } finally {
     loading.value = false
   }

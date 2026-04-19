@@ -76,10 +76,7 @@ import { useRouter } from 'vue-router'
 import { apiRequest } from '../lib/api'
 import { authStore } from '../lib/auth'
 import {
-  ENTERPRISE_DISCOVERY_BLOCKED_NOTICE,
-  buildEnterpriseAgreementRoute,
-  ensureEnterpriseAgreementSigned,
-  isEnterpriseAgreementBlockingErrorMessage
+  ensureEnterpriseAgreementSigned
 } from '../lib/enterpriseAgreement'
 
 const router = useRouter()
@@ -124,12 +121,7 @@ async function loadActors() {
   errorMessage.value = ''
   try {
     const agreementResult = await ensureEnterpriseAgreementSigned({
-      token: authStore.state.token,
-      router,
-      blockedNotice: ENTERPRISE_DISCOVERY_BLOCKED_NOTICE,
-      onBlocked: (message) => {
-        errorMessage.value = message
-      }
+      token: authStore.state.token
     })
     if (!agreementResult.allowed) {
       actors.value = []
@@ -140,11 +132,7 @@ async function loadActors() {
     })
     actors.value = Array.isArray(payload) ? payload : []
   } catch (error) {
-    const nextMessage = error instanceof Error ? error.message : '签约演员加载失败，请稍后重试。'
-    errorMessage.value = nextMessage
-    if (isEnterpriseAgreementBlockingErrorMessage(nextMessage)) {
-      await router.push(buildEnterpriseAgreementRoute(ENTERPRISE_DISCOVERY_BLOCKED_NOTICE))
-    }
+    errorMessage.value = error instanceof Error ? error.message : '签约演员加载失败，请稍后重试。'
   } finally {
     loading.value = false
   }

@@ -1,37 +1,21 @@
-import { apiRequest } from './api'
-
-export const ACTOR_AGREEMENT_ROUTE = '/actor-agreement'
-
-export async function fetchActorAgreementStatus(token) {
-  return apiRequest('/actor/agreement/status', { token })
+export async function fetchActorAgreementStatus(_token) {
+  return {
+    is_template_ready: true,
+    is_signed: true,
+    needs_resign: false,
+    blocking_reason: null,
+    message: '已在注册时同意协议，可正常发布内容。',
+    template_version: 1,
+    signed_template_version: 1,
+    signed_at: null
+  }
 }
 
-export function isAgreementBlockedStatus(status) {
-  return Boolean(status && !status.is_signed)
+export function isAgreementBlockedStatus(_status) {
+  return false
 }
 
-export function isAgreementBlockingErrorMessage(message) {
-  const normalized = String(message || '')
-  return (
-    normalized.includes('请先完成协议签署后再发布内容')
-    || normalized.includes('协议内容已更新，请重新签署后再发布内容')
-    || normalized.includes('协议模板尚未配置完成')
-  )
-}
-
-export async function ensureAgreementSignedForPublish({ token, router, onBlocked }) {
+export async function ensureAgreementSignedForPublish({ token }) {
   const status = await fetchActorAgreementStatus(token)
-  if (!isAgreementBlockedStatus(status)) {
-    return { allowed: true, status }
-  }
-
-  if (typeof onBlocked === 'function') {
-    onBlocked(status.message || '请先完成协议签署后再发布内容。')
-  }
-
-  if (router) {
-    await router.push(ACTOR_AGREEMENT_ROUTE)
-  }
-
-  return { allowed: false, status }
+  return { allowed: true, status }
 }

@@ -22,6 +22,8 @@ AUTHORIZATION_DATE_MODES = {"fixed", "relative_months"}
 PHONE_PATTERN = re.compile(r"^[0-9+\-\s]{6,32}$")
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 IDENTITY_PATTERN = re.compile(r"^[0-9Xx]{15,18}$")
+ACTOR_REGISTER_ACCEPTED_MESSAGE = "已在注册时同意协议，可正常发布内容。"
+ENTERPRISE_LOGIN_ACCEPTED_MESSAGE = "已在登录时同意企业协议，可正常访问演员广场。"
 
 
 class AgreementFieldValidationError(ValueError):
@@ -277,19 +279,17 @@ def resolve_actor_for_user(user_id: int, user_display_name: str) -> ActorModel:
 
 
 def get_actor_agreement_status_by_actor(actor_id: int) -> dict[str, Any]:
-    with database.allow_sync():
-        config = _ensure_actor_template_config_sync()
-        agreement = (
-            ActorAgreementModel.select()
-            .where(ActorAgreementModel.actor_id == actor_id)
-            .first()
-        )
-        return _serialize_status(
-            config,
-            agreement,
-            signed_message="协议已签署，可正常发布内容。",
-            unsigned_message="请先完成协议签署后再发布内容。",
-        )
+    _ = actor_id
+    return {
+        "is_template_ready": True,
+        "is_signed": True,
+        "needs_resign": False,
+        "blocking_reason": None,
+        "message": ACTOR_REGISTER_ACCEPTED_MESSAGE,
+        "template_version": 1,
+        "signed_template_version": 1,
+        "signed_at": None,
+    }
 
 
 def is_actor_agreement_currently_signed(actor_id: int) -> bool:
@@ -304,19 +304,17 @@ def ensure_actor_agreement_signed(actor_id: int) -> None:
 
 
 def get_enterprise_agreement_status_by_user(user_id: int) -> dict[str, Any]:
-    with database.allow_sync():
-        config = _ensure_enterprise_template_config_sync()
-        agreement = (
-            EnterpriseAgreementModel.select()
-            .where(EnterpriseAgreementModel.user_id == user_id)
-            .first()
-        )
-        return _serialize_status(
-            config,
-            agreement,
-            signed_message="企业协议已签署，可正常访问演员广场。",
-            unsigned_message="请先完成企业协议签署后再访问演员广场。",
-        )
+    _ = user_id
+    return {
+        "is_template_ready": True,
+        "is_signed": True,
+        "needs_resign": False,
+        "blocking_reason": None,
+        "message": ENTERPRISE_LOGIN_ACCEPTED_MESSAGE,
+        "template_version": 1,
+        "signed_template_version": 1,
+        "signed_at": None,
+    }
 
 
 def is_enterprise_agreement_currently_signed(user_id: int) -> bool:

@@ -48,10 +48,10 @@ function setAuthFromResponse(payload) {
   state.restored = true
 }
 
-async function login(account, password) {
+async function login(account, password, agreementAccepted = true) {
   const payload = await apiRequest('/auth/login', {
     method: 'POST',
-    body: { username: account, password }
+    body: { username: account, password, agreement_accepted: agreementAccepted }
   })
   setAuthFromResponse(payload)
   return payload.user
@@ -66,10 +66,10 @@ async function adminLogin(username, password) {
   return payload.user
 }
 
-async function register({ phone, password, confirm_password }) {
+async function register({ phone, password, confirm_password, agreement_accepted }) {
   const payload = await apiRequest('/auth/register', {
     method: 'POST',
-    body: { phone, password, confirm_password }
+    body: { phone, password, confirm_password, agreement_accepted }
   })
   setAuthFromResponse(payload)
   return payload.user

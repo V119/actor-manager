@@ -259,6 +259,8 @@ async def register(req: RegisterRequest):
     phone = _validate_phone(req.phone)
     if req.password != req.confirm_password:
         raise HTTPException(status_code=422, detail="两次输入的密码不一致")
+    if not req.agreement_accepted:
+        raise HTTPException(status_code=422, detail="请先阅读并同意《AI肖像权独家授权合作协议》")
 
     with database.allow_sync():
         existing = UserModel.get_or_none(UserModel.username == phone)
@@ -287,6 +289,8 @@ async def login(req: LoginRequest):
         if not user or not verify_password(req.password, user.password_hash):
             logger.warning("Login failed username=%s", username)
             raise HTTPException(status_code=401, detail="用户名或密码错误")
+        if user.role == "enterprise" and not req.agreement_accepted:
+            raise HTTPException(status_code=422, detail="请先阅读并同意《AI肖像权转授权与内容制作合作协议》")
         token = _create_session(user)
     logger.info("User login success user_id=%s username=%s role=%s", user.id, user.username, user.role)
     return AuthResponse(token=token, user=_to_user_schema(user))

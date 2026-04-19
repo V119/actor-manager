@@ -3,7 +3,6 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 import logging
 from typing import List, Literal, Optional
-from backend.application.agreement_service import ensure_enterprise_agreement_signed, is_actor_agreement_currently_signed
 from backend.interface.api.schemas import (
     ActorBasicInfoSchema,
     ActorBasicInfoUpdateRequest,
@@ -217,10 +216,6 @@ async def list_published_actor_cards(
     style_service: StyleService = Depends(get_style_service),
     current_user: UserModel = Depends(require_enterprise_user),
 ):
-    try:
-        ensure_enterprise_agreement_signed(current_user.id)
-    except ValueError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
     with database.allow_sync():
         actors = list(
             ActorModel.select()
@@ -231,8 +226,6 @@ async def list_published_actor_cards(
 
     cards: list[dict] = []
     for actor in actors:
-        if not is_actor_agreement_currently_signed(int(actor.id)):
-            continue
         payload = await _build_actor_card_payload(
             actor,
             portrait_service,
@@ -251,10 +244,6 @@ async def get_published_actor_detail(
     style_service: StyleService = Depends(get_style_service),
     current_user: UserModel = Depends(require_enterprise_user),
 ):
-    try:
-        ensure_enterprise_agreement_signed(current_user.id)
-    except ValueError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
     actor = await portrait_service.get_actor_basic_info_by_actor_id(actor_id)
     if not actor:
         raise HTTPException(status_code=404, detail="Actor not found")
@@ -266,7 +255,7 @@ async def get_published_actor_detail(
                 & (EnterpriseActorSigningModel.actor == actor_id)
             )
         )
-    is_publicly_visible = is_actor_agreement_currently_signed(actor_id)
+    is_publicly_visible = True
     if not is_publicly_visible and not is_signed_by_current_enterprise:
         raise HTTPException(status_code=404, detail="Actor not found")
 
@@ -294,18 +283,10 @@ async def sign_actor_for_enterprise(
     actor_id: int,
     current_user: UserModel = Depends(require_enterprise_user),
 ):
-    try:
-        ensure_enterprise_agreement_signed(current_user.id)
-    except ValueError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
-
     with database.allow_sync():
         actor = ActorModel.get_or_none(ActorModel.id == actor_id)
         if not actor or not actor.is_published:
             raise HTTPException(status_code=404, detail="演员不存在或暂不可签约。")
-    if not is_actor_agreement_currently_signed(actor_id):
-        raise HTTPException(status_code=400, detail="该演员当前未完成协议签署，暂不可签约。")
-
     with database.allow_sync():
         signing, created = EnterpriseActorSigningModel.get_or_create(
             enterprise_user=current_user,
@@ -328,11 +309,6 @@ async def list_enterprise_signed_actors(
     style_service: StyleService = Depends(get_style_service),
     current_user: UserModel = Depends(require_enterprise_user),
 ):
-    try:
-        ensure_enterprise_agreement_signed(current_user.id)
-    except ValueError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
-
     with database.allow_sync():
         signings = list(
             EnterpriseActorSigningModel.select(EnterpriseActorSigningModel, ActorModel)

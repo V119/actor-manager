@@ -5,7 +5,7 @@
         <div>
           <h1 class="text-3xl font-bold tracking-tight">企业基本信息</h1>
           <p class="mt-2 text-sm text-on-surface-variant">
-            单独维护企业资料。协议签署页会自动读取这里的企业名称、统一社会信用代码和注册地址。
+            单独维护企业资料。企业登录协议弹窗会展示协议全文，广场与签约模块使用这里的企业资料。
           </p>
         </div>
         <div class="text-xs text-on-surface-variant">
@@ -24,8 +24,8 @@
               <p class="mt-1 text-xs leading-6 text-on-surface-variant">
                 {{
                   isReadyForAgreement
-                    ? '协议签署所需的企业资料已准备完成。'
-                    : '请先补全企业名称、统一社会信用代码和注册地址，再前往协议签署。'
+                    ? '企业资料已准备完成。'
+                    : '请先补全企业名称、统一社会信用代码和注册地址。'
                 }}
               </p>
             </div>
@@ -35,7 +35,7 @@
             class="rounded-2xl border px-4 py-3 text-sm"
             :class="isReadyForAgreement ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200' : 'border-amber-400/20 bg-amber-500/10 text-amber-100'"
           >
-            {{ isReadyForAgreement ? '已满足协议签署要求' : '还有必填信息待完善' }}
+            {{ isReadyForAgreement ? '已满足企业资料要求' : '还有必填信息待完善' }}
           </div>
         </div>
       </section>
@@ -110,21 +110,13 @@
         <section class="rounded-2xl border border-sky-400/10 bg-surface/65 p-5 md:p-6 backdrop-blur-xl">
           <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 class="text-lg font-semibold">下一步</h2>
+              <h2 class="text-lg font-semibold">保存资料</h2>
               <p class="mt-1 text-sm leading-6 text-on-surface-variant">
-                保存后，企业协议签署页会自动带入这份资料。
+                保存后，企业登录后可直接访问演员发布广场与签约演员。
               </p>
             </div>
 
             <div class="flex flex-wrap gap-3">
-              <button
-                type="button"
-                class="rounded-lg border border-sky-300/25 px-4 py-2.5 text-sm text-sky-100 transition hover:bg-sky-400/10 disabled:cursor-not-allowed disabled:opacity-60"
-                :disabled="!isReadyForAgreement"
-                @click="goToAgreement"
-              >
-                前往协议签署
-              </button>
               <button
                 type="submit"
                 :disabled="saving"
@@ -142,11 +134,9 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { apiRequest } from '../lib/api'
 import { authStore } from '../lib/auth'
 
-const router = useRouter()
 const loading = ref(false)
 const saving = ref(false)
 const errorMessage = ref('')
@@ -270,7 +260,7 @@ async function saveBasicInfo() {
       authStore.state.user.display_name = payload.company_name || authStore.state.user.display_name
       authStore.state.user.company_intro = payload.company_intro || ''
     }
-    successMessage.value = '企业基本信息已保存，协议签署页会自动使用最新资料。'
+    successMessage.value = '企业基本信息已保存。'
   } catch (error) {
     const detail = error && typeof error === 'object' ? error.detail : null
     const nextFieldErrors = detail && typeof detail === 'object' ? detail.field_errors : null
@@ -281,11 +271,6 @@ async function saveBasicInfo() {
   } finally {
     saving.value = false
   }
-}
-
-async function goToAgreement() {
-  if (!isReadyForAgreement.value) return
-  await router.push('/enterprise-agreement')
 }
 
 onMounted(async () => {
