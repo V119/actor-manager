@@ -1,0 +1,11 @@
+/opt/actor-manager/logs/backend/*.log {
+    daily
+    rotate 30
+    maxage 15
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    create 0644 root root
+}

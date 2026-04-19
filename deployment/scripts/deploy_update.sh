@@ -120,6 +120,13 @@ git pull --ff-only origin "$BRANCH"
 
 log "Preparing runtime directories"
 mkdir -p "$DATA_ROOT/postgres" "$DATA_ROOT/minio" "$RUNTIME_ROOT/nginx"
+mkdir -p /opt/actor-manager/logs/backend /opt/actor-manager/logs/nginx
+touch /opt/actor-manager/logs/backend/backend.log
+touch /opt/actor-manager/logs/nginx/access.log /opt/actor-manager/logs/nginx/error.log
+chmod 755 /opt/actor-manager/logs /opt/actor-manager/logs/backend /opt/actor-manager/logs/nginx
+chmod 644 /opt/actor-manager/logs/backend/backend.log
+chown 101:101 /opt/actor-manager/logs/nginx /opt/actor-manager/logs/nginx/access.log /opt/actor-manager/logs/nginx/error.log || true
+chmod 664 /opt/actor-manager/logs/nginx/access.log /opt/actor-manager/logs/nginx/error.log
 
 log "Pulling and tagging images"
 docker pull "$POSTGRES_IMAGE_SOURCE"
@@ -187,6 +194,7 @@ docker run -d \
   -v "$RUNTIME_ROOT/nginx/nginx.conf:/etc/nginx/nginx.conf:ro" \
   -v "$RUNTIME_ROOT/nginx/conf.d:/etc/nginx/conf.d:ro" \
   -v "$RUNTIME_ROOT/nginx/snippets:/etc/nginx/snippets:ro" \
+  -v "/opt/actor-manager/logs/nginx:/var/log/nginx" \
   -v "$APP_ROOT/frontend/dist:/srv/actor-manager/frontend-dist:ro" \
   "$NGINX_IMAGE_LOCAL" >/dev/null
 
@@ -205,6 +213,9 @@ Environment=ACTOR_MANAGER_CONFIG_API_HOST=0.0.0.0
 Environment=ACTOR_MANAGER_CONFIG_API_PORT=${BACKEND_PORT}
 Environment=ACTOR_MANAGER_CONFIG_API_RELOAD=false
 Environment=ACTOR_MANAGER_CONFIG_MINIO_PUBLIC_BASE_URL=${MINIO_PUBLIC_BASE_URL}
+Environment=ACTOR_MANAGER_CONFIG_LOGGING_FILE_ENABLED=true
+Environment=ACTOR_MANAGER_CONFIG_LOGGING_FILE_PATH=/opt/actor-manager/logs/backend/backend.log
+Environment=ACTOR_MANAGER_CONFIG_LOGGING_FILE_ALSO_STDOUT=true
 Environment=UV_PYTHON=${PYTHON_VERSION}
 Environment=UV_INDEX_URL=${UV_INDEX_URL}
 ExecStart=/usr/local/bin/uv run --no-sync python backend/server.py
@@ -219,6 +230,12 @@ systemctl daemon-reload
 systemctl enable actor-manager-backend >/dev/null
 systemctl restart actor-manager-backend
 wait_for_backend
+
+log "Writing logrotate policy"
+rm -f /etc/logrotate.d/actor-manager
+
+install -m 0644 "$APP_ROOT/deployment/logrotate/actor-manager-backend" /etc/logrotate.d/actor-manager-backend
+install -m 0644 "$APP_ROOT/deployment/logrotate/actor-manager-nginx" /etc/logrotate.d/actor-manager-nginx
 
 log "Running health checks"
 curl -fsS "http://127.0.0.1:${PUBLIC_PORT}/healthz" >/dev/null

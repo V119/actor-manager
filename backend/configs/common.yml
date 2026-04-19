@@ -2,6 +2,10 @@ env: dev
 
 logging:
   level: INFO
+  file:
+    enabled: false
+    path: /opt/actor-manager/logs/backend/backend.log
+    also_stdout: true
   request:
     enabled: true
     body_preview_limit: 2048

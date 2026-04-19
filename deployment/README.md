@@ -163,3 +163,17 @@ docker run -d --name actor-manager-nginx \
 - 生产建议：
   - 在上游或 Nginx 层接入 TLS 证书。
   - 结合业务流量调优 `limit_req`、`client_max_body_size`、超时与日志采样策略。
+
+## 日志目录与归档
+
+一键部署脚本会统一把日志落盘到：
+
+- 后端：`/opt/actor-manager/logs/backend/backend.log`
+- Nginx：`/opt/actor-manager/logs/nginx/access.log`、`/opt/actor-manager/logs/nginx/error.log`
+
+并自动安装 logrotate 策略：
+
+- `/etc/logrotate.d/actor-manager-backend`
+- `/etc/logrotate.d/actor-manager-nginx`
+
+策略为：每日轮转、压缩归档（`compress` + `delaycompress`）、删除 15 天之前日志（`maxage 15`）。

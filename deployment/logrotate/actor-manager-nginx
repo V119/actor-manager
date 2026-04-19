@@ -1,0 +1,15 @@
+/opt/actor-manager/logs/nginx/*.log {
+    daily
+    rotate 30
+    maxage 15
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    create 0644 101 101
+    sharedscripts
+    postrotate
+        docker kill --signal=USR1 actor-manager-nginx >/dev/null 2>&1 || true
+    endscript
+}
