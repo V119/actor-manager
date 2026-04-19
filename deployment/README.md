@@ -56,7 +56,7 @@ bash deployment/scripts/deploy_update.sh
 - `PUBLIC_HTTPS_PORT`（默认 `443`）
 - `BACKEND_PORT`（默认 `18000`）
 - `MINIO_PUBLIC_BASE_URL`（默认 `/minio`，用于后端返回给前端的 MinIO 公开访问前缀）
-- `TLS_CERT_DIR`（默认 `$RUNTIME_ROOT/nginx/certs`，目录内需有 `fullchain.pem` 与 `privkey.pem`）
+- `TLS_CERT_DIR`（默认 `/opt/actor-manager/certs/nginx`，目录内需有 `fullchain.pem` 与 `privkey.pem`）
 
 ## Nginx 配置能力（对应当前功能）
 
@@ -88,7 +88,7 @@ bash deployment/scripts/deploy_update.sh
 2. MinIO 可访问地址与端口（默认）：`host.docker.internal:9000`（Nginx 容器回源宿主机）
 3. 前端构建产物目录：`frontend/dist`
 4. TLS 证书文件：
-   - 默认目录：`/opt/actor-manager/runtime/nginx/certs`
+   - 默认目录：`/opt/actor-manager/certs/nginx`
    - 必需文件：`fullchain.pem`、`privkey.pem`
 5. 后端需要设置 `ACTOR_MANAGER_CONFIG_MINIO_PUBLIC_BASE_URL=/minio`，一键部署脚本已默认设置。
 6. 如果前后端拆分部署：
@@ -126,7 +126,7 @@ docker run --rm \
   -v /Users/haoyang/src/python/actor-manager/deployment/nginx/nginx.conf:/etc/nginx/nginx.conf:ro \
   -v /Users/haoyang/src/python/actor-manager/deployment/nginx/conf.d:/etc/nginx/conf.d:ro \
   -v /Users/haoyang/src/python/actor-manager/deployment/nginx/snippets:/etc/nginx/snippets:ro \
-  -v /opt/actor-manager/runtime/nginx/certs:/etc/nginx/certs:ro \
+  -v /opt/actor-manager/certs/nginx:/etc/nginx/certs:ro \
   nginx:1.27-alpine nginx -t
 ```
 
@@ -142,7 +142,7 @@ docker run -d --name actor-manager-nginx \
   -v /Users/haoyang/src/python/actor-manager/deployment/nginx/nginx.conf:/etc/nginx/nginx.conf:ro \
   -v /Users/haoyang/src/python/actor-manager/deployment/nginx/conf.d:/etc/nginx/conf.d:ro \
   -v /Users/haoyang/src/python/actor-manager/deployment/nginx/snippets:/etc/nginx/snippets:ro \
-  -v /opt/actor-manager/runtime/nginx/certs:/etc/nginx/certs:ro \
+  -v /opt/actor-manager/certs/nginx:/etc/nginx/certs:ro \
   -v /Users/haoyang/src/python/actor-manager/frontend/dist:/srv/actor-manager/frontend-dist:ro \
   nginx:1.27-alpine
 ```

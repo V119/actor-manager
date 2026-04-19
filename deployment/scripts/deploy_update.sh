@@ -14,7 +14,7 @@ PYTHON_VERSION="${PYTHON_VERSION:-3.12}"
 UV_INDEX_URL="${UV_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
 VITE_API_BASE_URL="${VITE_API_BASE_URL:-/api}"
 MINIO_PUBLIC_BASE_URL="${MINIO_PUBLIC_BASE_URL:-/minio}"
-TLS_CERT_DIR="${TLS_CERT_DIR:-$RUNTIME_ROOT/nginx/certs}"
+TLS_CERT_DIR="${TLS_CERT_DIR:-/opt/actor-manager/certs/nginx}"
 
 POSTGRES_IMAGE_SOURCE="${POSTGRES_IMAGE_SOURCE:-docker.1ms.run/postgres:15.17}"
 POSTGRES_IMAGE_LOCAL="${POSTGRES_IMAGE_LOCAL:-postgres:15.17}"
@@ -130,11 +130,6 @@ chmod 644 /opt/actor-manager/logs/backend/backend.log
 chown 101:101 /opt/actor-manager/logs/nginx /opt/actor-manager/logs/nginx/access.log /opt/actor-manager/logs/nginx/error.log || true
 chmod 664 /opt/actor-manager/logs/nginx/access.log /opt/actor-manager/logs/nginx/error.log
 
-if [[ ! -f "$TLS_CERT_DIR/fullchain.pem" || ! -f "$TLS_CERT_DIR/privkey.pem" ]]; then
-  echo "Missing TLS cert files in $TLS_CERT_DIR (required: fullchain.pem, privkey.pem)" >&2
-  exit 1
-fi
-
 log "Pulling and tagging images"
 docker pull "$POSTGRES_IMAGE_SOURCE"
 docker pull "$MINIO_IMAGE_SOURCE"
@@ -189,7 +184,12 @@ VITE_API_BASE_URL="$VITE_API_BASE_URL" npm run build
 popd >/dev/null
 
 log "Syncing Nginx config"
-rsync -az --delete "$APP_ROOT/deployment/nginx/" "$RUNTIME_ROOT/nginx/"
+rsync -az --delete --exclude certs "$APP_ROOT/deployment/nginx/" "$RUNTIME_ROOT/nginx/"
+
+if [[ ! -f "$TLS_CERT_DIR/fullchain.pem" || ! -f "$TLS_CERT_DIR/privkey.pem" ]]; then
+  echo "Missing TLS cert files in $TLS_CERT_DIR (required: fullchain.pem, privkey.pem)" >&2
+  exit 1
+fi
 
 log "Restarting Nginx container"
 docker rm -f actor-manager-nginx >/dev/null 2>&1 || true
