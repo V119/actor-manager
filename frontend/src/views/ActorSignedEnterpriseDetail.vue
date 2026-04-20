@@ -29,6 +29,18 @@
               签约时间：{{ formatDateTime(enterprise.signed_at) }}
             </div>
           </div>
+          <div class="mt-4 flex flex-wrap items-center gap-2 text-sm">
+            <span class="text-on-surface-variant">付款情况：</span>
+            <span
+              class="rounded-full border px-2.5 py-1 text-xs font-semibold"
+              :class="paymentStatusClass(enterprise.payment_status)"
+            >
+              {{ enterprise.payment_status_label || '未下单' }}
+            </span>
+            <span v-if="enterprise.latest_order_no" class="text-on-surface-variant">
+              最近订单：{{ enterprise.latest_order_no }} · {{ formatCurrency(enterprise.latest_line_total_amount) }}
+            </span>
+          </div>
         </section>
 
         <section class="grid md:grid-cols-2 gap-4">
@@ -63,6 +75,8 @@ const infoItems = computed(() => {
   return [
     { label: '统一社会信用代码', value: enterprise.value.credit_code || '未填写' },
     { label: '注册地址', value: enterprise.value.registered_address || '未填写' },
+    { label: '付款情况', value: enterprise.value.payment_status_label || '未下单' },
+    { label: '最近订单', value: enterprise.value.latest_order_no || '暂无' },
     { label: '企业创建时间', value: formatDateTime(enterprise.value.created_at) },
     { label: '签约时间', value: formatDateTime(enterprise.value.signed_at) }
   ]
@@ -79,6 +93,23 @@ function formatDateTime(value) {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+function formatCurrency(value) {
+  const amount = Number(value || 0)
+  if (!Number.isFinite(amount)) return '￥0'
+  return `￥${amount.toLocaleString('zh-CN')}`
+}
+
+function paymentStatusClass(status) {
+  const normalized = String(status || '').toLowerCase()
+  if (normalized === 'settled') return 'border-emerald-300/30 bg-emerald-500/10 text-emerald-100'
+  if (normalized === 'paid') return 'border-sky-300/30 bg-sky-500/10 text-sky-100'
+  if (normalized === 'pending_payment') return 'border-amber-300/30 bg-amber-500/10 text-amber-100'
+  if (normalized === 'payment_failed') return 'border-rose-300/30 bg-rose-500/10 text-rose-100'
+  if (normalized === 'partially_refunded') return 'border-violet-300/30 bg-violet-500/10 text-violet-100'
+  if (normalized === 'refunded') return 'border-slate-300/30 bg-slate-500/10 text-slate-100'
+  return 'border-slate-300/20 bg-slate-500/10 text-slate-200'
 }
 
 async function goBack() {

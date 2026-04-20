@@ -121,19 +121,23 @@ const navItems = computed(() => {
       { to: '/admin/enterprise-users', label: '企业用户管理', icon: 'admin_panel_settings' },
       { to: '/admin/agreement-template', label: '协议模板配置', icon: 'article' },
       { to: '/admin/enterprise-agreement-template', label: '企业协议模板', icon: 'description' },
-      { to: '/admin/portrait-guidance', label: '拍摄示例图管理', icon: 'photo_camera' }
+      { to: '/admin/portrait-guidance', label: '拍摄示例图管理', icon: 'photo_camera' },
+      { to: '/admin/payments/config', label: '支付配置', icon: 'tune' },
+      { to: '/admin/payments/withdrawals', label: '提现审核', icon: 'payments' }
     ]
   }
   if (currentUser.value?.role === 'enterprise') {
     return [
       { to: '/enterprise-basic-info', label: '企业基本信息', icon: 'business' },
       { to: '/discovery', label: '演员发布广场', icon: 'dashboard' },
-      { to: '/enterprise-signed-actors', label: '签约演员', icon: 'group' }
+      { to: '/enterprise-signed-actors', label: '签约演员', icon: 'group' },
+      { to: '/enterprise-cart-checkout', label: '购物车与结算', icon: 'shopping_cart_checkout' }
     ]
   }
   return [
     { to: '/actor-basic-info', label: '基本信息', icon: 'person' },
     { to: '/actor-signed-enterprises', label: '签约', icon: 'handshake' },
+    { to: '/actor-wallet', label: '金额与提现', icon: 'account_balance_wallet' },
     { to: '/edit-portrait', label: '素材管理', icon: 'cloud_upload' },
     { to: '/style-lab', label: '风格实验室', icon: 'auto_awesome' }
   ]

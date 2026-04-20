@@ -254,7 +254,54 @@ uv run pytest -q
 - `1` 浏览器直传 MinIO（预签名 URL），后端不再承接大文件正文
 - `2` 三视图异步合成任务化（创建任务 + 轮询状态），避免请求长时间阻塞
 - `3` 后端流式上传路径（视频接口不再 `await file.read()` 一次性读入内存）
-- `4` 数据库热点路径优化（新增组合索引 + 时间维度 BRIN 索引，迁移文件：`backend/migrations/versions/b2f4a6c1d9e7_add_compose_jobs_and_hot_path_indexes.py`）
+  - `4` 数据库热点路径优化（新增组合索引 + 时间维度 BRIN 索引，迁移文件：`backend/migrations/versions/b2f4a6c1d9e7_add_compose_jobs_and_hot_path_indexes.py`）
+
+## 11. 支付与结算能力（新增）
+
+后端已新增电商化支付主链路（当前为 Mock 网关实现，便于联调）：
+
+- 企业侧：
+  - 签约演员后自动入购物车
+  - 购物车管理：`GET/POST/DELETE /api/enterprise/cart`
+  - 订单预览：`POST /api/enterprise/orders/preview`
+  - 创建订单：`POST /api/enterprise/orders`
+  - 订单查询：`GET /api/enterprise/orders`、`GET /api/enterprise/orders/{order_no}`
+  - 发起支付（微信/支付宝）：`POST /api/enterprise/orders/{order_no}/pay`
+  - 企业验收（可提前触发放款倒计时）：`POST /api/enterprise/orders/{order_no}/accept`
+
+- 管理侧：
+  - 支付配置读取/更新：`GET/PUT /api/admin/payments/config`
+  - 订单总览：`GET /api/admin/payments/orders`、`GET /api/admin/payments/orders/{order_no}`
+  - 退款工单：`GET /api/admin/payments/refunds`
+  - 发起退款：`POST /api/admin/payments/refunds`
+  - 审核退款：`POST /api/admin/payments/refunds/approve`
+  - 跑批结算：`POST /api/admin/payments/settlements/run`
+
+默认支付规则配置（`backend/configs/common.yml`）：
+
+- `payment.use_mock`：是否启用 Mock 支付通道（`true` 时微信/支付宝均走 Mock）
+- `payment.fee_rate_bps`：平台手续费率（基点，10000=100%）
+- `payment.auto_accept_hours`：自动验收时长
+- `payment.dispute_protect_hours`：争议保护时长
+- `payment.max_hold_hours`：最大冻结时长
+- `payment.settlement_safety_buffer_hours`：放款安全缓冲时长
+- `payment.allowed_channels`：启用通道（`wechat` / `alipay`）
+- `payment.mock_channel_auto_success`：Mock 通道自动成功开关
+
+Mock 支付建议（用于完整链路联调）：
+
+- 本地联调请设置：`payment.use_mock: true`
+- 需要“下单即成功”以跑通全流程时，设置：`payment.mock_channel_auto_success: true`
+- 若切换为 `payment.use_mock: false`，系统会拒绝发起支付/退款/结算，并提示未接入真实微信/支付宝网关
+
+当前结算释放时间计算为：
+
+- `release_at = min(accepted_or_auto_accept + dispute_protect_hours, paid_at + max_hold_hours - safety_buffer_hours)`
+
+说明：
+
+- 本次实现采用“支付通道适配层 + 业务状态机”模式，已预留真实微信/支付宝接入位置（`backend/application/payment_service.py` 的 `MockChannelGateway`）。
+- 接入真实支付时，仅需替换 gateway 实现并补充异步回调/验签，不需要推翻业务表结构。
 
 本地验证命令：
 

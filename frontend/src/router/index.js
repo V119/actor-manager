@@ -6,8 +6,10 @@ import StyleLab from '../views/StyleLab.vue'
 import DiscoverySquare from '../views/DiscoverySquare.vue'
 import ActorProfile from '../views/ActorProfile.vue'
 import EnterpriseSignedActors from '../views/EnterpriseSignedActors.vue'
+import EnterpriseCartCheckout from '../views/EnterpriseCartCheckout.vue'
 import ActorSignedEnterprises from '../views/ActorSignedEnterprises.vue'
 import ActorSignedEnterpriseDetail from '../views/ActorSignedEnterpriseDetail.vue'
+import ActorWalletWithdraw from '../views/ActorWalletWithdraw.vue'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import AdminLoginView from '../views/AdminLoginView.vue'
@@ -15,6 +17,8 @@ import AdminEnterpriseUsersView from '../views/AdminEnterpriseUsersView.vue'
 import AdminAgreementTemplateView from '../views/AdminAgreementTemplateView.vue'
 import AdminEnterpriseAgreementTemplateView from '../views/AdminEnterpriseAgreementTemplateView.vue'
 import AdminPortraitGuidanceView from '../views/AdminPortraitGuidanceView.vue'
+import AdminPaymentConfigView from '../views/AdminPaymentConfigView.vue'
+import AdminPaymentWithdrawalsView from '../views/AdminPaymentWithdrawalsView.vue'
 import { authStore } from '../lib/auth'
 
 const PUBLIC_LOGIN_PATHS = new Set([
@@ -86,6 +90,18 @@ const routes = [
     meta: { requiresAuth: true, roles: ['admin'] }
   },
   {
+    path: '/admin/payments/config',
+    name: 'AdminPaymentConfig',
+    component: AdminPaymentConfigView,
+    meta: { requiresAuth: true, roles: ['admin'] }
+  },
+  {
+    path: '/admin/payments/withdrawals',
+    name: 'AdminPaymentWithdrawals',
+    component: AdminPaymentWithdrawalsView,
+    meta: { requiresAuth: true, roles: ['admin'] }
+  },
+  {
     path: '/actor-basic-info',
     name: 'ActorBasicInfo',
     component: ActorBasicInfo,
@@ -124,6 +140,12 @@ const routes = [
     meta: { requiresAuth: true, roles: ['enterprise'] }
   },
   {
+    path: '/enterprise-cart-checkout',
+    name: 'EnterpriseCartCheckout',
+    component: EnterpriseCartCheckout,
+    meta: { requiresAuth: true, roles: ['enterprise'] }
+  },
+  {
     path: '/actor/:id',
     name: 'ActorProfile',
     component: ActorProfile,
@@ -141,6 +163,12 @@ const routes = [
     name: 'ActorSignedEnterpriseDetail',
     component: ActorSignedEnterpriseDetail,
     props: true,
+    meta: { requiresAuth: true, roles: ['individual'] }
+  },
+  {
+    path: '/actor-wallet',
+    name: 'ActorWalletWithdraw',
+    component: ActorWalletWithdraw,
     meta: { requiresAuth: true, roles: ['individual'] }
   }
 ]

@@ -60,6 +60,14 @@ class Settings:
     STYLE_PROMPT_DEFAULT_DIR: str
     STYLE_PROMPT_FILE_NAME: str
     STYLE_RESULTS_LIMIT_PER_STYLE: int
+    PAYMENT_USE_MOCK: bool
+    PAYMENT_FEE_RATE_BPS: int
+    PAYMENT_AUTO_ACCEPT_HOURS: int
+    PAYMENT_DISPUTE_PROTECT_HOURS: int
+    PAYMENT_MAX_HOLD_HOURS: int
+    PAYMENT_SETTLEMENT_SAFETY_BUFFER_HOURS: int
+    PAYMENT_ALLOWED_CHANNELS: tuple[str, ...]
+    PAYMENT_MOCK_CHANNEL_AUTO_SUCCESS: bool
 
     @property
     def DATABASE_URL(self) -> str:
@@ -115,4 +123,12 @@ settings = Settings(
     STYLE_PROMPT_DEFAULT_DIR=str(get_config("style_generation.prompts.default_dir", "default")),
     STYLE_PROMPT_FILE_NAME=str(get_config("style_generation.prompts.file_name", "prompt.txt")),
     STYLE_RESULTS_LIMIT_PER_STYLE=int(get_config("style_generation.results.limit_per_style", 20)),
+    PAYMENT_USE_MOCK=bool(get_config("payment.use_mock", True)),
+    PAYMENT_FEE_RATE_BPS=int(get_config("payment.fee_rate_bps", 600)),
+    PAYMENT_AUTO_ACCEPT_HOURS=int(get_config("payment.auto_accept_hours", 72)),
+    PAYMENT_DISPUTE_PROTECT_HOURS=int(get_config("payment.dispute_protect_hours", 168)),
+    PAYMENT_MAX_HOLD_HOURS=int(get_config("payment.max_hold_hours", 4320)),
+    PAYMENT_SETTLEMENT_SAFETY_BUFFER_HOURS=int(get_config("payment.settlement_safety_buffer_hours", 24)),
+    PAYMENT_ALLOWED_CHANNELS=tuple(get_config("payment.allowed_channels", ["wechat", "alipay"])),
+    PAYMENT_MOCK_CHANNEL_AUTO_SUCCESS=bool(get_config("payment.mock_channel_auto_success", True)),
 )

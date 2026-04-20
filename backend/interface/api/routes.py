@@ -4,19 +4,44 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 import logging
 from typing import List, Literal, Optional
 from backend.interface.api.schemas import (
+    AdminActorWithdrawListSchema,
+    AdminActorWithdrawRecordSchema,
+    AdminActorWithdrawReviewRequest,
     ActorBasicInfoSchema,
     ActorBasicInfoUpdateRequest,
     ActorSchema,
+    ActorWalletSummarySchema,
+    ActorWithdrawCreateRequest,
+    ActorWithdrawListSchema,
+    ActorWithdrawRecordSchema,
     EnterpriseActorSigningActionSchema,
+    CartItemCreateRequest,
+    CartItemDeleteRequest,
+    CartListSchema,
     EnterpriseSignedActorCardSchema,
     GenerateStyleRequest,
     GeneratedResultSchema,
     HistoryCleanupResultSchema,
+    OrderCreateRequest,
+    OrderListSchema,
+    OrderPreviewRequest,
+    OrderPreviewSchema,
+    OrderSchema,
+    PaymentCreateRequest,
+    PaymentOpsConfigSchema,
+    PaymentOpsConfigUpdateRequest,
+    PaymentSchema,
     PortraitAudioListSchema,
     PortraitAudioPublishToggleRequest,
     PortraitAudioSchema,
     PublishedActorCardSchema,
     PublishedActorDetailSchema,
+    RefundApproveRequest,
+    RefundCreateRequest,
+    RefundListSchema,
+    RefundSchema,
+    SettlementRunRequest,
+    SettlementRunResultSchema,
     PortraitSchema,
     PortraitVideoDirectUploadCommitRequest,
     PortraitVideoDirectUploadPlanRequest,
@@ -39,13 +64,22 @@ from backend.interface.api.schemas import (
     ThreeViewUploadSchema,
 )
 from backend.application.services import ActorService, PortraitService, StyleService
+from backend.application.payment_service import PaymentService
 from backend.interface.api.auth_routes import require_enterprise_user, require_individual_user
+from backend.interface.api.auth_routes import require_admin_user
 from backend.infrastructure.repositories import (
     PeeweeActorRepository, PeeweePortraitRepository,
     PeeweeStyleRepository,
     PeeweeGeneratedResultRepository
 )
-from backend.infrastructure.orm_models import ActorModel, EnterpriseActorSigningModel, UserModel, database
+from backend.infrastructure.orm_models import (
+    ActorModel,
+    EnterpriseActorSigningModel,
+    EnterpriseOrderActorItemModel,
+    EnterpriseOrderModel,
+    UserModel,
+    database,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -82,6 +116,10 @@ def get_style_service():
         PeeweeGeneratedResultRepository(),
         storage_client,
     )
+
+
+def get_payment_service():
+    return PaymentService()
 
 
 async def _build_actor_card_payload(
@@ -147,8 +185,13 @@ async def _build_actor_card_payload(
     return payload
 
 
-def _serialize_signed_enterprise(user: UserModel, signed_at: datetime) -> dict:
-    return {
+def _serialize_signed_enterprise(
+    user: UserModel,
+    signed_at: datetime,
+    *,
+    payment_snapshot: dict | None = None,
+) -> dict:
+    payload = {
         "enterprise_user_id": int(user.id),
         "company_name": user.display_name,
         "company_intro": user.company_intro or "",
@@ -157,6 +200,109 @@ def _serialize_signed_enterprise(user: UserModel, signed_at: datetime) -> dict:
         "signed_at": signed_at,
         "created_at": user.created_at,
     }
+    payload.update(
+        payment_snapshot
+        or {
+            "payment_status": "not_ordered",
+            "payment_status_label": "未下单",
+            "latest_order_no": None,
+            "latest_order_status": None,
+            "latest_order_at": None,
+            "latest_line_total_amount": 0,
+        }
+    )
+    return payload
+
+
+def _derive_actor_payment_status(order_status: str, item_status: str) -> tuple[str, str]:
+    normalized_order_status = str(order_status or "").strip().lower()
+    normalized_item_status = str(item_status or "").strip().lower()
+
+    if normalized_item_status == "refunded":
+        return "refunded", "已退款"
+    if normalized_item_status == "partially_refunded":
+        return "partially_refunded", "部分退款"
+    if normalized_item_status == "settled":
+        return "settled", "已结算"
+    if normalized_item_status == "paid":
+        return "paid", "已支付待结算"
+    if normalized_order_status == "pending_payment":
+        return "pending_payment", "待支付"
+    if normalized_order_status == "payment_failed":
+        return "payment_failed", "支付失败"
+    if normalized_order_status == "refunded":
+        return "refunded", "已退款"
+    if normalized_order_status == "partially_refunded":
+        return "partially_refunded", "部分退款"
+    if normalized_order_status == "settled":
+        return "settled", "已结算"
+    if normalized_order_status == "paid":
+        return "paid", "已支付待结算"
+    return "not_ordered", "未下单"
+
+
+def _build_signed_actor_payment_snapshot_map(enterprise_user_id: int) -> dict[int, dict]:
+    with database.allow_sync():
+        rows = list(
+            EnterpriseOrderActorItemModel.select(EnterpriseOrderActorItemModel, EnterpriseOrderModel)
+            .join(EnterpriseOrderModel)
+            .where(EnterpriseOrderActorItemModel.enterprise_user == enterprise_user_id)
+            .order_by(
+                EnterpriseOrderModel.created_at.desc(),
+                EnterpriseOrderActorItemModel.created_at.desc(),
+            )
+        )
+
+    snapshots: dict[int, dict] = {}
+    for row in rows:
+        actor_id = int(row.actor_id)
+        if actor_id in snapshots:
+            continue
+        payment_status, payment_status_label = _derive_actor_payment_status(
+            order_status=row.order.status,
+            item_status=row.item_status,
+        )
+        snapshots[actor_id] = {
+            "payment_status": payment_status,
+            "payment_status_label": payment_status_label,
+            "latest_order_no": row.order.order_no,
+            "latest_order_status": row.order.status,
+            "latest_order_at": row.order.created_at,
+            "latest_line_total_amount": int(row.line_total_amount or 0),
+        }
+    return snapshots
+
+
+def _build_signed_enterprise_payment_snapshot_map(actor_id: int) -> dict[int, dict]:
+    with database.allow_sync():
+        rows = list(
+            EnterpriseOrderActorItemModel.select(EnterpriseOrderActorItemModel, EnterpriseOrderModel)
+            .join(EnterpriseOrderModel)
+            .where(EnterpriseOrderActorItemModel.actor == actor_id)
+            .order_by(
+                EnterpriseOrderModel.created_at.desc(),
+                EnterpriseOrderActorItemModel.created_at.desc(),
+            )
+        )
+
+    snapshots: dict[int, dict] = {}
+    for row in rows:
+        enterprise_user_id = int(row.enterprise_user_id)
+        if enterprise_user_id in snapshots:
+            continue
+        payment_status, payment_status_label = _derive_actor_payment_status(
+            order_status=row.order.status,
+            item_status=row.item_status,
+        )
+        snapshots[enterprise_user_id] = {
+            "payment_status": payment_status,
+            "payment_status_label": payment_status_label,
+            "latest_order_no": row.order.order_no,
+            "latest_order_status": row.order.status,
+            "latest_order_at": row.order.created_at,
+            "latest_line_total_amount": int(row.line_total_amount or 0),
+        }
+    return snapshots
 
 @router.get("/actors", response_model=List[ActorSchema])
 async def list_actors(
@@ -282,6 +428,7 @@ async def get_published_actor_detail(
 async def sign_actor_for_enterprise(
     actor_id: int,
     current_user: UserModel = Depends(require_enterprise_user),
+    payment_service: PaymentService = Depends(get_payment_service),
 ):
     with database.allow_sync():
         actor = ActorModel.get_or_none(ActorModel.id == actor_id)
@@ -292,6 +439,19 @@ async def sign_actor_for_enterprise(
             enterprise_user=current_user,
             actor=actor,
             defaults={"signed_at": datetime.now()},
+        )
+    try:
+        payment_service.ensure_cart_item_for_signing(
+            enterprise_user_id=int(current_user.id),
+            actor_id=int(actor.id),
+            signing_id=int(signing.id),
+        )
+    except Exception:
+        logger.exception(
+            "Failed to ensure cart item after signing enterprise_user_id=%s actor_id=%s signing_id=%s",
+            current_user.id,
+            actor.id,
+            signing.id,
         )
 
     return {
@@ -317,6 +477,10 @@ async def list_enterprise_signed_actors(
             .order_by(EnterpriseActorSigningModel.signed_at.desc())
         )
 
+    payment_snapshot_map = _build_signed_actor_payment_snapshot_map(
+        enterprise_user_id=int(current_user.id)
+    )
+
     cards: list[dict] = []
     for signing in signings:
         payload = await _build_actor_card_payload(
@@ -327,8 +491,169 @@ async def list_enterprise_signed_actors(
             signed_at=signing.signed_at,
         )
         if payload:
+            payload.update(
+                payment_snapshot_map.get(
+                    int(signing.actor.id),
+                    {
+                        "payment_status": "not_ordered",
+                        "payment_status_label": "未下单",
+                        "latest_order_no": None,
+                        "latest_order_status": None,
+                        "latest_order_at": None,
+                        "latest_line_total_amount": 0,
+                    },
+                )
+            )
             cards.append(payload)
     return cards
+
+
+@router.get("/enterprise/cart", response_model=CartListSchema)
+async def list_enterprise_cart_items(
+    payment_service: PaymentService = Depends(get_payment_service),
+    current_user: UserModel = Depends(require_enterprise_user),
+):
+    items = payment_service.list_cart_items(enterprise_user_id=int(current_user.id))
+    return {"items": items}
+
+
+@router.post("/enterprise/cart", response_model=CartListSchema)
+async def add_actor_to_enterprise_cart(
+    req: CartItemCreateRequest,
+    payment_service: PaymentService = Depends(get_payment_service),
+    current_user: UserModel = Depends(require_enterprise_user),
+):
+    try:
+        payment_service.add_actor_to_cart(
+            enterprise_user_id=int(current_user.id),
+            actor_id=req.actor_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    items = payment_service.list_cart_items(enterprise_user_id=int(current_user.id))
+    return {"items": items}
+
+
+@router.delete("/enterprise/cart", response_model=CartListSchema)
+async def remove_actor_from_enterprise_cart(
+    req: CartItemDeleteRequest,
+    payment_service: PaymentService = Depends(get_payment_service),
+    current_user: UserModel = Depends(require_enterprise_user),
+):
+    try:
+        payment_service.remove_actor_from_cart(
+            enterprise_user_id=int(current_user.id),
+            actor_id=req.actor_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    items = payment_service.list_cart_items(enterprise_user_id=int(current_user.id))
+    return {"items": items}
+
+
+@router.post("/enterprise/orders/preview", response_model=OrderPreviewSchema)
+async def preview_enterprise_order(
+    req: OrderPreviewRequest,
+    payment_service: PaymentService = Depends(get_payment_service),
+    current_user: UserModel = Depends(require_enterprise_user),
+):
+    try:
+        return payment_service.preview_order(
+            enterprise_user_id=int(current_user.id),
+            actor_ids=req.actor_ids,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/enterprise/orders", response_model=OrderSchema)
+async def create_enterprise_order(
+    req: OrderCreateRequest,
+    payment_service: PaymentService = Depends(get_payment_service),
+    current_user: UserModel = Depends(require_enterprise_user),
+):
+    try:
+        return payment_service.create_order(
+            enterprise_user_id=int(current_user.id),
+            actor_ids=req.actor_ids,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/enterprise/orders", response_model=OrderListSchema)
+async def list_enterprise_orders(
+    limit: int = Query(default=50, ge=1, le=200),
+    payment_service: PaymentService = Depends(get_payment_service),
+    current_user: UserModel = Depends(require_enterprise_user),
+):
+    items = payment_service.list_enterprise_orders(
+        enterprise_user_id=int(current_user.id),
+        limit=limit,
+    )
+    return {"items": items}
+
+
+@router.get("/enterprise/orders/{order_no}", response_model=OrderSchema)
+async def get_enterprise_order(
+    order_no: str,
+    payment_service: PaymentService = Depends(get_payment_service),
+    current_user: UserModel = Depends(require_enterprise_user),
+):
+    try:
+        return payment_service.get_order_for_enterprise(
+            enterprise_user_id=int(current_user.id),
+            order_no=order_no,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/enterprise/orders/{order_no}/pay", response_model=PaymentSchema)
+async def pay_enterprise_order(
+    order_no: str,
+    req: PaymentCreateRequest,
+    payment_service: PaymentService = Depends(get_payment_service),
+    current_user: UserModel = Depends(require_enterprise_user),
+):
+    try:
+        return payment_service.create_payment(
+            enterprise_user_id=int(current_user.id),
+            order_no=order_no,
+            channel=req.channel,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/enterprise/orders/{order_no}/payments", response_model=List[PaymentSchema])
+async def list_enterprise_order_payments(
+    order_no: str,
+    payment_service: PaymentService = Depends(get_payment_service),
+    current_user: UserModel = Depends(require_enterprise_user),
+):
+    try:
+        return payment_service.list_order_payments_for_enterprise(
+            enterprise_user_id=int(current_user.id),
+            order_no=order_no,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/enterprise/orders/{order_no}/accept", response_model=OrderSchema)
+async def accept_enterprise_order(
+    order_no: str,
+    payment_service: PaymentService = Depends(get_payment_service),
+    current_user: UserModel = Depends(require_enterprise_user),
+):
+    try:
+        return payment_service.accept_order(
+            enterprise_user_id=int(current_user.id),
+            order_no=order_no,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/actors/me/signed-enterprises", response_model=List[SignedEnterpriseSchema])
@@ -346,9 +671,14 @@ async def list_actor_signed_enterprises(
             .where(EnterpriseActorSigningModel.actor == actor.id)
             .order_by(EnterpriseActorSigningModel.signed_at.desc())
         )
+    payment_snapshot_map = _build_signed_enterprise_payment_snapshot_map(actor_id=int(actor.id))
 
     return [
-        _serialize_signed_enterprise(signing.enterprise_user, signing.signed_at)
+        _serialize_signed_enterprise(
+            signing.enterprise_user,
+            signing.signed_at,
+            payment_snapshot=payment_snapshot_map.get(int(signing.enterprise_user_id)),
+        )
         for signing in signings
     ]
 
@@ -374,8 +704,65 @@ async def get_actor_signed_enterprise_detail(
         )
     if not signing:
         raise HTTPException(status_code=404, detail="未找到该企业的签约记录。")
+    payment_snapshot_map = _build_signed_enterprise_payment_snapshot_map(actor_id=int(actor.id))
+    return _serialize_signed_enterprise(
+        signing.enterprise_user,
+        signing.signed_at,
+        payment_snapshot=payment_snapshot_map.get(int(enterprise_user_id)),
+    )
 
-    return _serialize_signed_enterprise(signing.enterprise_user, signing.signed_at)
+
+@router.get("/actors/me/wallet", response_model=ActorWalletSummarySchema)
+async def get_actor_wallet_summary(
+    payment_service: PaymentService = Depends(get_payment_service),
+    current_user: UserModel = Depends(require_individual_user),
+):
+    actor_external_id = f"USER-{current_user.id}"
+    with database.allow_sync():
+        actor = ActorModel.get_or_none(ActorModel.external_id == actor_external_id)
+    if not actor:
+        raise HTTPException(status_code=404, detail="未找到当前演员资料。")
+    return payment_service.get_actor_wallet_summary(actor_id=int(actor.id))
+
+
+@router.get("/actors/me/withdrawals", response_model=ActorWithdrawListSchema)
+async def list_actor_withdrawals(
+    limit: int = Query(default=50, ge=1, le=200),
+    payment_service: PaymentService = Depends(get_payment_service),
+    current_user: UserModel = Depends(require_individual_user),
+):
+    actor_external_id = f"USER-{current_user.id}"
+    with database.allow_sync():
+        actor = ActorModel.get_or_none(ActorModel.external_id == actor_external_id)
+    if not actor:
+        raise HTTPException(status_code=404, detail="未找到当前演员资料。")
+    items = payment_service.list_actor_withdrawals(actor_id=int(actor.id), limit=limit)
+    return {"items": items}
+
+
+@router.post("/actors/me/withdrawals", response_model=ActorWithdrawRecordSchema)
+async def create_actor_withdrawal(
+    req: ActorWithdrawCreateRequest,
+    payment_service: PaymentService = Depends(get_payment_service),
+    current_user: UserModel = Depends(require_individual_user),
+):
+    actor_external_id = f"USER-{current_user.id}"
+    with database.allow_sync():
+        actor = ActorModel.get_or_none(ActorModel.external_id == actor_external_id)
+    if not actor:
+        raise HTTPException(status_code=404, detail="未找到当前演员资料。")
+    try:
+        return payment_service.create_actor_withdraw_request(
+            actor_id=int(actor.id),
+            actor_user_id=int(current_user.id),
+            amount=req.amount,
+            channel=req.channel,
+            account_name=req.account_name,
+            account_no=req.account_no,
+            remark=req.remark,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 @router.post("/portraits", response_model=PortraitSchema)
 async def upload_portrait(
@@ -964,4 +1351,159 @@ async def list_style_results(
         user_id=current_user.id,
         user_display_name=current_user.display_name,
         limit_per_style=limit_per_style,
+    )
+
+
+@router.get("/admin/payments/config", response_model=PaymentOpsConfigSchema)
+async def get_admin_payment_config(
+    payment_service: PaymentService = Depends(get_payment_service),
+    _current_admin: UserModel = Depends(require_admin_user),
+):
+    return payment_service.get_ops_config()
+
+
+@router.put("/admin/payments/config", response_model=PaymentOpsConfigSchema)
+async def update_admin_payment_config(
+    req: PaymentOpsConfigUpdateRequest,
+    payment_service: PaymentService = Depends(get_payment_service),
+    current_admin: UserModel = Depends(require_admin_user),
+):
+    try:
+        return payment_service.update_ops_config(
+            operator_user_id=int(current_admin.id),
+            payload=req.model_dump(),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/admin/payments/orders", response_model=OrderListSchema)
+async def list_admin_payment_orders(
+    limit: int = Query(default=100, ge=1, le=500),
+    payment_service: PaymentService = Depends(get_payment_service),
+    _current_admin: UserModel = Depends(require_admin_user),
+):
+    items = payment_service.list_admin_orders(limit=limit)
+    return {"items": items}
+
+
+@router.get("/admin/payments/orders/{order_no}", response_model=OrderSchema)
+async def get_admin_payment_order(
+    order_no: str,
+    payment_service: PaymentService = Depends(get_payment_service),
+    _current_admin: UserModel = Depends(require_admin_user),
+):
+    try:
+        return payment_service.get_order_for_admin(order_no=order_no)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/admin/payments/refunds", response_model=RefundListSchema)
+async def list_admin_payment_refunds(
+    limit: int = Query(default=100, ge=1, le=500),
+    payment_service: PaymentService = Depends(get_payment_service),
+    _current_admin: UserModel = Depends(require_admin_user),
+):
+    items = payment_service.list_refunds(limit=limit)
+    return {"items": items}
+
+
+@router.post("/admin/payments/refunds", response_model=RefundSchema)
+async def create_admin_refund(
+    req: RefundCreateRequest,
+    payment_service: PaymentService = Depends(get_payment_service),
+    current_admin: UserModel = Depends(require_admin_user),
+):
+    try:
+        return payment_service.create_refund_request(
+            operator_user_id=int(current_admin.id),
+            order_no=req.order_no,
+            refund_amount=req.refund_amount,
+            reason=req.reason,
+            actor_id=req.actor_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/admin/payments/refunds/approve", response_model=RefundSchema)
+async def approve_admin_refund(
+    req: RefundApproveRequest,
+    payment_service: PaymentService = Depends(get_payment_service),
+    current_admin: UserModel = Depends(require_admin_user),
+):
+    try:
+        return payment_service.approve_refund(
+            reviewed_by_user_id=int(current_admin.id),
+            out_refund_no=req.out_refund_no,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/admin/payments/refunds/{out_refund_no}", response_model=RefundSchema)
+async def get_admin_refund(
+    out_refund_no: str,
+    payment_service: PaymentService = Depends(get_payment_service),
+    _current_admin: UserModel = Depends(require_admin_user),
+):
+    try:
+        return payment_service.get_refund(out_refund_no=out_refund_no)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/admin/payments/withdrawals", response_model=AdminActorWithdrawListSchema)
+async def list_admin_withdrawals(
+    limit: int = Query(default=100, ge=1, le=500),
+    status: Optional[str] = Query(default=None),
+    payment_service: PaymentService = Depends(get_payment_service),
+    _current_admin: UserModel = Depends(require_admin_user),
+):
+    try:
+        items = payment_service.list_admin_withdrawals(limit=limit, status=status)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"items": items}
+
+
+@router.get("/admin/payments/withdrawals/{out_withdraw_no}", response_model=AdminActorWithdrawRecordSchema)
+async def get_admin_withdrawal(
+    out_withdraw_no: str,
+    payment_service: PaymentService = Depends(get_payment_service),
+    _current_admin: UserModel = Depends(require_admin_user),
+):
+    try:
+        return payment_service.get_admin_withdrawal(out_withdraw_no=out_withdraw_no)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/admin/payments/withdrawals/review", response_model=AdminActorWithdrawRecordSchema)
+async def review_admin_withdrawal(
+    req: AdminActorWithdrawReviewRequest,
+    payment_service: PaymentService = Depends(get_payment_service),
+    current_admin: UserModel = Depends(require_admin_user),
+):
+    try:
+        return payment_service.review_actor_withdraw(
+            reviewed_by_user_id=int(current_admin.id),
+            out_withdraw_no=req.out_withdraw_no,
+            action=req.action,
+            failure_reason=req.failure_reason,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/admin/payments/settlements/run", response_model=SettlementRunResultSchema)
+async def run_admin_due_settlements(
+    req: SettlementRunRequest,
+    payment_service: PaymentService = Depends(get_payment_service),
+    current_admin: UserModel = Depends(require_admin_user),
+):
+    return payment_service.run_due_settlements(
+        operator_user_id=int(current_admin.id),
+        limit=req.limit,
     )

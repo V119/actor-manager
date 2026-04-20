@@ -312,6 +312,12 @@ class PublishedActorCardSchema(BaseModel):
 
 class EnterpriseSignedActorCardSchema(PublishedActorCardSchema):
     signed_at: datetime
+    payment_status: str = "not_ordered"
+    payment_status_label: str = "未下单"
+    latest_order_no: Optional[str] = None
+    latest_order_status: Optional[str] = None
+    latest_order_at: Optional[datetime] = None
+    latest_line_total_amount: int = 0
 
 
 class EnterpriseActorSigningActionSchema(BaseModel):
@@ -330,6 +336,12 @@ class SignedEnterpriseSchema(BaseModel):
     registered_address: str
     signed_at: datetime
     created_at: datetime
+    payment_status: str = "not_ordered"
+    payment_status_label: str = "未下单"
+    latest_order_no: Optional[str] = None
+    latest_order_status: Optional[str] = None
+    latest_order_at: Optional[datetime] = None
+    latest_line_total_amount: int = 0
 
 
 class PublishedActorDetailSchema(BaseModel):
@@ -340,3 +352,289 @@ class PublishedActorDetailSchema(BaseModel):
     published_audios: List[PortraitAudioSchema]
     published_styles: List[GeneratedResultSchema]
     is_signed_by_current_enterprise: bool = False
+
+
+PaymentChannelLiteral = Literal["wechat", "alipay"]
+
+
+class PaymentOpsConfigSchema(BaseModel):
+    use_mock: bool
+    mock_channel_auto_success: bool
+    fee_rate_bps: int
+    auto_accept_hours: int
+    dispute_protect_hours: int
+    max_hold_hours: int
+    settlement_safety_buffer_hours: int
+    allow_wechat: bool
+    allow_alipay: bool
+    updated_by: Optional[int]
+    created_at: datetime
+    updated_at: datetime
+
+
+class PaymentOpsConfigUpdateRequest(BaseModel):
+    fee_rate_bps: int = Field(ge=0, le=4000)
+    auto_accept_hours: int = Field(ge=1, le=2160)
+    dispute_protect_hours: int = Field(ge=0, le=2160)
+    max_hold_hours: int = Field(ge=24, le=8760)
+    settlement_safety_buffer_hours: int = Field(ge=0, le=168)
+    allow_wechat: bool = True
+    allow_alipay: bool = True
+
+
+class CartItemSchema(BaseModel):
+    cart_item_id: int
+    actor_id: int
+    actor_name: str
+    actor_external_id: str
+    actor_quote_amount: int
+    pricing_unit: str
+    status: str
+    signed_at: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+
+
+class CartItemCreateRequest(BaseModel):
+    actor_id: int
+
+
+class CartItemDeleteRequest(BaseModel):
+    actor_id: int
+
+
+class CartListSchema(BaseModel):
+    items: List[CartItemSchema]
+
+
+class OrderPreviewRequest(BaseModel):
+    actor_ids: Optional[List[int]] = None
+
+
+class OrderPreviewLineSchema(BaseModel):
+    cart_item_id: int
+    actor_id: int
+    actor_name: str
+    actor_external_id: str
+    actor_quote_amount: int
+    platform_fee_amount: int
+    line_total_amount: int
+
+
+class OrderPreviewSchema(BaseModel):
+    currency: str
+    fee_rate_bps: int
+    actor_total_amount: int
+    platform_fee_amount: int
+    payable_total_amount: int
+    items: List[OrderPreviewLineSchema]
+
+
+class OrderCreateRequest(BaseModel):
+    actor_ids: Optional[List[int]] = None
+
+
+class PaymentCreateRequest(BaseModel):
+    channel: PaymentChannelLiteral
+
+
+class PaymentSchema(BaseModel):
+    payment_id: int
+    order_id: int
+    out_trade_no: str
+    channel_trade_no: Optional[str]
+    channel: PaymentChannelLiteral
+    amount: int
+    status: str
+    paid_at: Optional[datetime]
+    expires_at: Optional[datetime]
+    pay_payload: Optional[dict]
+    created_at: datetime
+    updated_at: datetime
+
+
+class RefundSchema(BaseModel):
+    refund_id: int
+    order_id: int
+    actor_item_id: Optional[int]
+    payment_id: Optional[int]
+    out_refund_no: str
+    channel_refund_no: Optional[str]
+    channel: PaymentChannelLiteral
+    refund_amount: int
+    status: str
+    reason: str
+    operator_user_id: Optional[int]
+    reviewed_by: Optional[int]
+    reviewed_at: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+
+
+class SettlementSchema(BaseModel):
+    settlement_id: int
+    order_id: int
+    actor_item_id: Optional[int]
+    actor_id: Optional[int]
+    out_settle_no: str
+    channel_settle_no: Optional[str]
+    channel: PaymentChannelLiteral
+    settle_amount: int
+    platform_fee_amount: int
+    status: str
+    requested_at: datetime
+    settled_at: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+
+
+class OrderItemSchema(BaseModel):
+    order_item_id: int
+    actor_id: int
+    actor_name: str
+    actor_external_id: str
+    actor_quote_amount: int
+    platform_fee_amount: int
+    line_total_amount: int
+    refunded_amount: int
+    settled_amount: int
+    actor_refunded_amount: int
+    actor_settle_remaining_amount: int
+    item_refundable_remaining_amount: int
+    item_status: str
+    actor_release_at: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+
+
+class EnterpriseSummarySchema(BaseModel):
+    enterprise_user_id: int
+    company_name: str
+    username: str
+
+
+class OrderSchema(BaseModel):
+    order_no: str
+    status: str
+    currency: str
+    actor_total_amount: int
+    platform_fee_rate_bps: int
+    platform_fee_amount: int
+    payable_total_amount: int
+    paid_total_amount: int
+    refunded_total_amount: int
+    refundable_remaining_amount: int
+    settlement_status: str
+    settled_total_amount: int
+    auto_accept_at: Optional[datetime]
+    release_at: Optional[datetime]
+    accepted_at: Optional[datetime]
+    payment_succeeded_at: Optional[datetime]
+    settled_at: Optional[datetime]
+    closed_at: Optional[datetime]
+    enterprise: Optional[EnterpriseSummarySchema] = None
+    items: List[OrderItemSchema] = Field(default_factory=list)
+    payments: List[PaymentSchema] = Field(default_factory=list)
+    refunds: List[RefundSchema] = Field(default_factory=list)
+    settlements: List[SettlementSchema] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+
+
+class OrderListSchema(BaseModel):
+    items: List[OrderSchema]
+
+
+class RefundCreateRequest(BaseModel):
+    order_no: str
+    refund_amount: int = Field(gt=0)
+    reason: str = Field(default="", max_length=256)
+    actor_id: Optional[int] = None
+
+
+class RefundApproveRequest(BaseModel):
+    out_refund_no: str
+
+
+class RefundListSchema(BaseModel):
+    items: List[RefundSchema]
+
+
+class SettlementRunRequest(BaseModel):
+    limit: int = Field(default=200, ge=1, le=1000)
+
+
+class SettlementRunResultItemSchema(BaseModel):
+    order_no: str
+    actor_id: int
+    settled_amount: int
+    status: str
+    reason: Optional[str] = None
+
+
+class SettlementRunResultSchema(BaseModel):
+    processed_count: int
+    settled_count: int
+    failed_count: int
+    items: List[SettlementRunResultItemSchema]
+
+
+class ActorWalletSummarySchema(BaseModel):
+    actor_id: int
+    currency: str = "CNY"
+    available_amount: int
+    total_settled_amount: int
+    total_withdrawing_amount: int
+    total_withdrawn_amount: int
+    total_failed_withdraw_amount: int
+    updated_at: datetime
+
+
+class ActorWithdrawCreateRequest(BaseModel):
+    amount: int = Field(gt=0)
+    channel: PaymentChannelLiteral
+    account_name: str = Field(min_length=1, max_length=64)
+    account_no: str = Field(min_length=1, max_length=128)
+    remark: str = Field(default="", max_length=256)
+
+
+class ActorWithdrawRecordSchema(BaseModel):
+    withdraw_id: int
+    actor_id: int
+    actor_user_id: int
+    channel: PaymentChannelLiteral
+    out_withdraw_no: str
+    channel_withdraw_no: Optional[str]
+    amount: int
+    status: str
+    account_name: str
+    account_no_masked: str
+    remark: str
+    requested_at: datetime
+    processed_at: Optional[datetime]
+    failure_reason: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class ActorWithdrawListSchema(BaseModel):
+    items: List[ActorWithdrawRecordSchema]
+
+
+ActorWithdrawReviewActionLiteral = Literal["approve", "reject", "fail"]
+
+
+class AdminActorWithdrawRecordSchema(ActorWithdrawRecordSchema):
+    actor_name: str = ""
+    actor_external_id: str = ""
+    actor_user_display_name: str = ""
+
+
+class AdminActorWithdrawListSchema(BaseModel):
+    items: List[AdminActorWithdrawRecordSchema]
+
+
+class AdminActorWithdrawReviewRequest(BaseModel):
+    out_withdraw_no: str
+    action: ActorWithdrawReviewActionLiteral
+    failure_reason: str = Field(default="", max_length=256)

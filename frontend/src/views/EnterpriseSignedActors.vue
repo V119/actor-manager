@@ -61,6 +61,18 @@
             </div>
             <div class="space-y-1 text-xs text-on-surface-variant">
               <p>签约时间：{{ formatDateTime(actor.signed_at) }}</p>
+              <p class="flex items-center gap-2">
+                <span>支付状态：</span>
+                <span
+                  class="rounded-full border px-2 py-0.5 text-[11px] font-semibold"
+                  :class="paymentStatusClass(actor.payment_status)"
+                >
+                  {{ actor.payment_status_label || '未下单' }}
+                </span>
+              </p>
+              <p v-if="actor.latest_order_no">
+                最近订单：{{ actor.latest_order_no }} · {{ formatCurrency(actor.latest_line_total_amount) }}
+              </p>
               <p>风格图 {{ actor.published_style_count }} 张 · 录音 {{ actor.published_audio_count || 0 }} 条</p>
             </div>
           </div>
@@ -109,6 +121,23 @@ function formatDateTime(value) {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+function formatCurrency(value) {
+  const amount = Number(value || 0)
+  if (!Number.isFinite(amount)) return '￥0'
+  return `￥${amount.toLocaleString('zh-CN')}`
+}
+
+function paymentStatusClass(status) {
+  const normalized = String(status || '').toLowerCase()
+  if (normalized === 'settled') return 'border-emerald-300/30 bg-emerald-500/10 text-emerald-100'
+  if (normalized === 'paid') return 'border-sky-300/30 bg-sky-500/10 text-sky-100'
+  if (normalized === 'pending_payment') return 'border-amber-300/30 bg-amber-500/10 text-amber-100'
+  if (normalized === 'payment_failed') return 'border-rose-300/30 bg-rose-500/10 text-rose-100'
+  if (normalized === 'partially_refunded') return 'border-violet-300/30 bg-violet-500/10 text-violet-100'
+  if (normalized === 'refunded') return 'border-slate-300/30 bg-slate-500/10 text-slate-100'
+  return 'border-slate-300/20 bg-slate-500/10 text-slate-200'
 }
 
 function openActor(actorId) {

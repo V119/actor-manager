@@ -53,6 +53,31 @@
                 {{ detail.is_signed_by_current_enterprise ? '已签约' : signing ? '签约中...' : '签约' }}
               </button>
 
+              <button
+                type="button"
+                class="w-full rounded-xl border border-sky-300/25 bg-sky-500/10 px-4 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="!detail.is_signed_by_current_enterprise || addingToCart || actorInCart"
+                @click="handleAddToCart"
+              >
+                {{
+                  !detail.is_signed_by_current_enterprise
+                    ? '签约后可加入购物车'
+                    : actorInCart
+                      ? '已在购物车'
+                      : addingToCart
+                        ? '加入中...'
+                        : '加入购物车'
+                }}
+              </button>
+
+              <button
+                type="button"
+                class="w-full rounded-xl border border-sky-300/25 px-4 py-2.5 text-xs text-sky-100 transition hover:bg-sky-500/10"
+                @click="goToCartCheckout"
+              >
+                前往购物车与结算
+              </button>
+
               <p v-if="signActionMessage" class="text-sm text-emerald-200 leading-6">{{ signActionMessage }}</p>
               <p v-if="signActionError" class="rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-200 leading-6">
                 {{ signActionError }}
@@ -195,6 +220,7 @@ import { authStore } from '../lib/auth'
 import {
   ensureEnterpriseAgreementSigned
 } from '../lib/enterpriseAgreement'
+import { addEnterpriseCartItem, fetchEnterpriseCart } from '../lib/payment'
 
 const route = useRoute()
 const router = useRouter()
@@ -202,6 +228,8 @@ const loading = ref(false)
 const errorMessage = ref('')
 const detail = ref(null)
 const signing = ref(false)
+const addingToCart = ref(false)
+const actorInCart = ref(false)
 const signActionMessage = ref('')
 const signActionError = ref('')
 const videoLabelMap = {
@@ -310,11 +338,49 @@ async function handleSignActor() {
       ...detail.value,
       is_signed_by_current_enterprise: true
     }
-    signActionMessage.value = payload?.message || '已签约该演员。'
+    actorInCart.value = true
+    signActionMessage.value = `${payload?.message || '已签约该演员。'}已自动加入购物车。`
   } catch (error) {
     signActionError.value = error instanceof Error ? error.message : '签约失败，请稍后重试。'
   } finally {
     signing.value = false
+  }
+}
+
+async function handleAddToCart() {
+  if (!authStore.state.token || !detail.value?.actor?.actor_id || addingToCart.value || actorInCart.value) return
+  addingToCart.value = true
+  signActionMessage.value = ''
+  signActionError.value = ''
+  try {
+    await addEnterpriseCartItem({
+      token: authStore.state.token,
+      actorId: detail.value.actor.actor_id
+    })
+    actorInCart.value = true
+    signActionMessage.value = '已加入购物车，可前往“购物车与结算”完成支付。'
+  } catch (error) {
+    signActionError.value = error instanceof Error ? error.message : '加入购物车失败，请稍后重试。'
+  } finally {
+    addingToCart.value = false
+  }
+}
+
+function goToCartCheckout() {
+  router.push('/enterprise-cart-checkout')
+}
+
+async function syncActorCartState(actorId) {
+  if (!authStore.state.token || !actorId) {
+    actorInCart.value = false
+    return
+  }
+  try {
+    const payload = await fetchEnterpriseCart({ token: authStore.state.token })
+    const items = Array.isArray(payload?.items) ? payload.items : []
+    actorInCart.value = items.some((item) => Number(item.actor_id) === Number(actorId))
+  } catch (_error) {
+    actorInCart.value = false
   }
 }
 
@@ -324,6 +390,7 @@ async function loadDetail() {
   errorMessage.value = ''
   signActionMessage.value = ''
   signActionError.value = ''
+  actorInCart.value = false
   try {
     const agreementResult = await ensureEnterpriseAgreementSigned({
       token: authStore.state.token
@@ -337,6 +404,7 @@ async function loadDetail() {
       token: authStore.state.token
     })
     detail.value = payload
+    await syncActorCartState(actorId)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '演员详情加载失败，请稍后重试。'
   } finally {

@@ -274,3 +274,209 @@ class PortraitComposeJobModel(BaseModel):
             (('user', 'status', 'created_at'), False),
             (('status', 'created_at'), False),
         )
+
+
+class PaymentOpsConfigModel(BaseModel):
+    fee_rate_bps = peewee.IntegerField(default=600)
+    auto_accept_hours = peewee.IntegerField(default=72)
+    dispute_protect_hours = peewee.IntegerField(default=168)
+    max_hold_hours = peewee.IntegerField(default=4320)
+    settlement_safety_buffer_hours = peewee.IntegerField(default=24)
+    allow_wechat = peewee.BooleanField(default=True)
+    allow_alipay = peewee.BooleanField(default=True)
+    updated_by = peewee.ForeignKeyField(UserModel, null=True, backref='payment_configs_updated')
+    created_at = peewee.DateTimeField(default=datetime.now)
+    updated_at = peewee.DateTimeField(default=datetime.now, index=True)
+
+
+class EnterpriseCartItemModel(BaseModel):
+    enterprise_user = peewee.ForeignKeyField(UserModel, backref='cart_items', on_delete='CASCADE')
+    actor = peewee.ForeignKeyField(ActorModel, backref='cart_items', on_delete='CASCADE')
+    signing = peewee.ForeignKeyField(EnterpriseActorSigningModel, null=True, backref='cart_items', on_delete='SET NULL')
+    actor_quote_amount = peewee.IntegerField(default=0)
+    quote_snapshot = BinaryJSONField(default=dict)
+    status = peewee.CharField(default='active', index=True)  # active | removed | converted
+    created_at = peewee.DateTimeField(default=datetime.now, index=True)
+    updated_at = peewee.DateTimeField(default=datetime.now, index=True)
+
+    class Meta:
+        indexes = (
+            (('enterprise_user', 'actor'), True),
+            (('enterprise_user', 'status', 'created_at'), False),
+        )
+
+
+class EnterpriseOrderModel(BaseModel):
+    enterprise_user = peewee.ForeignKeyField(UserModel, backref='enterprise_orders', on_delete='CASCADE')
+    order_no = peewee.CharField(unique=True, index=True)
+    status = peewee.CharField(default='pending_payment', index=True)
+    currency = peewee.CharField(default='CNY')
+    actor_total_amount = peewee.IntegerField(default=0)
+    platform_fee_rate_bps = peewee.IntegerField(default=0)
+    platform_fee_amount = peewee.IntegerField(default=0)
+    payable_total_amount = peewee.IntegerField(default=0)
+    paid_total_amount = peewee.IntegerField(default=0)
+    refunded_total_amount = peewee.IntegerField(default=0)
+    settlement_status = peewee.CharField(default='pending', index=True)
+    settled_total_amount = peewee.IntegerField(default=0)
+    auto_accept_at = peewee.DateTimeField(null=True, index=True)
+    release_at = peewee.DateTimeField(null=True, index=True)
+    accepted_at = peewee.DateTimeField(null=True)
+    payment_succeeded_at = peewee.DateTimeField(null=True, index=True)
+    settled_at = peewee.DateTimeField(null=True, index=True)
+    closed_at = peewee.DateTimeField(null=True, index=True)
+    order_snapshot = BinaryJSONField(default=dict)
+    created_at = peewee.DateTimeField(default=datetime.now, index=True)
+    updated_at = peewee.DateTimeField(default=datetime.now, index=True)
+
+    class Meta:
+        indexes = (
+            (('enterprise_user', 'status', 'created_at'), False),
+            (('enterprise_user', 'settlement_status', 'created_at'), False),
+        )
+
+
+class EnterpriseOrderActorItemModel(BaseModel):
+    order = peewee.ForeignKeyField(EnterpriseOrderModel, backref='actor_items', on_delete='CASCADE')
+    enterprise_user = peewee.ForeignKeyField(UserModel, backref='ordered_actor_items', on_delete='CASCADE')
+    actor = peewee.ForeignKeyField(ActorModel, backref='order_items')
+    cart_item = peewee.ForeignKeyField(EnterpriseCartItemModel, null=True, backref='order_items', on_delete='SET NULL')
+    actor_quote_amount = peewee.IntegerField(default=0)
+    platform_fee_amount = peewee.IntegerField(default=0)
+    line_total_amount = peewee.IntegerField(default=0)
+    settled_amount = peewee.IntegerField(default=0)
+    refunded_amount = peewee.IntegerField(default=0)
+    item_status = peewee.CharField(default='pending', index=True)  # pending | paid | settled | partially_refunded | refunded
+    actor_receivable_amount = peewee.IntegerField(default=0)
+    actor_release_at = peewee.DateTimeField(null=True, index=True)
+    quote_snapshot = BinaryJSONField(default=dict)
+    created_at = peewee.DateTimeField(default=datetime.now, index=True)
+    updated_at = peewee.DateTimeField(default=datetime.now, index=True)
+
+    class Meta:
+        indexes = (
+            (('order', 'actor'), True),
+            (('actor', 'item_status', 'created_at'), False),
+        )
+
+
+class PaymentTransactionModel(BaseModel):
+    enterprise_user = peewee.ForeignKeyField(UserModel, backref='payment_transactions', on_delete='CASCADE')
+    order = peewee.ForeignKeyField(EnterpriseOrderModel, backref='payments', on_delete='CASCADE')
+    channel = peewee.CharField(index=True)  # wechat | alipay
+    out_trade_no = peewee.CharField(unique=True, index=True)
+    channel_trade_no = peewee.CharField(null=True, index=True)
+    amount = peewee.IntegerField(default=0)
+    status = peewee.CharField(default='initiated', index=True)  # initiated | paid | failed | closed
+    paid_at = peewee.DateTimeField(null=True, index=True)
+    expires_at = peewee.DateTimeField(null=True)
+    request_payload = BinaryJSONField(default=dict)
+    response_payload = BinaryJSONField(default=dict)
+    notify_payload = BinaryJSONField(default=dict)
+    created_at = peewee.DateTimeField(default=datetime.now, index=True)
+    updated_at = peewee.DateTimeField(default=datetime.now, index=True)
+
+    class Meta:
+        indexes = (
+            (('order', 'status', 'created_at'), False),
+            (('enterprise_user', 'channel', 'created_at'), False),
+        )
+
+
+class SettlementRecordModel(BaseModel):
+    order = peewee.ForeignKeyField(EnterpriseOrderModel, backref='settlements', on_delete='CASCADE')
+    actor_item = peewee.ForeignKeyField(EnterpriseOrderActorItemModel, null=True, backref='settlements', on_delete='CASCADE')
+    actor = peewee.ForeignKeyField(ActorModel, null=True, backref='settlements')
+    channel = peewee.CharField(default='internal', index=True)  # wechat | alipay | internal
+    out_settle_no = peewee.CharField(unique=True, index=True)
+    channel_settle_no = peewee.CharField(null=True, index=True)
+    settle_amount = peewee.IntegerField(default=0)
+    platform_fee_amount = peewee.IntegerField(default=0)
+    status = peewee.CharField(default='pending', index=True)  # pending | settled | failed | reversed
+    requested_at = peewee.DateTimeField(default=datetime.now, index=True)
+    settled_at = peewee.DateTimeField(null=True, index=True)
+    request_payload = BinaryJSONField(default=dict)
+    response_payload = BinaryJSONField(default=dict)
+    created_at = peewee.DateTimeField(default=datetime.now, index=True)
+    updated_at = peewee.DateTimeField(default=datetime.now, index=True)
+
+    class Meta:
+        indexes = (
+            (('order', 'status', 'created_at'), False),
+            (('actor', 'status', 'created_at'), False),
+        )
+
+
+class ActorWithdrawRecordModel(BaseModel):
+    actor = peewee.ForeignKeyField(ActorModel, backref='withdraw_records', on_delete='CASCADE')
+    actor_user = peewee.ForeignKeyField(UserModel, backref='actor_withdraw_records', on_delete='CASCADE')
+    channel = peewee.CharField(index=True)  # wechat | alipay
+    out_withdraw_no = peewee.CharField(unique=True, index=True)
+    channel_withdraw_no = peewee.CharField(null=True, index=True)
+    amount = peewee.IntegerField(default=0)
+    status = peewee.CharField(default='pending', index=True)  # pending | processing | succeeded | failed | rejected
+    account_name = peewee.CharField(default="")
+    account_no = peewee.CharField(default="")
+    account_snapshot = BinaryJSONField(default=dict)
+    remark = peewee.CharField(default="")
+    requested_at = peewee.DateTimeField(default=datetime.now, index=True)
+    processed_at = peewee.DateTimeField(null=True, index=True)
+    failure_reason = peewee.CharField(default="")
+    request_payload = BinaryJSONField(default=dict)
+    response_payload = BinaryJSONField(default=dict)
+    created_at = peewee.DateTimeField(default=datetime.now, index=True)
+    updated_at = peewee.DateTimeField(default=datetime.now, index=True)
+
+    class Meta:
+        indexes = (
+            (('actor', 'status', 'created_at'), False),
+            (('actor_user', 'created_at'), False),
+        )
+
+
+class RefundRecordModel(BaseModel):
+    enterprise_user = peewee.ForeignKeyField(UserModel, backref='refunds', on_delete='CASCADE')
+    order = peewee.ForeignKeyField(EnterpriseOrderModel, backref='refunds', on_delete='CASCADE')
+    actor_item = peewee.ForeignKeyField(EnterpriseOrderActorItemModel, null=True, backref='refunds', on_delete='SET NULL')
+    payment = peewee.ForeignKeyField(PaymentTransactionModel, null=True, backref='refunds', on_delete='SET NULL')
+    channel = peewee.CharField(index=True)  # wechat | alipay | internal
+    out_refund_no = peewee.CharField(unique=True, index=True)
+    channel_refund_no = peewee.CharField(null=True, index=True)
+    refund_amount = peewee.IntegerField(default=0)
+    status = peewee.CharField(default='pending', index=True)  # pending | succeeded | failed | canceled
+    reason = peewee.CharField(default="")
+    operator_user = peewee.ForeignKeyField(UserModel, null=True, backref='operated_refunds', on_delete='SET NULL')
+    reviewed_by = peewee.ForeignKeyField(UserModel, null=True, backref='reviewed_refunds', on_delete='SET NULL')
+    reviewed_at = peewee.DateTimeField(null=True, index=True)
+    request_payload = BinaryJSONField(default=dict)
+    response_payload = BinaryJSONField(default=dict)
+    notify_payload = BinaryJSONField(default=dict)
+    created_at = peewee.DateTimeField(default=datetime.now, index=True)
+    updated_at = peewee.DateTimeField(default=datetime.now, index=True)
+
+    class Meta:
+        indexes = (
+            (('order', 'status', 'created_at'), False),
+            (('enterprise_user', 'status', 'created_at'), False),
+            (('operator_user', 'created_at'), False),
+        )
+
+
+class PaymentAuditLogModel(BaseModel):
+    enterprise_user = peewee.ForeignKeyField(UserModel, null=True, backref='payment_audit_logs', on_delete='SET NULL')
+    order = peewee.ForeignKeyField(EnterpriseOrderModel, null=True, backref='audit_logs', on_delete='SET NULL')
+    actor_item = peewee.ForeignKeyField(EnterpriseOrderActorItemModel, null=True, backref='audit_logs', on_delete='SET NULL')
+    payment = peewee.ForeignKeyField(PaymentTransactionModel, null=True, backref='audit_logs', on_delete='SET NULL')
+    refund = peewee.ForeignKeyField(RefundRecordModel, null=True, backref='audit_logs', on_delete='SET NULL')
+    settlement = peewee.ForeignKeyField(SettlementRecordModel, null=True, backref='audit_logs', on_delete='SET NULL')
+    action = peewee.CharField(index=True)
+    operator_user = peewee.ForeignKeyField(UserModel, null=True, backref='operated_payment_audit_logs', on_delete='SET NULL')
+    detail = BinaryJSONField(default=dict)
+    created_at = peewee.DateTimeField(default=datetime.now, index=True)
+
+    class Meta:
+        indexes = (
+            (('order', 'created_at'), False),
+            (('action', 'created_at'), False),
+            (('operator_user', 'created_at'), False),
+        )

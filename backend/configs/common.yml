@@ -107,6 +107,18 @@ auth:
     password: "Admin@123456"
     display_name: 系统管理员
 
+payment:
+  use_mock: true
+  fee_rate_bps: 600
+  auto_accept_hours: 72
+  dispute_protect_hours: 168
+  max_hold_hours: 4320
+  settlement_safety_buffer_hours: 24
+  allowed_channels:
+    - wechat
+    - alipay
+  mock_channel_auto_success: true
+
 seed:
   users:
     individual:
