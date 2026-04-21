@@ -56,7 +56,7 @@ bash deployment/scripts/deploy_update.sh
 - `PUBLIC_HTTPS_PORT`（默认 `443`）
 - `BACKEND_PORT`（默认 `18000`）
 - `MINIO_PUBLIC_BASE_URL`（默认 `/minio`，用于后端返回给前端的 MinIO 公开访问前缀）
-- `TLS_CERT_DIR`（默认 `/opt/actor-manager/certs/nginx`，目录内需有 `fullchain.pem` 与 `privkey.pem`）
+- `TLS_CERT_DIR`（默认 `/opt/actor-manager/certs/nginx`，脚本会自动同步仓库内 `deployment/nginx/pem/fullchain.pem` 与 `deployment/nginx/pem/default.pem`）
 
 ## Nginx 配置能力（对应当前功能）
 
@@ -79,8 +79,9 @@ bash deployment/scripts/deploy_update.sh
   - `Referrer-Policy`
   - `Permissions-Policy`
 - TLS：
-  - 同时监听 `80/443`
-  - 证书路径固定为容器内 `/etc/nginx/certs/fullchain.pem` 与 `/etc/nginx/certs/privkey.pem`
+  - `80` 端口仅保留 `/healthz`，其余请求统一 `301` 跳转到 HTTPS
+  - 业务流量统一走 `443`
+  - 证书路径固定为容器内 `/etc/nginx/certs/fullchain.pem` 与 `/etc/nginx/certs/default.pem`
 
 ## 部署前准备
 
@@ -88,8 +89,9 @@ bash deployment/scripts/deploy_update.sh
 2. MinIO 可访问地址与端口（默认）：`host.docker.internal:9000`（Nginx 容器回源宿主机）
 3. 前端构建产物目录：`frontend/dist`
 4. TLS 证书文件：
-   - 默认目录：`/opt/actor-manager/certs/nginx`
-   - 必需文件：`fullchain.pem`、`privkey.pem`
+   - 仓库目录：`deployment/nginx/pem`
+   - 必需文件：`fullchain.pem`（证书链）、`default.pem`（私钥）
+   - 部署脚本会自动复制到服务器 `TLS_CERT_DIR`（默认 `/opt/actor-manager/certs/nginx`）
 5. 后端需要设置 `ACTOR_MANAGER_CONFIG_MINIO_PUBLIC_BASE_URL=/minio`，一键部署脚本已默认设置。
 6. 如果前后端拆分部署：
    - 修改 `deployment/nginx/conf.d/upstreams.conf` 中的 `server` 地址为真实后端地址。
@@ -151,6 +153,7 @@ docker run -d --name actor-manager-nginx \
 
 1. 基础健康检查：
    - `curl -i http://127.0.0.1:80/healthz` 返回 `200 ok`
+   - `curl -i http://127.0.0.1:80/` 返回 `301` 且 `Location` 指向 `https://...`
    - `curl -k -i https://127.0.0.1:443/healthz` 返回 `200 ok`
 2. 前端入口：
    - 访问 `http://127.0.0.1:80/login/individual` 可正常返回页面

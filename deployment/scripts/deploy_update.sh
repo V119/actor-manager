@@ -186,10 +186,13 @@ popd >/dev/null
 log "Syncing Nginx config"
 rsync -az --delete --exclude certs "$APP_ROOT/deployment/nginx/" "$RUNTIME_ROOT/nginx/"
 
-if [[ ! -f "$TLS_CERT_DIR/fullchain.pem" || ! -f "$TLS_CERT_DIR/privkey.pem" ]]; then
-  echo "Missing TLS cert files in $TLS_CERT_DIR (required: fullchain.pem, privkey.pem)" >&2
+log "Syncing TLS certs"
+if [[ ! -f "$APP_ROOT/deployment/nginx/pem/fullchain.pem" || ! -f "$APP_ROOT/deployment/nginx/pem/default.pem" ]]; then
+  echo "Missing TLS cert files in $APP_ROOT/deployment/nginx/pem (required: fullchain.pem, default.pem)" >&2
   exit 1
 fi
+install -m 0644 "$APP_ROOT/deployment/nginx/pem/fullchain.pem" "$TLS_CERT_DIR/fullchain.pem"
+install -m 0600 "$APP_ROOT/deployment/nginx/pem/default.pem" "$TLS_CERT_DIR/default.pem"
 
 log "Restarting Nginx container"
 docker rm -f actor-manager-nginx >/dev/null 2>&1 || true
