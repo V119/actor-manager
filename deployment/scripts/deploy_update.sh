@@ -187,12 +187,27 @@ log "Syncing Nginx config"
 rsync -az --delete --exclude certs "$APP_ROOT/deployment/nginx/" "$RUNTIME_ROOT/nginx/"
 
 log "Syncing TLS certs"
-if [[ ! -f "$APP_ROOT/deployment/nginx/pem/fullchain.pem" || ! -f "$APP_ROOT/deployment/nginx/pem/default.pem" ]]; then
-  echo "Missing TLS cert files in $APP_ROOT/deployment/nginx/pem (required: fullchain.pem, default.pem)" >&2
+TLS_SRC_CERT="$APP_ROOT/deployment/nginx/pem/fullchain.pem"
+TLS_SRC_KEY=""
+if [[ -f "$APP_ROOT/deployment/nginx/pem/privkey.pem" ]]; then
+  TLS_SRC_KEY="$APP_ROOT/deployment/nginx/pem/privkey.pem"
+elif [[ -f "$APP_ROOT/deployment/nginx/pem/default.pem" ]]; then
+  TLS_SRC_KEY="$APP_ROOT/deployment/nginx/pem/default.pem"
+fi
+
+if [[ ! -f "$TLS_SRC_CERT" || -z "$TLS_SRC_KEY" ]]; then
+  echo "Missing TLS cert files in $APP_ROOT/deployment/nginx/pem (required: fullchain.pem and privkey.pem or default.pem)" >&2
   exit 1
 fi
-install -m 0644 "$APP_ROOT/deployment/nginx/pem/fullchain.pem" "$TLS_CERT_DIR/fullchain.pem"
-install -m 0600 "$APP_ROOT/deployment/nginx/pem/default.pem" "$TLS_CERT_DIR/default.pem"
+
+TLS_CERT_MODULUS="$(openssl x509 -noout -modulus -in "$TLS_SRC_CERT" 2>/dev/null | openssl md5 | awk '{print $2}')"
+TLS_KEY_MODULUS="$(openssl rsa -noout -modulus -in "$TLS_SRC_KEY" 2>/dev/null | openssl md5 | awk '{print $2}')"
+if [[ -z "$TLS_CERT_MODULUS" || -z "$TLS_KEY_MODULUS" || "$TLS_CERT_MODULUS" != "$TLS_KEY_MODULUS" ]]; then
+  echo "TLS certificate and private key mismatch: cert=$TLS_SRC_CERT key=$TLS_SRC_KEY" >&2
+  exit 1
+fi
+install -m 0644 "$TLS_SRC_CERT" "$TLS_CERT_DIR/fullchain.pem"
+install -m 0600 "$TLS_SRC_KEY" "$TLS_CERT_DIR/privkey.pem"
 
 log "Restarting Nginx container"
 docker rm -f actor-manager-nginx >/dev/null 2>&1 || true
