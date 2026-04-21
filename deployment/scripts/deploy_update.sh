@@ -200,10 +200,26 @@ if [[ ! -f "$TLS_SRC_CERT" || -z "$TLS_SRC_KEY" ]]; then
   exit 1
 fi
 
-TLS_CERT_MODULUS="$(openssl x509 -noout -modulus -in "$TLS_SRC_CERT" 2>/dev/null | openssl md5 | awk '{print $2}')"
-TLS_KEY_MODULUS="$(openssl rsa -noout -modulus -in "$TLS_SRC_KEY" 2>/dev/null | openssl md5 | awk '{print $2}')"
-if [[ -z "$TLS_CERT_MODULUS" || -z "$TLS_KEY_MODULUS" || "$TLS_CERT_MODULUS" != "$TLS_KEY_MODULUS" ]]; then
+# 使用公钥指纹比对证书与私钥是否匹配，兼容 RSA/EC 等不同算法证书。
+TLS_CERT_PUBKEY_SHA256="$(
+  openssl x509 -in "$TLS_SRC_CERT" -pubkey -noout 2>/dev/null \
+    | openssl pkey -pubin -outform DER 2>/dev/null \
+    | openssl dgst -sha256 2>/dev/null \
+    | awk '{print $2}'
+)"
+TLS_KEY_PUBKEY_SHA256="$(
+  openssl pkey -in "$TLS_SRC_KEY" -pubout -outform DER 2>/dev/null \
+    | openssl dgst -sha256 2>/dev/null \
+    | awk '{print $2}'
+)"
+if [[ -z "$TLS_CERT_PUBKEY_SHA256" || -z "$TLS_KEY_PUBKEY_SHA256" ]]; then
+  echo "Unable to parse TLS certificate or private key: cert=$TLS_SRC_CERT key=$TLS_SRC_KEY" >&2
+  exit 1
+fi
+if [[ "$TLS_CERT_PUBKEY_SHA256" != "$TLS_KEY_PUBKEY_SHA256" ]]; then
   echo "TLS certificate and private key mismatch: cert=$TLS_SRC_CERT key=$TLS_SRC_KEY" >&2
+  echo "TLS cert pubkey sha256: $TLS_CERT_PUBKEY_SHA256" >&2
+  echo "TLS key pubkey sha256:  $TLS_KEY_PUBKEY_SHA256" >&2
   exit 1
 fi
 install -m 0644 "$TLS_SRC_CERT" "$TLS_CERT_DIR/fullchain.pem"
