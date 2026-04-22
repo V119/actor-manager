@@ -79,7 +79,7 @@ wait_for_nginx_auth() {
   local retries=60
   local code
   while (( retries > 0 )); do
-    code="$(curl -s -o /tmp/actor-manager-auth-check.json -w '%{http_code}' "http://127.0.0.1:${PUBLIC_HTTP_PORT}/api/auth/me" || true)"
+    code="$(curl -k -s -o /tmp/actor-manager-auth-check.json -w '%{http_code}' "https://127.0.0.1:${PUBLIC_HTTPS_PORT}/api/auth/me" || true)"
     if [[ "$code" == "401" ]]; then
       return 0
     fi

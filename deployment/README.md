@@ -82,6 +82,7 @@ bash deployment/scripts/deploy_update.sh
   - `80` 端口仅保留 `/healthz`，其余请求统一 `301` 跳转到 HTTPS
   - 业务流量统一走 `443`
   - 证书路径固定为容器内 `/etc/nginx/certs/fullchain.pem` 与 `/etc/nginx/certs/privkey.pem`
+  - 部署脚本中的 Nginx 鉴权连通性检查应走 `https://127.0.0.1/api/auth/me`，预期返回 `401`
 
 ## 部署前准备
 
