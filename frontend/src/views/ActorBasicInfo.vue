@@ -32,7 +32,7 @@
             <p class="mt-1 text-xs text-on-surface-variant">
               {{
                 basicInfo?.avatar_source === 'three_view'
-                  ? '已使用三视图合成图作为默认头像。'
+                  ? '已使用正面照上半部分自动裁剪头像。'
                   : '暂无三视图合成图，请先上传并发布三视图后自动生成头像。'
               }}
             </p>

@@ -145,13 +145,17 @@
           v-if="displayComposite"
           class="bg-surface/65 border border-emerald-400/20 rounded-2xl p-5 md:p-6 backdrop-blur-xl"
         >
-          <h2 class="text-lg font-semibold mb-4">当前三视图</h2>
+          <div class="mb-4 flex items-center justify-between gap-3">
+            <h2 class="text-lg font-semibold">当前三视图</h2>
+            <span class="text-xs text-on-surface-variant">点击图片查看无损原图</span>
+          </div>
           <div class="rounded-xl overflow-hidden border border-emerald-300/25 bg-slate-950/25">
             <div class="aspect-[4/3]">
               <img
                 :src="displayComposite.composite_preview_url"
                 alt="当前三视图"
-                class="w-full h-full object-cover"
+                class="w-full h-full object-cover cursor-zoom-in"
+                @click="openCompositeViewer"
               />
             </div>
           </div>
@@ -384,6 +388,30 @@
         </div>
       </section>
     </main>
+
+    <div
+      v-if="compositeViewer.visible && compositeViewer.url"
+      class="fixed inset-0 z-[120] bg-black/85 backdrop-blur-sm p-4 md:p-8 flex flex-col"
+      @click.self="closeCompositeViewer"
+    >
+      <div class="mb-3 flex items-center justify-between">
+        <p class="text-xs text-slate-200/80">无损原图预览</p>
+        <button
+          type="button"
+          class="rounded-md border border-slate-300/35 px-3 py-1.5 text-xs text-slate-100 hover:bg-white/10 transition"
+          @click="closeCompositeViewer"
+        >
+          关闭
+        </button>
+      </div>
+      <div class="flex-1 min-h-0 rounded-xl border border-slate-300/20 bg-slate-950/40 overflow-hidden">
+        <img
+          :src="compositeViewer.url"
+          alt="三视图无损原图"
+          class="w-full h-full object-contain"
+        />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -401,6 +429,10 @@ const imageErrorMessage = ref('')
 const imageSuccessMessage = ref('')
 const latestComposite = ref(null)
 const publishedComposite = ref(null)
+const compositeViewer = reactive({
+  visible: false,
+  url: ''
+})
 
 const VIDEO_TYPE_INTRO = 'intro'
 const VIDEO_TYPE_SHOWREEL = 'showreel'
@@ -572,7 +604,7 @@ function applySessionToImageSlots(session) {
   })
 
   for (const key of ['left', 'front', 'right']) {
-    images[key].existingPreview = byAngle[key]?.preview_url || ''
+    images[key].existingPreview = byAngle[key]?.variant_urls?.grid || byAngle[key]?.preview_url || ''
     images[key].existingFileName = byAngle[key]?.source_filename || ''
     images[key].preview = ''
     images[key].file = null
@@ -776,6 +808,18 @@ function getImageDimensions(file) {
     }
     image.src = tempUrl
   })
+}
+
+function openCompositeViewer() {
+  const url = displayComposite.value?.composite_original_url || displayComposite.value?.composite_image_url || ''
+  if (!url) return
+  compositeViewer.url = url
+  compositeViewer.visible = true
+}
+
+function closeCompositeViewer() {
+  compositeViewer.visible = false
+  compositeViewer.url = ''
 }
 
 async function loadExistingAssets() {

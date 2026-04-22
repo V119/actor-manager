@@ -143,7 +143,12 @@ async def _build_actor_card_payload(
     if style_preview:
         cover_image_url = style_preview.get("preview_url") or style_preview.get("image_url")
     elif published_three:
-        cover_image_url = published_three.get("composite_preview_url") or published_three.get("composite_image_url")
+        cover_image_url = (
+            published_three.get("avatar_variant_urls", {}).get("thumb")
+            or published_three.get("avatar_url")
+            or published_three.get("composite_preview_url")
+            or published_three.get("composite_image_url")
+        )
     elif published_video:
         cover_image_url = published_video.get("preview_url") or published_video.get("video_url")
 

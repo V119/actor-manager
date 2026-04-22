@@ -293,9 +293,9 @@ const basePhotoSlots = computed(() => {
     byAngle[item.view_angle] = item
   })
   return [
-    { view_angle: 'left', label: '左侧面图', preview_url: byAngle.left?.preview_url || '' },
-    { view_angle: 'front', label: '正面图', preview_url: byAngle.front?.preview_url || '' },
-    { view_angle: 'right', label: '右侧面图', preview_url: byAngle.right?.preview_url || '' }
+    { view_angle: 'left', label: '左侧面图', preview_url: byAngle.left?.variant_urls?.grid || byAngle.left?.preview_url || '' },
+    { view_angle: 'front', label: '正面图', preview_url: byAngle.front?.variant_urls?.grid || byAngle.front?.preview_url || '' },
+    { view_angle: 'right', label: '右侧面图', preview_url: byAngle.right?.variant_urls?.grid || byAngle.right?.preview_url || '' }
   ].filter((item) => Boolean(item.preview_url))
 })
 

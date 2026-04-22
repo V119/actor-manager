@@ -152,7 +152,7 @@ watch(
     }
     try {
       const payload = await apiRequest('/actors/me/basic-info', { token })
-      individualAvatarUrl.value = payload?.avatar_url || ''
+      individualAvatarUrl.value = payload?.avatar_variant_urls?.thumb || payload?.avatar_url || ''
     } catch (_error) {
       individualAvatarUrl.value = ''
     }

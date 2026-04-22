@@ -52,6 +52,8 @@ class ActorBasicInfoSchema(BaseModel):
     pricing_unit: Literal["day", "project"]
     pricing_amount: int
     avatar_url: Optional[str]
+    avatar_original_url: Optional[str] = None
+    avatar_variant_urls: dict[str, str] = Field(default_factory=dict)
     avatar_source: Literal["three_view", "none"]
     created_at: datetime
 
@@ -128,9 +130,18 @@ class ThreeViewRawImageSchema(BaseModel):
     id: int
     view_angle: Literal["front", "left", "right"]
     image_url: str
+    original_url: str
     preview_url: str
     bucket_name: str
     object_key: str
+    preview_bucket_name: str
+    preview_object_key: str
+    preview_image_url: str
+    preview_mime_type: str
+    preview_width: int
+    preview_height: int
+    preview_file_size: int
+    variant_urls: dict[str, str] = Field(default_factory=dict)
     source_filename: str
     mime_type: str
     file_size: int
@@ -147,11 +158,21 @@ class ThreeViewUploadSchema(BaseModel):
     is_current: bool
     superseded_at: Optional[datetime]
     composite_image_url: str
+    composite_original_url: str
     composite_preview_url: str
+    composite_variant_urls: dict[str, str] = Field(default_factory=dict)
     composite_bucket: str
     composite_object_key: str
+    composite_preview_bucket: str
+    composite_preview_object_key: str
+    composite_preview_image_url: str
+    composite_file_size: int
+    composite_preview_file_size: int
     composite_width: int
     composite_height: int
+    avatar_url: Optional[str] = None
+    avatar_original_url: Optional[str] = None
+    avatar_variant_urls: dict[str, str] = Field(default_factory=dict)
     expected_composite_ratio: str
     expected_single_ratio: str
     detection_note: str

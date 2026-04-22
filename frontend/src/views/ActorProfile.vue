@@ -136,7 +136,7 @@
             <div v-if="detail.published_three_view" class="space-y-4">
               <div class="aspect-[4/3] rounded-lg overflow-hidden border border-emerald-300/20">
                 <img
-                  :src="detail.published_three_view.composite_preview_url"
+                  :src="detail.published_three_view.composite_variant_urls?.detail || detail.published_three_view.composite_preview_url"
                   alt="已发布三视图"
                   class="w-full h-full object-cover"
                 />
@@ -265,6 +265,12 @@ const publishedAudios = computed(() => {
 const coverImage = computed(() => {
   if (detail.value?.published_styles?.length) {
     return detail.value.published_styles[0].preview_url || detail.value.published_styles[0].image_url
+  }
+  if (detail.value?.published_three_view?.avatar_variant_urls?.thumb) {
+    return detail.value.published_three_view.avatar_variant_urls.thumb
+  }
+  if (detail.value?.published_three_view?.avatar_url) {
+    return detail.value.published_three_view.avatar_url
   }
   if (detail.value?.published_three_view?.composite_preview_url) {
     return detail.value.published_three_view.composite_preview_url

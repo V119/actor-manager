@@ -91,6 +91,17 @@ VIDEO_TYPE_LABELS = {
     VIDEO_TYPE_SHOWREEL: "妆造/演戏混剪",
 }
 THREE_VIEW_MIN_LONG_EDGE_PX = 2000
+THREE_VIEW_RAW_TARGET_WIDTHS: dict[str, int] = {
+    "grid": 480,
+    "card": 720,
+}
+THREE_VIEW_COMPOSITE_TARGET_WIDTHS: dict[str, int] = {
+    "card": 720,
+    "detail": 1080,
+}
+THREE_VIEW_VARIANT_JPEG_QUALITY = 82
+THREE_VIEW_AVATAR_SIZE = 320
+THREE_VIEW_AVATAR_JPEG_QUALITY = 84
 
 
 class PortraitUploadPayload(TypedDict):
@@ -125,6 +136,15 @@ class UploadPlanPayload(TypedDict):
     upload_batch_key: str
     expires_at: int
     files: list[dict[str, Any]]
+
+
+class GeneratedImageVariant(TypedDict):
+    key: str
+    object_key: str
+    width: int
+    height: int
+    file_size: int
+    mime_type: str
 
 
 class ActorService:
@@ -204,6 +224,12 @@ class PortraitService:
 
         upload_batch_key = uuid.uuid4().hex
         date_prefix = datetime.now().strftime("%Y/%m/%d")
+        base_prefix = self._build_portrait_storage_prefix(
+            user_id=user_id,
+            actor_id=actor_id,
+            date_prefix=date_prefix,
+            session_key=upload_batch_key,
+        )
         uploads: list[DirectUploadTarget] = []
         seen_angles: set[str] = set()
 
@@ -222,10 +248,7 @@ class PortraitService:
 
             size = max(0, int(file_meta.get("size", 0)))
             extension = self._guess_extension(filename, content_type, "jpeg")
-            object_key = (
-                f"portraits/raw/user_{user_id}/actor_{actor_id}/{date_prefix}/{upload_batch_key}/"
-                f"{angle}_{uuid.uuid4().hex}.{extension}"
-            )
+            object_key = self._build_raw_object_key(base_prefix, angle, extension)
             uploads.append(
                 {
                     "view_angle": angle,
@@ -402,27 +425,16 @@ class PortraitService:
         images: dict[str, PortraitUploadPayload],
     ) -> dict[str, Any]:
         actor_id = self._resolve_actor_for_user(user_id=user_id, user_display_name=user_display_name)
-        compose_width = max(300, settings.PORTRAIT_COMPOSE_WIDTH)
-        compose_height = max(225, settings.PORTRAIT_COMPOSE_HEIGHT)
         session_key = uuid.uuid4().hex
         date_prefix = datetime.now().strftime("%Y/%m/%d")
         logger.info(
-            "Three-view upload started user_id=%s actor_id=%s session_key=%s compose=%sx%s",
+            "Three-view upload started user_id=%s actor_id=%s session_key=%s",
             user_id,
             actor_id,
             session_key,
-            compose_width,
-            compose_height,
         )
 
-        panel_width = compose_width // 3
-        panel_height = int(panel_width * 16 / 9)
-        if panel_height > compose_height:
-            panel_height = compose_height
-            panel_width = int(panel_height * 9 / 16)
-
-        raw_asset_records: list[dict[str, Any]] = []
-        panels: dict[str, Image.Image] = {}
+        source_map: dict[str, dict[str, Any]] = {}
         for angle in ("front", "left", "right"):
             payload = images.get(angle)
             if not payload:
@@ -432,89 +444,33 @@ class PortraitService:
             if not file_data:
                 logger.warning(
                     "Three-view upload empty file user_id=%s actor_id=%s angle=%s",
-                    user_id,
-                    actor_id,
-                    angle,
-                )
+                user_id,
+                actor_id,
+                angle,
+            )
                 raise ValueError(f"Empty file for angle: {angle}")
 
             image, width, height, image_format = self._read_image(file_data)
             self._validate_three_view_source_resolution(angle=angle, width=width, height=height)
             extension = self._guess_extension(payload["filename"], payload["content_type"], image_format)
-            logger.debug(
-                "Three-view source parsed user_id=%s actor_id=%s angle=%s filename=%s size=%s resolution=%sx%s format=%s",
-                user_id,
-                actor_id,
-                angle,
-                payload["filename"],
-                len(file_data),
-                width,
-                height,
-                image_format,
-            )
-            object_key = (
-                f"portraits/raw/user_{user_id}/actor_{actor_id}/{date_prefix}/{session_key}/"
-                f"{angle}_{uuid.uuid4().hex}.{extension}"
-            )
-            image_url = await self.storage_client.upload_file(
-                object_key,
-                file_data,
-                payload["content_type"] or "application/octet-stream",
-                bucket=settings.MINIO_PORTRAIT_RAW_BUCKET,
-            )
-            logger.debug(
-                "Three-view raw image uploaded user_id=%s actor_id=%s angle=%s bucket=%s object_key=%s",
-                user_id,
-                actor_id,
-                angle,
-                settings.MINIO_PORTRAIT_RAW_BUCKET,
-                object_key,
-            )
+            source_map[angle] = {
+                "data": file_data,
+                "bucket_name": settings.MINIO_PORTRAIT_RAW_BUCKET,
+                "object_key": "",
+                "source_filename": payload["filename"] or f"{angle}.{extension}",
+                "mime_type": payload["content_type"] or "application/octet-stream",
+                "file_size": len(file_data),
+                "width": width,
+                "height": height,
+                "extension": extension,
+            }
 
-            panels[angle] = ImageOps.fit(
-                image,
-                (panel_width, panel_height),
-                method=Image.Resampling.LANCZOS,
-                centering=(0.5, 0.5),
-            )
-            raw_asset_records.append(
-                {
-                    "view_angle": angle,
-                    "bucket_name": settings.MINIO_PORTRAIT_RAW_BUCKET,
-                    "object_key": object_key,
-                    "image_url": image_url,
-                    "source_filename": payload["filename"] or f"{angle}.{extension}",
-                    "mime_type": payload["content_type"] or "application/octet-stream",
-                    "file_size": len(file_data),
-                    "width": width,
-                    "height": height,
-                    "expected_ratio": settings.PORTRAIT_EXPECTED_SINGLE_RATIO,
-                }
-            )
-
-        composite_bytes = self._compose_three_view_image(
-            panels=panels,
-            width=compose_width,
-            height=compose_height,
-            order=settings.PORTRAIT_COMPOSE_ORDER,
-        )
-        composite_object_key = (
-            f"portraits/generated/user_{user_id}/actor_{actor_id}/{date_prefix}/{session_key}/"
-            f"upper_body_three_view_{uuid.uuid4().hex}.jpg"
-        )
-        composite_image_url = await self.storage_client.upload_file(
-            composite_object_key,
-            composite_bytes,
-            "image/jpeg",
-            bucket=settings.MINIO_PORTRAIT_GENERATED_BUCKET,
-        )
-        logger.debug(
-            "Three-view composite uploaded user_id=%s actor_id=%s bucket=%s object_key=%s size=%s",
-            user_id,
-            actor_id,
-            settings.MINIO_PORTRAIT_GENERATED_BUCKET,
-            composite_object_key,
-            len(composite_bytes),
+        assembled = await self._assemble_three_view_assets(
+            user_id=user_id,
+            actor_id=actor_id,
+            session_key=session_key,
+            date_prefix=date_prefix,
+            source_map=source_map,
         )
 
         with database.allow_sync():
@@ -545,10 +501,24 @@ class PortraitService:
                 is_current=True,
                 superseded_at=None,
                 composite_bucket=settings.MINIO_PORTRAIT_GENERATED_BUCKET,
-                composite_object_key=composite_object_key,
-                composite_image_url=composite_image_url,
-                composite_width=compose_width,
-                composite_height=compose_height,
+                composite_object_key=assembled["composite_object_key"],
+                composite_image_url=assembled["composite_image_url"],
+                composite_preview_bucket=settings.MINIO_PORTRAIT_GENERATED_BUCKET,
+                composite_preview_object_key=assembled["composite_preview_object_key"],
+                composite_preview_image_url=assembled["composite_preview_image_url"],
+                composite_preview_file_size=assembled["composite_preview_file_size"],
+                composite_variant_map=assembled["composite_variant_map"],
+                composite_file_size=assembled["composite_file_size"],
+                composite_width=assembled["compose_width"],
+                composite_height=assembled["compose_height"],
+                avatar_bucket_name=assembled["avatar_bucket_name"],
+                avatar_object_key=assembled["avatar_object_key"],
+                avatar_image_url=assembled["avatar_image_url"],
+                avatar_mime_type=assembled["avatar_mime_type"],
+                avatar_width=assembled["avatar_width"],
+                avatar_height=assembled["avatar_height"],
+                avatar_file_size=assembled["avatar_file_size"],
+                avatar_variant_map=assembled["avatar_variant_map"],
                 created_at=now,
             )
             assets = [
@@ -559,7 +529,7 @@ class PortraitService:
                     created_at=now,
                     **record,
                 )
-                for record in raw_asset_records
+                for record in assembled["raw_asset_records"]
             ]
 
         logger.info(
@@ -810,10 +780,15 @@ class PortraitService:
             existing = existing_map.get(angle)
             if not existing:
                 raise ValueError(f"历史素材缺少角度: {angle}，请重新上传三张图片。")
+            download_bucket = existing.bucket_name
+            download_object_key = existing.object_key
+            if existing.preview_bucket_name and existing.preview_object_key:
+                download_bucket = existing.preview_bucket_name
+                download_object_key = existing.preview_object_key
             try:
                 existing_data = await self.storage_client.download_file(
-                    existing.object_key,
-                    bucket=existing.bucket_name,
+                    download_object_key,
+                    bucket=download_bucket,
                 )
             except Exception as exc:
                 logger.exception(
@@ -821,8 +796,8 @@ class PortraitService:
                     user_id,
                     latest_session.id,
                     angle,
-                    existing.bucket_name,
-                    existing.object_key,
+                    download_bucket,
+                    download_object_key,
                 )
                 raise ValueError("历史素材读取失败，请重新上传三张图片。") from exc
             complete_images[angle] = {
@@ -1363,33 +1338,118 @@ class PortraitService:
                 for session in history_sessions
             }
             candidate_objects.update(
+                (session.composite_preview_bucket, session.composite_preview_object_key)
+                for session in history_sessions
+                if session.composite_preview_bucket and session.composite_preview_object_key
+            )
+            candidate_objects.update(
+                (session.avatar_bucket_name, session.avatar_object_key)
+                for session in history_sessions
+                if session.avatar_bucket_name and session.avatar_object_key
+            )
+            for session in history_sessions:
+                session_composite_variants = dict(session.composite_variant_map or {})
+                for item in session_composite_variants.values():
+                    if not isinstance(item, dict):
+                        continue
+                    bucket_name = str(item.get("bucket_name") or "")
+                    object_key = str(item.get("object_key") or "")
+                    if bucket_name and object_key:
+                        candidate_objects.add((bucket_name, object_key))
+                session_avatar_variants = dict(session.avatar_variant_map or {})
+                for item in session_avatar_variants.values():
+                    if not isinstance(item, dict):
+                        continue
+                    bucket_name = str(item.get("bucket_name") or "")
+                    object_key = str(item.get("object_key") or "")
+                    if bucket_name and object_key:
+                        candidate_objects.add((bucket_name, object_key))
+            candidate_objects.update(
                 (asset.bucket_name, asset.object_key)
                 for asset in history_assets
             )
+            candidate_objects.update(
+                (asset.preview_bucket_name, asset.preview_object_key)
+                for asset in history_assets
+                if asset.preview_bucket_name and asset.preview_object_key
+            )
+            for asset in history_assets:
+                variant_map = dict(asset.variant_map or {})
+                for item in variant_map.values():
+                    if not isinstance(item, dict):
+                        continue
+                    bucket_name = str(item.get("bucket_name") or "")
+                    object_key = str(item.get("object_key") or "")
+                    if bucket_name and object_key:
+                        candidate_objects.add((bucket_name, object_key))
 
             deletable_objects = set(candidate_objects)
             skipped_objects = set()
             if purge_storage and candidate_objects:
-                in_use_objects: set[tuple[str, str]] = {
-                    (session.composite_bucket, session.composite_object_key)
-                    for session in PortraitUploadSessionModel.select(
+                in_use_sessions = list(
+                    PortraitUploadSessionModel.select(
                         PortraitUploadSessionModel.composite_bucket,
                         PortraitUploadSessionModel.composite_object_key,
+                        PortraitUploadSessionModel.composite_preview_bucket,
+                        PortraitUploadSessionModel.composite_preview_object_key,
+                        PortraitUploadSessionModel.avatar_bucket_name,
+                        PortraitUploadSessionModel.avatar_object_key,
+                        PortraitUploadSessionModel.composite_variant_map,
+                        PortraitUploadSessionModel.avatar_variant_map,
                     ).where(
                         (PortraitUploadSessionModel.user_id == user_id)
                         & (~(PortraitUploadSessionModel.id.in_(history_session_ids)))
                     )
+                )
+                in_use_objects: set[tuple[str, str]] = {
+                    (session.composite_bucket, session.composite_object_key)
+                    for session in in_use_sessions
                 }
-                in_use_objects.update(
-                    (asset.bucket_name, asset.object_key)
-                    for asset in PortraitUploadAssetModel.select(
+                for session in in_use_sessions:
+                    if session.composite_preview_bucket and session.composite_preview_object_key:
+                        in_use_objects.add((session.composite_preview_bucket, session.composite_preview_object_key))
+                    if session.avatar_bucket_name and session.avatar_object_key:
+                        in_use_objects.add((session.avatar_bucket_name, session.avatar_object_key))
+                    composite_variant_map = dict(session.composite_variant_map or {})
+                    for item in composite_variant_map.values():
+                        if not isinstance(item, dict):
+                            continue
+                        bucket_name = str(item.get("bucket_name") or "")
+                        object_key = str(item.get("object_key") or "")
+                        if bucket_name and object_key:
+                            in_use_objects.add((bucket_name, object_key))
+                    avatar_variant_map = dict(session.avatar_variant_map or {})
+                    for item in avatar_variant_map.values():
+                        if not isinstance(item, dict):
+                            continue
+                        bucket_name = str(item.get("bucket_name") or "")
+                        object_key = str(item.get("object_key") or "")
+                        if bucket_name and object_key:
+                            in_use_objects.add((bucket_name, object_key))
+                in_use_assets = list(
+                    PortraitUploadAssetModel.select(
                         PortraitUploadAssetModel.bucket_name,
                         PortraitUploadAssetModel.object_key,
+                        PortraitUploadAssetModel.preview_bucket_name,
+                        PortraitUploadAssetModel.preview_object_key,
+                        PortraitUploadAssetModel.variant_map,
                     ).where(
                         (PortraitUploadAssetModel.user_id == user_id)
                         & (~(PortraitUploadAssetModel.session_id.in_(history_session_ids)))
                     )
                 )
+                in_use_objects.update((asset.bucket_name, asset.object_key) for asset in in_use_assets)
+                for asset in in_use_assets:
+                    if asset.preview_bucket_name and asset.preview_object_key:
+                        in_use_objects.add((asset.preview_bucket_name, asset.preview_object_key))
+                    variant_map = dict(asset.variant_map or {})
+                    for item in variant_map.values():
+                        if not isinstance(item, dict):
+                            continue
+                        bucket_name = str(item.get("bucket_name") or "")
+                        object_key = str(item.get("object_key") or "")
+                        if bucket_name and object_key:
+                            in_use_objects.add((bucket_name, object_key))
                 skipped_objects = candidate_objects & in_use_objects
                 deletable_objects = candidate_objects - in_use_objects
 
@@ -1426,6 +1486,321 @@ class PortraitService:
             "deleted_objects": int(deleted_objects),
             "skipped_objects": int(len(skipped_objects)),
         }
+
+    async def backfill_three_view_variants(
+        self,
+        *,
+        user_id: int | None = None,
+        actor_id: int | None = None,
+        limit: int = 0,
+        dry_run: bool = False,
+        force: bool = False,
+    ) -> dict[str, int]:
+        max_limit = max(0, int(limit or 0))
+        with database.allow_sync():
+            condition = PortraitUploadSessionModel.id > 0
+            if user_id is not None:
+                condition = condition & (PortraitUploadSessionModel.user_id == int(user_id))
+            if actor_id is not None:
+                condition = condition & (PortraitUploadSessionModel.actor_id == int(actor_id))
+
+            query = (
+                PortraitUploadSessionModel.select()
+                .where(condition)
+                .order_by(PortraitUploadSessionModel.created_at.asc())
+            )
+            if max_limit > 0:
+                query = query.limit(max_limit)
+            sessions = list(query)
+
+            if not sessions:
+                return {
+                    "scanned_sessions": 0,
+                    "updated_sessions": 0,
+                    "skipped_sessions": 0,
+                    "failed_sessions": 0,
+                    "scanned_assets": 0,
+                    "updated_assets": 0,
+                }
+
+            session_ids = [session.id for session in sessions]
+            assets = list(
+                PortraitUploadAssetModel.select()
+                .where(PortraitUploadAssetModel.session_id.in_(session_ids))
+                .order_by(PortraitUploadAssetModel.created_at.asc())
+            )
+
+        assets_by_session: dict[int, list[PortraitUploadAssetModel]] = {}
+        for asset in assets:
+            assets_by_session.setdefault(asset.session_id, []).append(asset)
+
+        summary = {
+            "scanned_sessions": len(sessions),
+            "updated_sessions": 0,
+            "skipped_sessions": 0,
+            "failed_sessions": 0,
+            "scanned_assets": len(assets),
+            "updated_assets": 0,
+        }
+
+        for session in sessions:
+            session_assets = assets_by_session.get(session.id, [])
+            try:
+                session_changed, updated_asset_count = await self._backfill_single_three_view_session(
+                    session=session,
+                    assets=session_assets,
+                    dry_run=dry_run,
+                    force=force,
+                )
+            except Exception:
+                summary["failed_sessions"] += 1
+                logger.exception(
+                    "Three-view historical backfill failed session_id=%s user_id=%s actor_id=%s",
+                    session.id,
+                    session.user_id,
+                    session.actor_id,
+                )
+                continue
+
+            if session_changed:
+                summary["updated_sessions"] += 1
+                summary["updated_assets"] += int(updated_asset_count)
+            else:
+                summary["skipped_sessions"] += 1
+
+        logger.info(
+            "Three-view historical backfill finished dry_run=%s force=%s scanned_sessions=%s updated_sessions=%s skipped_sessions=%s failed_sessions=%s scanned_assets=%s updated_assets=%s",
+            dry_run,
+            force,
+            summary["scanned_sessions"],
+            summary["updated_sessions"],
+            summary["skipped_sessions"],
+            summary["failed_sessions"],
+            summary["scanned_assets"],
+            summary["updated_assets"],
+        )
+        return summary
+
+    async def _backfill_single_three_view_session(
+        self,
+        *,
+        session: PortraitUploadSessionModel,
+        assets: list[PortraitUploadAssetModel],
+        dry_run: bool,
+        force: bool,
+    ) -> tuple[bool, int]:
+        asset_by_angle = {str(asset.view_angle or "").lower(): asset for asset in assets}
+        missing_angles = [angle for angle in ("front", "left", "right") if angle not in asset_by_angle]
+        if missing_angles:
+            logger.warning(
+                "Skip historical backfill due to missing angles session_id=%s missing=%s",
+                session.id,
+                ",".join(missing_angles),
+            )
+            return False, 0
+
+        if not force and not self._session_requires_backfill(session=session, assets=assets):
+            return False, 0
+
+        date_prefix = (session.created_at or datetime.now()).strftime("%Y/%m/%d")
+
+        normalized_source_map: dict[str, dict[str, Any]] = {}
+        for angle in ("front", "left", "right"):
+            source_asset = asset_by_angle[angle]
+            source_data, source_bucket_name, source_object_key = await self._load_backfill_source_bytes(source_asset)
+            image, width, height, image_format = self._read_image(source_data)
+            extension = self._guess_extension(
+                str(source_asset.source_filename or f"{angle}.jpg"),
+                str(source_asset.mime_type or "application/octet-stream"),
+                image_format,
+            )
+            normalized_source_map[angle] = {
+                "data": source_data,
+                "bucket_name": source_bucket_name,
+                "object_key": source_object_key,
+                "image_url": source_asset.image_url,
+                "source_filename": source_asset.source_filename,
+                "mime_type": source_asset.mime_type,
+                "file_size": int(source_asset.file_size or len(source_data)),
+                "width": int(source_asset.width or width),
+                "height": int(source_asset.height or height),
+                "extension": extension,
+            }
+
+        if dry_run:
+            logger.info(
+                "Three-view historical backfill dry-run session_id=%s user_id=%s actor_id=%s",
+                session.id,
+                session.user_id,
+                session.actor_id,
+            )
+            return True, 0
+
+        assembled = await self._assemble_three_view_assets(
+            user_id=int(session.user_id),
+            actor_id=int(session.actor_id),
+            session_key=str(session.session_key),
+            date_prefix=date_prefix,
+            source_map=normalized_source_map,
+        )
+
+        updated_assets = 0
+        with database.allow_sync():
+            session_model = PortraitUploadSessionModel.get_or_none(PortraitUploadSessionModel.id == session.id)
+            if not session_model:
+                logger.warning(
+                    "Skip backfill persistence because session was removed session_id=%s",
+                    session.id,
+                )
+                return False, 0
+
+            raw_records_by_angle = {
+                str(item.get("view_angle") or "").lower(): item
+                for item in assembled.get("raw_asset_records", [])
+                if isinstance(item, dict)
+            }
+
+            for angle in ("front", "left", "right"):
+                source_asset = asset_by_angle[angle]
+                generated = raw_records_by_angle.get(angle)
+                if not generated:
+                    continue
+                source_asset.preview_bucket_name = str(generated.get("preview_bucket_name") or "")
+                source_asset.preview_object_key = str(generated.get("preview_object_key") or "")
+                source_asset.preview_image_url = str(generated.get("preview_image_url") or "")
+                source_asset.preview_mime_type = str(generated.get("preview_mime_type") or "")
+                source_asset.preview_width = int(generated.get("preview_width") or 0)
+                source_asset.preview_height = int(generated.get("preview_height") or 0)
+                source_asset.preview_file_size = int(generated.get("preview_file_size") or 0)
+                source_asset.variant_map = dict(generated.get("variant_map") or {})
+                source_asset.save()
+                updated_assets += 1
+
+            session_model.composite_bucket = settings.MINIO_PORTRAIT_GENERATED_BUCKET
+            session_model.composite_object_key = str(assembled.get("composite_object_key") or "")
+            session_model.composite_image_url = str(assembled.get("composite_image_url") or "")
+            session_model.composite_file_size = int(assembled.get("composite_file_size") or 0)
+            session_model.composite_width = int(assembled.get("compose_width") or session_model.composite_width or 0)
+            session_model.composite_height = int(assembled.get("compose_height") or session_model.composite_height or 0)
+            session_model.composite_preview_bucket = settings.MINIO_PORTRAIT_GENERATED_BUCKET
+            session_model.composite_preview_object_key = str(assembled.get("composite_preview_object_key") or "")
+            session_model.composite_preview_image_url = str(assembled.get("composite_preview_image_url") or "")
+            session_model.composite_preview_file_size = int(assembled.get("composite_preview_file_size") or 0)
+            session_model.composite_variant_map = dict(assembled.get("composite_variant_map") or {})
+
+            session_model.avatar_bucket_name = str(assembled.get("avatar_bucket_name") or "")
+            session_model.avatar_object_key = str(assembled.get("avatar_object_key") or "")
+            session_model.avatar_image_url = str(assembled.get("avatar_image_url") or "")
+            session_model.avatar_mime_type = str(assembled.get("avatar_mime_type") or "")
+            session_model.avatar_width = int(assembled.get("avatar_width") or 0)
+            session_model.avatar_height = int(assembled.get("avatar_height") or 0)
+            session_model.avatar_file_size = int(assembled.get("avatar_file_size") or 0)
+            session_model.avatar_variant_map = dict(assembled.get("avatar_variant_map") or {})
+
+            session_model.save()
+
+        logger.info(
+            "Three-view historical backfill persisted session_id=%s user_id=%s actor_id=%s updated_assets=%s",
+            session.id,
+            session.user_id,
+            session.actor_id,
+            updated_assets,
+        )
+        return True, updated_assets
+
+    async def _load_backfill_source_bytes(
+        self,
+        asset: PortraitUploadAssetModel,
+    ) -> tuple[bytes, str, str]:
+        candidates: list[tuple[str, str]] = []
+        raw_bucket = str(asset.bucket_name or "")
+        raw_key = str(asset.object_key or "")
+        if raw_bucket and raw_key:
+            candidates.append((raw_bucket, raw_key))
+        preview_bucket = str(asset.preview_bucket_name or "")
+        preview_key = str(asset.preview_object_key or "")
+        if preview_bucket and preview_key:
+            candidates.append((preview_bucket, preview_key))
+
+        last_error: Exception | None = None
+        for bucket_name, object_key in candidates:
+            try:
+                payload = await self.storage_client.download_file(object_key, bucket=bucket_name)
+                if payload:
+                    return payload, bucket_name, object_key
+            except Exception as exc:
+                last_error = exc
+                logger.warning(
+                    "Historical source download failed session_id=%s asset_id=%s angle=%s bucket=%s object_key=%s",
+                    asset.session_id,
+                    asset.id,
+                    asset.view_angle,
+                    bucket_name,
+                    object_key,
+                )
+
+        if last_error is not None:
+            raise last_error
+        raise ValueError(f"无法读取历史素材：session={asset.session_id} asset={asset.id} angle={asset.view_angle}")
+
+    def _session_requires_backfill(
+        self,
+        *,
+        session: PortraitUploadSessionModel,
+        assets: list[PortraitUploadAssetModel],
+    ) -> bool:
+        for asset in assets:
+            if not str(asset.preview_object_key or ""):
+                return True
+            if not str(asset.preview_bucket_name or ""):
+                return True
+            if int(asset.preview_width or 0) <= 0 or int(asset.preview_height or 0) <= 0:
+                return True
+            if int(asset.preview_file_size or 0) <= 0:
+                return True
+            variant_map = dict(asset.variant_map or {})
+            if not variant_map:
+                return True
+            for variant_key in THREE_VIEW_RAW_TARGET_WIDTHS.keys():
+                item = variant_map.get(variant_key)
+                if not isinstance(item, dict):
+                    return True
+                if not str(item.get("object_key") or "") or not str(item.get("bucket_name") or ""):
+                    return True
+
+        if not str(session.composite_preview_object_key or ""):
+            return True
+        if not str(session.composite_preview_bucket or ""):
+            return True
+        if int(session.composite_preview_file_size or 0) <= 0:
+            return True
+
+        composite_variant_map = dict(session.composite_variant_map or {})
+        for variant_key in THREE_VIEW_COMPOSITE_TARGET_WIDTHS.keys():
+            item = composite_variant_map.get(variant_key)
+            if not isinstance(item, dict):
+                return True
+            if not str(item.get("object_key") or "") or not str(item.get("bucket_name") or ""):
+                return True
+
+        if not str(session.avatar_object_key or ""):
+            return True
+        if not str(session.avatar_bucket_name or ""):
+            return True
+        if int(session.avatar_width or 0) <= 0 or int(session.avatar_height or 0) <= 0:
+            return True
+        if int(session.avatar_file_size or 0) <= 0:
+            return True
+
+        avatar_variant_map = dict(session.avatar_variant_map or {})
+        for variant_key in ("thumb", "profile"):
+            item = avatar_variant_map.get(variant_key)
+            if not isinstance(item, dict):
+                return True
+            if not str(item.get("object_key") or "") or not str(item.get("bucket_name") or ""):
+                return True
+
+        return False
 
     async def cleanup_video_history(self, user_id: int, purge_storage: bool = True) -> dict[str, int]:
         with database.allow_sync():
@@ -1511,32 +1886,117 @@ class PortraitService:
                 for session in superseded_sessions
             }
             candidate_objects.update(
+                (session.composite_preview_bucket, session.composite_preview_object_key)
+                for session in superseded_sessions
+                if session.composite_preview_bucket and session.composite_preview_object_key
+            )
+            candidate_objects.update(
+                (session.avatar_bucket_name, session.avatar_object_key)
+                for session in superseded_sessions
+                if session.avatar_bucket_name and session.avatar_object_key
+            )
+            for session in superseded_sessions:
+                composite_variant_map = dict(session.composite_variant_map or {})
+                for item in composite_variant_map.values():
+                    if not isinstance(item, dict):
+                        continue
+                    bucket_name = str(item.get("bucket_name") or "")
+                    object_key = str(item.get("object_key") or "")
+                    if bucket_name and object_key:
+                        candidate_objects.add((bucket_name, object_key))
+                avatar_variant_map = dict(session.avatar_variant_map or {})
+                for item in avatar_variant_map.values():
+                    if not isinstance(item, dict):
+                        continue
+                    bucket_name = str(item.get("bucket_name") or "")
+                    object_key = str(item.get("object_key") or "")
+                    if bucket_name and object_key:
+                        candidate_objects.add((bucket_name, object_key))
+            candidate_objects.update(
                 (asset.bucket_name, asset.object_key)
                 for asset in superseded_assets
             )
+            candidate_objects.update(
+                (asset.preview_bucket_name, asset.preview_object_key)
+                for asset in superseded_assets
+                if asset.preview_bucket_name and asset.preview_object_key
+            )
+            for asset in superseded_assets:
+                variant_map = dict(asset.variant_map or {})
+                for item in variant_map.values():
+                    if not isinstance(item, dict):
+                        continue
+                    bucket_name = str(item.get("bucket_name") or "")
+                    object_key = str(item.get("object_key") or "")
+                    if bucket_name and object_key:
+                        candidate_objects.add((bucket_name, object_key))
 
-            in_use_objects: set[tuple[str, str]] = {
-                (session.composite_bucket, session.composite_object_key)
-                for session in PortraitUploadSessionModel.select(
+            in_use_sessions = list(
+                PortraitUploadSessionModel.select(
                     PortraitUploadSessionModel.composite_bucket,
                     PortraitUploadSessionModel.composite_object_key,
+                    PortraitUploadSessionModel.composite_preview_bucket,
+                    PortraitUploadSessionModel.composite_preview_object_key,
+                    PortraitUploadSessionModel.avatar_bucket_name,
+                    PortraitUploadSessionModel.avatar_object_key,
+                    PortraitUploadSessionModel.composite_variant_map,
+                    PortraitUploadSessionModel.avatar_variant_map,
                 ).where(
                     (PortraitUploadSessionModel.user_id == user_id)
                     & (PortraitUploadSessionModel.actor_id == actor_id)
                     & (~(PortraitUploadSessionModel.id.in_(session_ids)))
                 )
+            )
+            in_use_objects: set[tuple[str, str]] = {
+                (session.composite_bucket, session.composite_object_key)
+                for session in in_use_sessions
             }
-            in_use_objects.update(
-                (asset.bucket_name, asset.object_key)
-                for asset in PortraitUploadAssetModel.select(
+            for session in in_use_sessions:
+                if session.composite_preview_bucket and session.composite_preview_object_key:
+                    in_use_objects.add((session.composite_preview_bucket, session.composite_preview_object_key))
+                if session.avatar_bucket_name and session.avatar_object_key:
+                    in_use_objects.add((session.avatar_bucket_name, session.avatar_object_key))
+                composite_variant_map = dict(session.composite_variant_map or {})
+                for item in composite_variant_map.values():
+                    if not isinstance(item, dict):
+                        continue
+                    bucket_name = str(item.get("bucket_name") or "")
+                    object_key = str(item.get("object_key") or "")
+                    if bucket_name and object_key:
+                        in_use_objects.add((bucket_name, object_key))
+                avatar_variant_map = dict(session.avatar_variant_map or {})
+                for item in avatar_variant_map.values():
+                    if not isinstance(item, dict):
+                        continue
+                    bucket_name = str(item.get("bucket_name") or "")
+                    object_key = str(item.get("object_key") or "")
+                    if bucket_name and object_key:
+                        in_use_objects.add((bucket_name, object_key))
+            in_use_assets = list(
+                PortraitUploadAssetModel.select(
                     PortraitUploadAssetModel.bucket_name,
                     PortraitUploadAssetModel.object_key,
+                    PortraitUploadAssetModel.preview_bucket_name,
+                    PortraitUploadAssetModel.preview_object_key,
+                    PortraitUploadAssetModel.variant_map,
                 ).where(
                     (PortraitUploadAssetModel.user_id == user_id)
                     & (PortraitUploadAssetModel.actor_id == actor_id)
                     & (~(PortraitUploadAssetModel.session_id.in_(session_ids)))
                 )
             )
+            in_use_objects.update((asset.bucket_name, asset.object_key) for asset in in_use_assets)
+            for asset in in_use_assets:
+                if asset.preview_bucket_name and asset.preview_object_key:
+                    in_use_objects.add((asset.preview_bucket_name, asset.preview_object_key))
+                variant_map = dict(asset.variant_map or {})
+                for item in variant_map.values():
+                    if not isinstance(item, dict):
+                        continue
+                    bucket_name = str(item.get("bucket_name") or "")
+                    object_key = str(item.get("object_key") or "")
+                    if bucket_name and object_key:
+                        in_use_objects.add((bucket_name, object_key))
 
             skipped_objects = candidate_objects & in_use_objects
             deletable_objects = candidate_objects - in_use_objects
@@ -1857,7 +2317,9 @@ class PortraitService:
                     raise ValueError(f"角度 {angle} 缺少对象路径。")
                 # Validate that uploaded object exists before composing.
                 stat = self.storage_client.stat_object(object_key, bucket=bucket_name)
+                file_data = await self.storage_client.download_file(object_key, bucket=bucket_name)
                 source_map[angle] = {
+                    "data": file_data,
                     "bucket_name": bucket_name,
                     "object_key": object_key,
                     "source_filename": str(item.get("source_filename") or f"{angle}.jpg"),
@@ -1870,6 +2332,10 @@ class PortraitService:
                 if not existing:
                     raise ValueError(f"历史素材中缺少角度 {angle}，请重新上传完整三视图。")
                 source_map[angle] = {
+                    "data": await self.storage_client.download_file(
+                        existing.object_key,
+                        bucket=existing.bucket_name,
+                    ),
                     "bucket_name": existing.bucket_name,
                     "object_key": existing.object_key,
                     "source_filename": existing.source_filename,
@@ -1892,62 +2358,40 @@ class PortraitService:
         actor_id: int,
         source_map: dict[str, dict[str, Any]],
     ) -> tuple[PortraitUploadSessionModel, list[PortraitUploadAssetModel]]:
-        compose_width = max(300, settings.PORTRAIT_COMPOSE_WIDTH)
-        compose_height = max(225, settings.PORTRAIT_COMPOSE_HEIGHT)
         session_key = uuid.uuid4().hex
         date_prefix = datetime.now().strftime("%Y/%m/%d")
-
-        panel_width = compose_width // 3
-        panel_height = int(panel_width * 16 / 9)
-        if panel_height > compose_height:
-            panel_height = compose_height
-            panel_width = int(panel_height * 9 / 16)
-
-        panels: dict[str, Image.Image] = {}
-        raw_asset_records: list[dict[str, Any]] = []
+        normalized_source_map: dict[str, dict[str, Any]] = {}
         for angle in ("front", "left", "right"):
             source = source_map[angle]
             bucket_name = str(source["bucket_name"])
             object_key = str(source["object_key"])
-            file_data = await self.storage_client.download_file(object_key, bucket=bucket_name)
-            image, width, height, _ = self._read_image(file_data)
+            file_data = bytes(source.get("data") or b"")
+            if not file_data:
+                file_data = await self.storage_client.download_file(object_key, bucket=bucket_name)
+            image, width, height, image_format = self._read_image(file_data)
             self._validate_three_view_source_resolution(angle=angle, width=width, height=height)
-            panels[angle] = ImageOps.fit(
-                image,
-                (panel_width, panel_height),
-                method=Image.Resampling.LANCZOS,
-                centering=(0.5, 0.5),
-            )
-            raw_asset_records.append(
-                {
-                    "view_angle": angle,
-                    "bucket_name": bucket_name,
-                    "object_key": object_key,
-                    "image_url": str(source.get("image_url") or f"{bucket_name}/{object_key}"),
-                    "source_filename": str(source.get("source_filename") or f"{angle}.jpg"),
-                    "mime_type": str(source.get("mime_type") or "application/octet-stream"),
-                    "file_size": int(source.get("file_size") or len(file_data)),
-                    "width": width,
-                    "height": height,
-                    "expected_ratio": settings.PORTRAIT_EXPECTED_SINGLE_RATIO,
-                }
-            )
+            source_filename = str(source.get("source_filename") or f"{angle}.jpg")
+            mime_type = str(source.get("mime_type") or "application/octet-stream")
+            extension = self._guess_extension(source_filename, mime_type, image_format)
+            normalized_source_map[angle] = {
+                "data": file_data,
+                "bucket_name": bucket_name,
+                "object_key": object_key,
+                "image_url": str(source.get("image_url") or f"{bucket_name}/{object_key}"),
+                "source_filename": source_filename,
+                "mime_type": mime_type,
+                "file_size": int(source.get("file_size") or len(file_data)),
+                "width": width,
+                "height": height,
+                "extension": extension,
+            }
 
-        composite_bytes = self._compose_three_view_image(
-            panels=panels,
-            width=compose_width,
-            height=compose_height,
-            order=settings.PORTRAIT_COMPOSE_ORDER,
-        )
-        composite_object_key = (
-            f"portraits/generated/user_{user_id}/actor_{actor_id}/{date_prefix}/{session_key}/"
-            f"upper_body_three_view_{uuid.uuid4().hex}.jpg"
-        )
-        composite_image_url = await self.storage_client.upload_file(
-            composite_object_key,
-            composite_bytes,
-            "image/jpeg",
-            bucket=settings.MINIO_PORTRAIT_GENERATED_BUCKET,
+        assembled = await self._assemble_three_view_assets(
+            user_id=user_id,
+            actor_id=actor_id,
+            session_key=session_key,
+            date_prefix=date_prefix,
+            source_map=normalized_source_map,
         )
 
         with database.allow_sync():
@@ -1978,10 +2422,24 @@ class PortraitService:
                 is_current=True,
                 superseded_at=None,
                 composite_bucket=settings.MINIO_PORTRAIT_GENERATED_BUCKET,
-                composite_object_key=composite_object_key,
-                composite_image_url=composite_image_url,
-                composite_width=compose_width,
-                composite_height=compose_height,
+                composite_object_key=assembled["composite_object_key"],
+                composite_image_url=assembled["composite_image_url"],
+                composite_preview_bucket=settings.MINIO_PORTRAIT_GENERATED_BUCKET,
+                composite_preview_object_key=assembled["composite_preview_object_key"],
+                composite_preview_image_url=assembled["composite_preview_image_url"],
+                composite_preview_file_size=assembled["composite_preview_file_size"],
+                composite_variant_map=assembled["composite_variant_map"],
+                composite_file_size=assembled["composite_file_size"],
+                composite_width=assembled["compose_width"],
+                composite_height=assembled["compose_height"],
+                avatar_bucket_name=assembled["avatar_bucket_name"],
+                avatar_object_key=assembled["avatar_object_key"],
+                avatar_image_url=assembled["avatar_image_url"],
+                avatar_mime_type=assembled["avatar_mime_type"],
+                avatar_width=assembled["avatar_width"],
+                avatar_height=assembled["avatar_height"],
+                avatar_file_size=assembled["avatar_file_size"],
+                avatar_variant_map=assembled["avatar_variant_map"],
                 created_at=now,
             )
             assets = [
@@ -1992,7 +2450,7 @@ class PortraitService:
                     created_at=now,
                     **record,
                 )
-                for record in raw_asset_records
+                for record in assembled["raw_asset_records"]
             ]
         await self._purge_superseded_three_view_versions(user_id=user_id, actor_id=actor_id)
         return session, assets
@@ -2102,12 +2560,36 @@ class PortraitService:
         avatar_session: PortraitUploadSessionModel | None,
     ) -> dict[str, Any]:
         avatar_url = None
+        avatar_original_url = None
+        avatar_variant_urls: dict[str, str] = {}
         avatar_source = "none"
         if avatar_session:
-            avatar_url = self.storage_client.get_url(
-                avatar_session.composite_object_key,
-                bucket=avatar_session.composite_bucket,
-            )
+            if avatar_session.avatar_object_key and avatar_session.avatar_bucket_name:
+                avatar_url = self.storage_client.get_url(
+                    avatar_session.avatar_object_key,
+                    bucket=avatar_session.avatar_bucket_name,
+                )
+                avatar_original_url = avatar_url
+            elif avatar_session.composite_preview_object_key:
+                avatar_url = self.storage_client.get_url(
+                    avatar_session.composite_preview_object_key,
+                    bucket=avatar_session.composite_preview_bucket or avatar_session.composite_bucket,
+                )
+            elif avatar_session.composite_object_key:
+                avatar_url = self.storage_client.get_url(
+                    avatar_session.composite_object_key,
+                    bucket=avatar_session.composite_bucket,
+                )
+
+            avatar_variant_map = dict(avatar_session.avatar_variant_map or {})
+            for key, item in avatar_variant_map.items():
+                if not isinstance(item, dict):
+                    continue
+                object_key = str(item.get("object_key") or "")
+                bucket_name = str(item.get("bucket_name") or avatar_session.avatar_bucket_name or "")
+                if not object_key or not bucket_name:
+                    continue
+                avatar_variant_urls[str(key)] = self.storage_client.get_url(object_key, bucket=bucket_name)
             avatar_source = "three_view"
         return {
             "actor_id": actor.id,
@@ -2130,6 +2612,8 @@ class PortraitService:
             "pricing_unit": self._normalize_pricing_unit(actor.pricing_unit),
             "pricing_amount": int(actor.pricing_amount or 0),
             "avatar_url": avatar_url,
+            "avatar_original_url": avatar_original_url or avatar_url,
+            "avatar_variant_urls": avatar_variant_urls,
             "avatar_source": avatar_source,
             "created_at": actor.created_at,
         }
@@ -2184,6 +2668,345 @@ class PortraitService:
             raise ValueError(
                 f"{label}清晰度不足：长边需大于 2000 像素，当前为 {width}x{height}。"
             )
+
+    def _build_portrait_storage_prefix(
+        self,
+        user_id: int,
+        actor_id: int,
+        date_prefix: str,
+        session_key: str,
+    ) -> str:
+        return f"portraits/user_{user_id}/actor_{actor_id}/{date_prefix}/{session_key}"
+
+    def _build_raw_object_key(self, base_prefix: str, angle: str, extension: str) -> str:
+        return f"{base_prefix}/raw/{angle}/original.{extension}"
+
+    def _build_raw_variant_object_key(self, base_prefix: str, angle: str, variant_key: str) -> str:
+        return f"{base_prefix}/raw/{angle}/variants/{variant_key}.jpg"
+
+    def _build_composite_original_object_key(self, base_prefix: str) -> str:
+        return f"{base_prefix}/composite/original.jpg"
+
+    def _build_composite_variant_object_key(self, base_prefix: str, variant_key: str) -> str:
+        return f"{base_prefix}/composite/variants/{variant_key}.jpg"
+
+    def _build_avatar_object_key(self, base_prefix: str, variant_key: str) -> str:
+        return f"{base_prefix}/avatar/{variant_key}.jpg"
+
+    async def _upload_jpeg_variant(
+        self,
+        object_key: str,
+        image: Image.Image,
+        *,
+        quality: int = THREE_VIEW_VARIANT_JPEG_QUALITY,
+        bucket: str = settings.MINIO_PORTRAIT_GENERATED_BUCKET,
+    ) -> tuple[str, int]:
+        output = BytesIO()
+        image.save(output, format="JPEG", quality=quality, optimize=True)
+        payload = output.getvalue()
+        image_url = await self.storage_client.upload_file(
+            object_key,
+            payload,
+            "image/jpeg",
+            bucket=bucket,
+        )
+        return image_url, len(payload)
+
+    async def _generate_and_upload_variants(
+        self,
+        image: Image.Image,
+        *,
+        target_widths: dict[str, int],
+        object_key_builder: Any,
+        bucket: str,
+        quality: int,
+    ) -> tuple[dict[str, str], dict[str, GeneratedImageVariant], str | None]:
+        variant_urls: dict[str, str] = {}
+        variant_meta: dict[str, GeneratedImageVariant] = {}
+        preferred_variant_key: str | None = None
+        source_width, source_height = image.size
+        for variant_key, target_width in target_widths.items():
+            if target_width <= 0:
+                continue
+            if source_width <= target_width:
+                resized = image.copy()
+            else:
+                target_height = max(1, int(round(source_height * (target_width / source_width))))
+                resized = image.resize((target_width, target_height), Image.Resampling.LANCZOS)
+            object_key = object_key_builder(variant_key)
+            variant_url, file_size = await self._upload_jpeg_variant(
+                object_key,
+                resized,
+                quality=quality,
+                bucket=bucket,
+            )
+            width, height = resized.size
+            variant_urls[variant_key] = variant_url
+            variant_meta[variant_key] = {
+                "key": variant_key,
+                "object_key": object_key,
+                "width": int(width),
+                "height": int(height),
+                "file_size": int(file_size),
+                "mime_type": "image/jpeg",
+            }
+            if preferred_variant_key is None:
+                preferred_variant_key = variant_key
+        return variant_urls, variant_meta, preferred_variant_key
+
+    def _extract_front_avatar_from_source(self, image: Image.Image) -> Image.Image:
+        width, height = image.size
+        side = min(width, max(1, height // 2))
+        left = max(0, (width - side) // 2)
+        top = 0
+        right = left + side
+        bottom = top + side
+        return image.crop((left, top, right, bottom))
+
+    async def _generate_avatar_variants(
+        self,
+        source_image: Image.Image,
+        *,
+        base_prefix: str,
+        bucket: str,
+    ) -> tuple[dict[str, str], dict[str, GeneratedImageVariant], str | None]:
+        avatar_square = self._extract_front_avatar_from_source(source_image)
+        target_widths = {
+            "thumb": 160,
+            "profile": THREE_VIEW_AVATAR_SIZE,
+        }
+        return await self._generate_and_upload_variants(
+            avatar_square,
+            target_widths=target_widths,
+            object_key_builder=lambda key: self._build_avatar_object_key(base_prefix, key),
+            bucket=bucket,
+            quality=THREE_VIEW_AVATAR_JPEG_QUALITY,
+        )
+
+    async def _generate_composite_assets(
+        self,
+        panels: dict[str, Image.Image],
+        *,
+        compose_width: int,
+        compose_height: int,
+        compose_order: tuple[str, str, str],
+        base_prefix: str,
+        bucket: str,
+    ) -> dict[str, Any]:
+        composite_image = self._compose_three_view_canvas(
+            panels=panels,
+            width=compose_width,
+            height=compose_height,
+            order=compose_order,
+        )
+        original_object_key = self._build_composite_original_object_key(base_prefix)
+        composite_image_url, composite_file_size = await self._upload_jpeg_variant(
+            original_object_key,
+            composite_image,
+            quality=95,
+            bucket=bucket,
+        )
+        variant_urls, variant_meta, preferred_variant_key = await self._generate_and_upload_variants(
+            composite_image,
+            target_widths=THREE_VIEW_COMPOSITE_TARGET_WIDTHS,
+            object_key_builder=lambda key: self._build_composite_variant_object_key(base_prefix, key),
+            bucket=bucket,
+            quality=THREE_VIEW_VARIANT_JPEG_QUALITY,
+        )
+        preferred_variant_url = variant_urls.get(preferred_variant_key or "", "")
+        return {
+            "image": composite_image,
+            "image_url": composite_image_url,
+            "object_key": original_object_key,
+            "file_size": int(composite_file_size),
+            "variant_urls": variant_urls,
+            "variant_meta": variant_meta,
+            "preferred_variant_key": preferred_variant_key,
+            "preferred_variant_url": preferred_variant_url,
+        }
+
+    async def _assemble_three_view_assets(
+        self,
+        *,
+        user_id: int,
+        actor_id: int,
+        session_key: str,
+        date_prefix: str,
+        source_map: dict[str, dict[str, Any]],
+    ) -> dict[str, Any]:
+        compose_width = max(300, settings.PORTRAIT_COMPOSE_WIDTH)
+        compose_height = max(225, settings.PORTRAIT_COMPOSE_HEIGHT)
+
+        panel_width = compose_width // 3
+        panel_height = int(panel_width * 16 / 9)
+        if panel_height > compose_height:
+            panel_height = compose_height
+            panel_width = int(panel_height * 9 / 16)
+
+        base_prefix = self._build_portrait_storage_prefix(
+            user_id=user_id,
+            actor_id=actor_id,
+            date_prefix=date_prefix,
+            session_key=session_key,
+        )
+
+        raw_asset_records: list[dict[str, Any]] = []
+        panels: dict[str, Image.Image] = {}
+        front_source_image: Image.Image | None = None
+        for angle in ("front", "left", "right"):
+            source = source_map[angle]
+            source_data = bytes(source["data"])
+            source_filename = str(source.get("source_filename") or f"{angle}.jpg")
+            source_content_type = str(source.get("mime_type") or "application/octet-stream")
+            source_extension = str(source.get("extension") or "jpg")
+            source_width = int(source.get("width") or 0)
+            source_height = int(source.get("height") or 0)
+            source_file_size = int(source.get("file_size") or len(source_data))
+            source_bucket_name = str(source.get("bucket_name") or settings.MINIO_PORTRAIT_RAW_BUCKET)
+            source_object_key = str(source.get("object_key") or "")
+
+            original_object_key = self._build_raw_object_key(base_prefix, angle, source_extension)
+            if (
+                source_bucket_name == settings.MINIO_PORTRAIT_RAW_BUCKET
+                and source_object_key == original_object_key
+            ):
+                image_url = str(
+                    source.get("image_url")
+                    or f"{settings.MINIO_PORTRAIT_RAW_BUCKET}/{original_object_key}"
+                )
+            else:
+                image_url = await self.storage_client.upload_file(
+                    original_object_key,
+                    source_data,
+                    source_content_type,
+                    bucket=settings.MINIO_PORTRAIT_RAW_BUCKET,
+                )
+
+            source_image = Image.open(BytesIO(source_data)).convert("RGB")
+            if angle == "front":
+                front_source_image = source_image.copy()
+            panels[angle] = ImageOps.fit(
+                source_image,
+                (panel_width, panel_height),
+                method=Image.Resampling.LANCZOS,
+                centering=(0.5, 0.5),
+            )
+
+            preview_urls, preview_meta, preferred_preview_key = await self._generate_and_upload_variants(
+                source_image,
+                target_widths=THREE_VIEW_RAW_TARGET_WIDTHS,
+                object_key_builder=lambda key, _angle=angle: self._build_raw_variant_object_key(base_prefix, _angle, key),
+                bucket=settings.MINIO_PORTRAIT_GENERATED_BUCKET,
+                quality=THREE_VIEW_VARIANT_JPEG_QUALITY,
+            )
+            preferred_preview_url = preview_urls.get(preferred_preview_key or "", "")
+            raw_asset_records.append(
+                {
+                    "view_angle": angle,
+                    "bucket_name": settings.MINIO_PORTRAIT_RAW_BUCKET,
+                    "object_key": original_object_key,
+                    "image_url": image_url,
+                    "source_filename": source_filename,
+                    "mime_type": source_content_type,
+                    "file_size": source_file_size,
+                    "width": source_width,
+                    "height": source_height,
+                    "expected_ratio": settings.PORTRAIT_EXPECTED_SINGLE_RATIO,
+                    "preview_bucket_name": settings.MINIO_PORTRAIT_GENERATED_BUCKET,
+                    "preview_object_key": str(
+                        preview_meta.get(preferred_preview_key or "", {}).get("object_key", "")
+                    ),
+                    "preview_image_url": preferred_preview_url,
+                    "preview_mime_type": "image/jpeg" if preferred_preview_url else source_content_type,
+                    "preview_width": int(preview_meta.get(preferred_preview_key or "", {}).get("width", source_width)),
+                    "preview_height": int(preview_meta.get(preferred_preview_key or "", {}).get("height", source_height)),
+                    "preview_file_size": int(preview_meta.get(preferred_preview_key or "", {}).get("file_size", source_file_size)),
+                    "variant_map": {
+                        variant_key: {
+                            "bucket_name": settings.MINIO_PORTRAIT_GENERATED_BUCKET,
+                            "object_key": meta["object_key"],
+                            "image_url": preview_urls[variant_key],
+                            "mime_type": meta["mime_type"],
+                            "width": meta["width"],
+                            "height": meta["height"],
+                            "file_size": meta["file_size"],
+                        }
+                        for variant_key, meta in preview_meta.items()
+                    },
+                }
+            )
+
+        if front_source_image is None:
+            raise ValueError("缺少正面图，无法生成头像。")
+
+        composite_assets = await self._generate_composite_assets(
+            panels=panels,
+            compose_width=compose_width,
+            compose_height=compose_height,
+            compose_order=settings.PORTRAIT_COMPOSE_ORDER,
+            base_prefix=base_prefix,
+            bucket=settings.MINIO_PORTRAIT_GENERATED_BUCKET,
+        )
+        avatar_urls, avatar_meta, avatar_preferred_key = await self._generate_avatar_variants(
+            front_source_image,
+            base_prefix=base_prefix,
+            bucket=settings.MINIO_PORTRAIT_GENERATED_BUCKET,
+        )
+        avatar_preferred_meta = avatar_meta.get(avatar_preferred_key or "", {})
+        avatar_preview_url = avatar_urls.get(avatar_preferred_key or "", "")
+
+        return {
+            "compose_width": compose_width,
+            "compose_height": compose_height,
+            "raw_asset_records": raw_asset_records,
+            "composite_object_key": composite_assets["object_key"],
+            "composite_image_url": composite_assets["image_url"],
+            "composite_file_size": composite_assets["file_size"],
+            "composite_preview_object_key": str(
+                composite_assets["variant_meta"].get(
+                    composite_assets["preferred_variant_key"] or "",
+                    {},
+                ).get("object_key", "")
+            ),
+            "composite_preview_image_url": composite_assets["preferred_variant_url"],
+            "composite_preview_file_size": int(
+                composite_assets["variant_meta"].get(
+                    composite_assets["preferred_variant_key"] or "",
+                    {},
+                ).get("file_size", composite_assets["file_size"])
+            ),
+            "composite_variant_map": {
+                variant_key: {
+                    "bucket_name": settings.MINIO_PORTRAIT_GENERATED_BUCKET,
+                    "object_key": meta["object_key"],
+                    "image_url": composite_assets["variant_urls"][variant_key],
+                    "mime_type": meta["mime_type"],
+                    "width": meta["width"],
+                    "height": meta["height"],
+                    "file_size": meta["file_size"],
+                }
+                for variant_key, meta in composite_assets["variant_meta"].items()
+            },
+            "avatar_bucket_name": settings.MINIO_PORTRAIT_GENERATED_BUCKET,
+            "avatar_object_key": avatar_preferred_meta.get("object_key", ""),
+            "avatar_image_url": avatar_preview_url,
+            "avatar_mime_type": avatar_preferred_meta.get("mime_type", "image/jpeg"),
+            "avatar_width": int(avatar_preferred_meta.get("width", 0)),
+            "avatar_height": int(avatar_preferred_meta.get("height", 0)),
+            "avatar_file_size": int(avatar_preferred_meta.get("file_size", 0)),
+            "avatar_variant_map": {
+                variant_key: {
+                    "bucket_name": settings.MINIO_PORTRAIT_GENERATED_BUCKET,
+                    "object_key": meta["object_key"],
+                    "image_url": avatar_urls[variant_key],
+                    "mime_type": meta["mime_type"],
+                    "width": meta["width"],
+                    "height": meta["height"],
+                    "file_size": meta["file_size"],
+                }
+                for variant_key, meta in avatar_meta.items()
+            },
+        }
 
     def _get_recompose_base_session(
         self,
@@ -2273,13 +3096,13 @@ class PortraitService:
         }
         return format_mapping.get(image_format, "jpg")
 
-    def _compose_three_view_image(
+    def _compose_three_view_canvas(
         self,
         panels: dict[str, Image.Image],
         width: int,
         height: int,
         order: tuple[str, str, str],
-    ) -> bytes:
+    ) -> Image.Image:
         panel_width = width // 3
         panel_height = int(panel_width * 16 / 9)
         if panel_height > height:
@@ -2297,7 +3120,21 @@ class PortraitService:
                 centering=(0.5, 0.5),
             )
             canvas.paste(panel, (x_start + index * panel_width, y_start))
+        return canvas
 
+    def _compose_three_view_image(
+        self,
+        panels: dict[str, Image.Image],
+        width: int,
+        height: int,
+        order: tuple[str, str, str],
+    ) -> bytes:
+        canvas = self._compose_three_view_canvas(
+            panels=panels,
+            width=width,
+            height=height,
+            order=order,
+        )
         output = BytesIO()
         canvas.save(output, format="JPEG", quality=95, optimize=True)
         return output.getvalue()
@@ -2307,14 +3144,73 @@ class PortraitService:
         session: PortraitUploadSessionModel,
         assets: list[PortraitUploadAssetModel],
     ) -> dict[str, Any]:
+        composite_original_url = self.storage_client.get_url(
+            session.composite_object_key,
+            bucket=session.composite_bucket,
+        )
+        preview_bucket = session.composite_preview_bucket or session.composite_bucket
+        preview_object_key = session.composite_preview_object_key or session.composite_object_key
+        composite_preview_url = self.storage_client.get_url(
+            preview_object_key,
+            bucket=preview_bucket,
+        )
+        composite_variant_urls: dict[str, str] = {}
+        for key, item in dict(session.composite_variant_map or {}).items():
+            if not isinstance(item, dict):
+                continue
+            object_key = str(item.get("object_key") or "")
+            bucket_name = str(item.get("bucket_name") or preview_bucket or "")
+            if not object_key or not bucket_name:
+                continue
+            composite_variant_urls[str(key)] = self.storage_client.get_url(object_key, bucket=bucket_name)
+
+        avatar_url = None
+        avatar_original_url = None
+        avatar_variant_urls: dict[str, str] = {}
+        if session.avatar_object_key and session.avatar_bucket_name:
+            avatar_url = self.storage_client.get_url(
+                session.avatar_object_key,
+                bucket=session.avatar_bucket_name,
+            )
+            avatar_original_url = avatar_url
+        for key, item in dict(session.avatar_variant_map or {}).items():
+            if not isinstance(item, dict):
+                continue
+            object_key = str(item.get("object_key") or "")
+            bucket_name = str(item.get("bucket_name") or session.avatar_bucket_name or "")
+            if not object_key or not bucket_name:
+                continue
+            avatar_variant_urls[str(key)] = self.storage_client.get_url(object_key, bucket=bucket_name)
+
         raw_images = [
             {
                 "id": asset.id,
                 "view_angle": asset.view_angle,
                 "image_url": asset.image_url,
-                "preview_url": self.storage_client.get_url(asset.object_key, bucket=asset.bucket_name),
+                "original_url": self.storage_client.get_url(asset.object_key, bucket=asset.bucket_name),
+                "preview_url": self.storage_client.get_url(
+                    asset.preview_object_key or asset.object_key,
+                    bucket=asset.preview_bucket_name or asset.bucket_name,
+                ),
                 "bucket_name": asset.bucket_name,
                 "object_key": asset.object_key,
+                "preview_bucket_name": asset.preview_bucket_name or asset.bucket_name,
+                "preview_object_key": asset.preview_object_key or asset.object_key,
+                "preview_image_url": asset.preview_image_url or asset.image_url,
+                "preview_mime_type": asset.preview_mime_type or asset.mime_type,
+                "preview_width": int(asset.preview_width or asset.width),
+                "preview_height": int(asset.preview_height or asset.height),
+                "preview_file_size": int(asset.preview_file_size or asset.file_size),
+                "variant_urls": {
+                    str(key): self.storage_client.get_url(
+                        str((value or {}).get("object_key")),
+                        bucket=str((value or {}).get("bucket_name")),
+                    )
+                    for key, value in dict(asset.variant_map or {}).items()
+                    if isinstance(value, dict)
+                    and str((value or {}).get("object_key") or "")
+                    and str((value or {}).get("bucket_name") or "")
+                },
                 "source_filename": asset.source_filename,
                 "mime_type": asset.mime_type,
                 "file_size": asset.file_size,
@@ -2333,14 +3229,21 @@ class PortraitService:
             "is_current": bool(session.is_current),
             "superseded_at": session.superseded_at,
             "composite_image_url": session.composite_image_url,
-            "composite_preview_url": self.storage_client.get_url(
-                session.composite_object_key,
-                bucket=session.composite_bucket,
-            ),
+            "composite_original_url": composite_original_url,
+            "composite_preview_url": composite_preview_url,
+            "composite_variant_urls": composite_variant_urls,
             "composite_bucket": session.composite_bucket,
             "composite_object_key": session.composite_object_key,
+            "composite_preview_bucket": preview_bucket,
+            "composite_preview_object_key": preview_object_key,
+            "composite_preview_image_url": session.composite_preview_image_url or session.composite_image_url,
+            "composite_file_size": int(session.composite_file_size or 0),
+            "composite_preview_file_size": int(session.composite_preview_file_size or session.composite_file_size or 0),
             "composite_width": session.composite_width,
             "composite_height": session.composite_height,
+            "avatar_url": avatar_url,
+            "avatar_original_url": avatar_original_url or avatar_url,
+            "avatar_variant_urls": avatar_variant_urls,
             "expected_composite_ratio": settings.PORTRAIT_EXPECTED_COMPOSITE_RATIO,
             "expected_single_ratio": settings.PORTRAIT_EXPECTED_SINGLE_RATIO,
             "detection_note": "当前不做自动检测，后续版本可能会增加检测规则。",
