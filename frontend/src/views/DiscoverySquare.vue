@@ -4,15 +4,15 @@
       <section class="mb-8 space-y-4">
         <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
           <div class="relative w-full md:w-96 group">
-            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-ink-400">search</span>
             <input
               v-model.trim="keyword"
-              class="w-full bg-surface/40 border border-sky-400/10 rounded-full py-3 pl-12 pr-6 text-on-surface placeholder:text-slate-500 focus:outline-none focus:border-sky-400/40 focus:ring-1 focus:ring-sky-400/40 transition-all backdrop-blur-sm"
+              class="w-full bg-surface/40 border border-moss-400/10 rounded-full py-3 pl-12 pr-6 text-on-surface placeholder:text-ink-500 focus:outline-none focus:border-moss-400/40 focus:ring-1 focus:ring-moss-400/40 transition-all backdrop-blur-sm"
               placeholder="搜索已发布演员"
               type="text"
             />
           </div>
-          <div class="text-sm text-slate-400">已发布演员：{{ filteredActors.length }}</div>
+          <div class="text-sm text-ink-400">已发布演员：{{ filteredActors.length }}</div>
         </div>
       </section>
 
@@ -25,7 +25,7 @@
           v-for="actor in filteredActors"
           :key="actor.actor_id"
           type="button"
-          class="bg-surface/40 backdrop-blur-md border border-sky-400/10 rounded-xl overflow-hidden flex flex-col group hover:border-sky-400/30 hover:translate-y-[-4px] transition-all duration-300 text-left"
+          class="bg-surface/40 backdrop-blur-md border border-moss-400/10 rounded-xl overflow-hidden flex flex-col group hover:border-moss-400/30 hover:translate-y-[-4px] transition-all duration-300 text-left"
           @click="openActor(actor.actor_id)"
         >
           <div class="relative aspect-[3/4] overflow-hidden">
@@ -34,9 +34,9 @@
               :alt="actor.name"
               class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             >
-            <div class="absolute top-3 right-3 bg-slate-950/40 backdrop-blur-md px-3 py-1 rounded-full border border-sky-400/20 flex items-center gap-1.5">
-              <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
-              <span class="text-[10px] font-bold text-emerald-400 tracking-wider">已发布</span>
+            <div class="absolute top-3 right-3 bg-ink-950/40 backdrop-blur-md px-3 py-1 rounded-full border border-moss-400/20 flex items-center gap-1.5">
+              <div class="w-1.5 h-1.5 rounded-full bg-sage-400 animate-pulse"></div>
+              <span class="text-[10px] font-bold text-sage-400 tracking-wider">已发布</span>
             </div>
           </div>
           <div class="p-5 flex flex-col gap-3">
@@ -48,7 +48,7 @@
               <span
                 v-for="t in actor.tags"
                 :key="t"
-                class="px-2.5 py-0.5 text-[10px] font-semibold rounded bg-sky-400/10 text-sky-300 border border-sky-400/20"
+                class="px-2.5 py-0.5 text-[10px] font-semibold rounded bg-moss-400/10 text-moss-300 border border-moss-400/20"
               >
                 {{ t }}
               </span>

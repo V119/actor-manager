@@ -11,7 +11,7 @@
         <div class="flex flex-wrap gap-3">
           <button
             type="button"
-            class="rounded-lg border border-sky-300/25 bg-slate-950/30 px-4 py-2 text-sm text-sky-100 transition hover:bg-sky-400/10"
+            class="rounded-lg border border-moss-300/25 bg-ink-950/30 px-4 py-2 text-sm text-moss-100 transition hover:bg-moss-400/10"
             :disabled="pageLoading"
             @click="refreshAll"
           >
@@ -23,25 +23,25 @@
       <section v-if="errorMessage" class="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
         {{ errorMessage }}
       </section>
-      <section v-if="successMessage" class="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+      <section v-if="successMessage" class="rounded-2xl border border-sage-400/20 bg-sage-500/10 px-4 py-3 text-sm text-sage-200">
         {{ successMessage }}
       </section>
 
       <section class="grid lg:grid-cols-[1.4fr_1fr] gap-6">
-        <div class="rounded-2xl border border-sky-400/10 bg-surface/65 p-5 md:p-6 backdrop-blur-xl space-y-4">
+        <div class="rounded-2xl border border-moss-400/10 bg-surface/65 p-5 md:p-6 backdrop-blur-xl space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <h2 class="text-lg font-semibold">演员购物车</h2>
             <div class="flex flex-wrap items-center gap-2 text-xs text-on-surface-variant">
               <button
                 type="button"
-                class="rounded-md border border-sky-300/25 px-3 py-1.5 text-sky-100 transition hover:bg-sky-400/10"
+                class="rounded-md border border-moss-300/25 px-3 py-1.5 text-moss-100 transition hover:bg-moss-400/10"
                 @click="toggleSelectAll(true)"
               >
                 全选
               </button>
               <button
                 type="button"
-                class="rounded-md border border-sky-300/25 px-3 py-1.5 text-sky-100 transition hover:bg-sky-400/10"
+                class="rounded-md border border-moss-300/25 px-3 py-1.5 text-moss-100 transition hover:bg-moss-400/10"
                 @click="toggleSelectAll(false)"
               >
                 清空
@@ -51,14 +51,14 @@
           </div>
 
           <div v-if="cartLoading" class="text-sm text-on-surface-variant">正在加载购物车...</div>
-          <div v-else-if="!cartItems.length" class="rounded-xl border border-sky-300/15 bg-slate-950/25 px-4 py-6 text-sm text-on-surface-variant">
+          <div v-else-if="!cartItems.length" class="rounded-xl border border-moss-300/15 bg-ink-950/25 px-4 py-6 text-sm text-on-surface-variant">
             购物车为空。可在演员详情页先签约，再加入购物车。
           </div>
           <div v-else class="space-y-3">
             <article
               v-for="item in cartItems"
               :key="item.cart_item_id"
-              class="rounded-xl border border-sky-300/15 bg-slate-950/25 px-4 py-4"
+              class="rounded-xl border border-moss-300/15 bg-ink-950/25 px-4 py-4"
             >
               <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <label class="flex items-start gap-3">
@@ -66,17 +66,17 @@
                     v-model="selectedActorIds"
                     :value="item.actor_id"
                     type="checkbox"
-                    class="mt-1 h-4 w-4 rounded border-sky-300/30 bg-slate-900 text-sky-300 focus:ring-sky-300/60"
+                    class="mt-1 h-4 w-4 rounded border-moss-300/30 bg-ink-900 text-moss-300 focus:ring-moss-300/60"
                     @change="refreshPreview"
                   />
                   <div>
-                    <p class="text-sm font-semibold text-sky-100">{{ item.actor_name }}</p>
+                    <p class="text-sm font-semibold text-moss-100">{{ item.actor_name }}</p>
                     <p class="mt-1 text-xs text-on-surface-variant">ID: {{ item.actor_external_id }}</p>
                     <p class="mt-1 text-xs text-on-surface-variant">计费单位：{{ item.pricing_unit === 'day' ? '天' : '项目' }}</p>
                   </div>
                 </label>
                 <div class="flex flex-wrap items-center gap-3">
-                  <p class="text-sm font-semibold text-emerald-200">{{ formatCurrency(item.actor_quote_amount) }}</p>
+                  <p class="text-sm font-semibold text-sage-200">{{ formatCurrency(item.actor_quote_amount) }}</p>
                   <button
                     type="button"
                     class="rounded-md border border-rose-300/25 bg-rose-500/10 px-3 py-1.5 text-xs text-rose-100 transition hover:bg-rose-500/20"
@@ -91,7 +91,7 @@
           </div>
         </div>
 
-        <div class="rounded-2xl border border-emerald-400/15 bg-surface/65 p-5 md:p-6 backdrop-blur-xl space-y-4">
+        <div class="rounded-2xl border border-sage-400/15 bg-surface/65 p-5 md:p-6 backdrop-blur-xl space-y-4">
           <h2 class="text-lg font-semibold">订单预览</h2>
           <div v-if="previewLoading" class="text-sm text-on-surface-variant">正在计算订单金额...</div>
           <template v-else-if="orderPreview">
@@ -108,15 +108,15 @@
                 <span>手续费率</span>
                 <span>{{ formatRate(orderPreview.fee_rate_bps) }}</span>
               </div>
-              <div class="border-t border-emerald-300/20 pt-3 flex items-center justify-between text-base font-semibold">
+              <div class="border-t border-sage-300/20 pt-3 flex items-center justify-between text-base font-semibold">
                 <span>应付总额</span>
-                <span class="text-emerald-200">{{ formatCurrency(orderPreview.payable_total_amount) }}</span>
+                <span class="text-sage-200">{{ formatCurrency(orderPreview.payable_total_amount) }}</span>
               </div>
             </div>
 
             <button
               type="button"
-              class="w-full rounded-lg bg-sky-400 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              class="w-full rounded-lg bg-moss-400 px-4 py-2.5 text-sm font-semibold text-ink-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
               :disabled="creatingOrder || !selectedActorIds.length"
               @click="createOrder"
             >
@@ -128,12 +128,12 @@
       </section>
 
       <section class="grid xl:grid-cols-[1fr_1.2fr] gap-6">
-        <div class="rounded-2xl border border-sky-400/10 bg-surface/65 p-5 md:p-6 backdrop-blur-xl space-y-4">
+        <div class="rounded-2xl border border-moss-400/10 bg-surface/65 p-5 md:p-6 backdrop-blur-xl space-y-4">
           <div class="flex items-center justify-between gap-3">
             <h2 class="text-lg font-semibold">订单列表</h2>
             <button
               type="button"
-              class="rounded-md border border-sky-300/25 px-3 py-1.5 text-xs text-sky-100 transition hover:bg-sky-400/10"
+              class="rounded-md border border-moss-300/25 px-3 py-1.5 text-xs text-moss-100 transition hover:bg-moss-400/10"
               :disabled="ordersLoading"
               @click="loadOrders"
             >
@@ -147,12 +147,12 @@
               v-for="order in orders"
               :key="order.order_no"
               class="rounded-xl border px-4 py-4 transition"
-              :class="activeOrderNo === order.order_no ? 'border-sky-300/40 bg-sky-500/10' : 'border-sky-300/15 bg-slate-950/25'"
+              :class="activeOrderNo === order.order_no ? 'border-moss-300/40 bg-moss-500/10' : 'border-moss-300/15 bg-ink-950/25'"
             >
               <div class="flex flex-col gap-3">
                 <div class="flex items-start justify-between gap-3">
                   <div>
-                    <p class="text-sm font-semibold text-sky-100">{{ order.order_no }}</p>
+                    <p class="text-sm font-semibold text-moss-100">{{ order.order_no }}</p>
                     <p class="mt-1 text-xs text-on-surface-variant">创建时间：{{ formatDateTime(order.created_at) }}</p>
                   </div>
                   <span class="rounded-full border px-2.5 py-1 text-xs" :class="statusClass(order.status)">
@@ -161,12 +161,12 @@
                 </div>
                 <div class="flex items-center justify-between text-sm">
                   <span class="text-on-surface-variant">应付总额</span>
-                  <span class="font-semibold text-emerald-200">{{ formatCurrency(order.payable_total_amount) }}</span>
+                  <span class="font-semibold text-sage-200">{{ formatCurrency(order.payable_total_amount) }}</span>
                 </div>
                 <div class="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    class="rounded-md border border-sky-300/25 px-3 py-1.5 text-xs text-sky-100 transition hover:bg-sky-400/10"
+                    class="rounded-md border border-moss-300/25 px-3 py-1.5 text-xs text-moss-100 transition hover:bg-moss-400/10"
                     @click="loadOrderDetail(order.order_no)"
                   >
                     查看详情
@@ -174,7 +174,7 @@
                   <button
                     v-if="canPay(order)"
                     type="button"
-                    class="rounded-md border border-emerald-300/25 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-100 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    class="rounded-md border border-sage-300/25 bg-sage-500/10 px-3 py-1.5 text-xs text-sage-100 transition hover:bg-sage-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                     :disabled="payingOrderNo === order.order_no"
                     @click="payOrder(order.order_no, 'wechat')"
                   >
@@ -183,7 +183,7 @@
                   <button
                     v-if="canPay(order)"
                     type="button"
-                    class="rounded-md border border-amber-300/25 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    class="rounded-md border border-brass-300/25 bg-brass-500/10 px-3 py-1.5 text-xs text-brass-100 transition hover:bg-brass-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                     :disabled="payingOrderNo === order.order_no"
                     @click="payOrder(order.order_no, 'alipay')"
                   >
@@ -192,7 +192,7 @@
                   <button
                     v-if="canAccept(order)"
                     type="button"
-                    class="rounded-md border border-sky-300/25 bg-sky-500/10 px-3 py-1.5 text-xs text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    class="rounded-md border border-moss-300/25 bg-moss-500/10 px-3 py-1.5 text-xs text-moss-100 transition hover:bg-moss-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                     :disabled="acceptingOrderNo === order.order_no"
                     @click="acceptOrder(order.order_no)"
                   >
@@ -204,15 +204,15 @@
           </div>
         </div>
 
-        <div class="rounded-2xl border border-emerald-400/15 bg-surface/65 p-5 md:p-6 backdrop-blur-xl space-y-4">
+        <div class="rounded-2xl border border-sage-400/15 bg-surface/65 p-5 md:p-6 backdrop-blur-xl space-y-4">
           <h2 class="text-lg font-semibold">订单详情</h2>
           <div v-if="orderDetailLoading" class="text-sm text-on-surface-variant">正在加载订单详情...</div>
           <div v-else-if="!activeOrder" class="text-sm text-on-surface-variant">请选择左侧订单查看详情。</div>
           <template v-else>
-            <div class="rounded-xl border border-emerald-300/20 bg-slate-950/25 px-4 py-4 space-y-2">
+            <div class="rounded-xl border border-sage-300/20 bg-ink-950/25 px-4 py-4 space-y-2">
               <div class="flex items-center justify-between text-sm">
                 <span class="text-on-surface-variant">订单号</span>
-                <span class="font-semibold text-sky-100">{{ activeOrder.order_no }}</span>
+                <span class="font-semibold text-moss-100">{{ activeOrder.order_no }}</span>
               </div>
               <div class="flex items-center justify-between text-sm">
                 <span class="text-on-surface-variant">订单状态</span>
@@ -233,15 +233,15 @@
             </div>
 
             <div class="space-y-3">
-              <h3 class="text-sm font-semibold text-sky-100">演员条目</h3>
+              <h3 class="text-sm font-semibold text-moss-100">演员条目</h3>
               <div v-if="!activeOrder.items?.length" class="text-xs text-on-surface-variant">暂无条目。</div>
               <div v-else class="space-y-2">
                 <article
                   v-for="item in activeOrder.items"
                   :key="item.order_item_id"
-                  class="rounded-lg border border-sky-300/15 bg-slate-950/25 px-3 py-3 text-xs space-y-1"
+                  class="rounded-lg border border-moss-300/15 bg-ink-950/25 px-3 py-3 text-xs space-y-1"
                 >
-                  <p class="font-semibold text-sky-100">{{ item.actor_name }}（{{ item.actor_external_id }}）</p>
+                  <p class="font-semibold text-moss-100">{{ item.actor_name }}（{{ item.actor_external_id }}）</p>
                   <p class="text-on-surface-variant">
                     报价 {{ formatCurrency(item.actor_quote_amount) }} / 手续费 {{ formatCurrency(item.platform_fee_amount) }} / 小计 {{ formatCurrency(item.line_total_amount) }}
                   </p>
@@ -253,15 +253,15 @@
             </div>
 
             <div class="space-y-3">
-              <h3 class="text-sm font-semibold text-sky-100">支付记录</h3>
+              <h3 class="text-sm font-semibold text-moss-100">支付记录</h3>
               <div v-if="!activeOrder.payments?.length" class="text-xs text-on-surface-variant">暂无支付记录。</div>
               <div v-else class="space-y-2">
                 <article
                   v-for="payment in activeOrder.payments"
                   :key="payment.payment_id"
-                  class="rounded-lg border border-emerald-300/15 bg-slate-950/25 px-3 py-3 text-xs"
+                  class="rounded-lg border border-sage-300/15 bg-ink-950/25 px-3 py-3 text-xs"
                 >
-                  <p class="text-emerald-100">{{ payment.channel }} · {{ payment.status }}</p>
+                  <p class="text-sage-100">{{ payment.channel }} · {{ payment.status }}</p>
                   <p class="mt-1 text-on-surface-variant">{{ payment.out_trade_no }} · {{ formatCurrency(payment.amount) }}</p>
                 </article>
               </div>
@@ -349,19 +349,19 @@ function statusLabel(status) {
 }
 
 function statusClass(status) {
-  if (status === 'settled') return 'border-emerald-300/30 bg-emerald-500/10 text-emerald-100'
-  if (status === 'paid') return 'border-sky-300/30 bg-sky-500/10 text-sky-100'
-  if (status === 'pending_payment') return 'border-amber-300/30 bg-amber-500/10 text-amber-100'
+  if (status === 'settled') return 'border-sage-300/30 bg-sage-500/10 text-sage-100'
+  if (status === 'paid') return 'border-moss-300/30 bg-moss-500/10 text-moss-100'
+  if (status === 'pending_payment') return 'border-brass-300/30 bg-brass-500/10 text-brass-100'
   if (status === 'refunded' || status === 'partially_refunded') return 'border-violet-300/30 bg-violet-500/10 text-violet-100'
-  return 'border-slate-300/20 bg-slate-500/10 text-slate-200'
+  return 'border-ink-300/20 bg-ink-500/10 text-ink-200'
 }
 
 function statusTextClass(status) {
-  if (status === 'settled') return 'text-emerald-200'
-  if (status === 'paid') return 'text-sky-200'
-  if (status === 'pending_payment') return 'text-amber-100'
+  if (status === 'settled') return 'text-sage-200'
+  if (status === 'paid') return 'text-moss-200'
+  if (status === 'pending_payment') return 'text-brass-100'
   if (status === 'refunded' || status === 'partially_refunded') return 'text-violet-200'
-  return 'text-slate-200'
+  return 'text-ink-200'
 }
 
 function canPay(order) {

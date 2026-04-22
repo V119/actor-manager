@@ -4,7 +4,7 @@
       <header class="space-y-3">
         <div class="flex items-center gap-3">
           <h1 class="text-3xl font-bold tracking-tight">肖像、视频与录音素材上传</h1>
-          <span class="px-3 py-1 rounded-full border border-sky-300/30 bg-sky-400/10 text-sky-200 text-xs font-semibold">
+          <span class="px-3 py-1 rounded-full border border-moss-300/30 bg-moss-400/10 text-moss-200 text-xs font-semibold">
             个人素材中心
           </span>
         </div>
@@ -13,34 +13,34 @@
         </p>
       </header>
 
-      <section class="bg-surface/65 border border-sky-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl">
+      <section class="bg-surface/65 border border-moss-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl">
         <div class="flex items-center gap-2 mb-4">
-          <span class="material-symbols-outlined text-sky-300 text-[20px]">tips_and_updates</span>
+          <span class="material-symbols-outlined text-moss-300 text-[20px]">tips_and_updates</span>
           <h2 class="text-lg font-semibold">拍摄说明</h2>
         </div>
         <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
-          <article class="rounded-xl border border-sky-400/10 bg-slate-950/20 px-4 py-3">
-            <p class="text-sm font-semibold text-sky-100">构图范围</p>
+          <article class="rounded-xl border border-moss-400/10 bg-ink-950/20 px-4 py-3">
+            <p class="text-sm font-semibold text-moss-100">构图范围</p>
             <p class="mt-1 text-xs text-on-surface-variant">请以示例图为标准，保持上半身取景，范围从腰部以上到头顶。</p>
           </article>
-          <article class="rounded-xl border border-sky-400/10 bg-slate-950/20 px-4 py-3">
-            <p class="text-sm font-semibold text-sky-100">角度要求</p>
+          <article class="rounded-xl border border-moss-400/10 bg-ink-950/20 px-4 py-3">
+            <p class="text-sm font-semibold text-moss-100">角度要求</p>
             <p class="mt-1 text-xs text-on-surface-variant">请对照下方左侧面、正面、右侧面示例图，各上传 1 张。</p>
           </article>
-          <article class="rounded-xl border border-sky-400/10 bg-slate-950/20 px-4 py-3">
-            <p class="text-sm font-semibold text-sky-100">背景环境</p>
+          <article class="rounded-xl border border-moss-400/10 bg-ink-950/20 px-4 py-3">
+            <p class="text-sm font-semibold text-moss-100">背景环境</p>
             <p class="mt-1 text-xs text-on-surface-variant">参考示例图的干净背景，避免杂乱物体、强阴影和遮挡。</p>
           </article>
-          <article class="rounded-xl border border-sky-400/10 bg-slate-950/20 px-4 py-3">
-            <p class="text-sm font-semibold text-sky-100">检测说明</p>
+          <article class="rounded-xl border border-moss-400/10 bg-ink-950/20 px-4 py-3">
+            <p class="text-sm font-semibold text-moss-100">检测说明</p>
             <p class="mt-1 text-xs text-on-surface-variant">上传图片将校验清晰度，左/正/右三张图片长边都需大于 2000 像素。</p>
           </article>
         </div>
 
-        <div class="mt-5 rounded-2xl border border-sky-400/10 bg-slate-950/25 p-3 md:p-4">
+        <div class="mt-5 rounded-2xl border border-moss-400/10 bg-ink-950/25 p-3 md:p-4">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 class="text-base font-semibold text-sky-100">标准示例图</h3>
+              <h3 class="text-base font-semibold text-moss-100">标准示例图</h3>
               <p class="mt-1 text-xs text-on-surface-variant">
                 请按示例图的角度、上半身取景范围和干净背景进行拍摄并上传。当前仅做提示，不做自动检测。
               </p>
@@ -52,13 +52,13 @@
             <article
               v-for="slot in guidanceSampleSlots"
               :key="slot.key"
-              class="rounded-xl border border-sky-400/10 bg-surface/35 p-2.5"
+              class="rounded-xl border border-moss-400/10 bg-surface/35 p-2.5"
             >
               <div class="mb-2 flex items-center justify-between">
-                <p class="text-xs font-semibold text-sky-200">{{ slot.label }}</p>
+                <p class="text-xs font-semibold text-moss-200">{{ slot.label }}</p>
                 <span class="text-[11px] text-on-surface-variant">示例标准</span>
               </div>
-              <div class="mx-auto aspect-[9/16] w-24 sm:w-28 rounded-lg overflow-hidden border border-sky-400/10 bg-slate-950/40">
+              <div class="mx-auto aspect-[9/16] w-24 sm:w-28 rounded-lg overflow-hidden border border-moss-400/10 bg-ink-950/40">
                 <img
                   v-if="slot.previewUrl"
                   :src="slot.previewUrl"
@@ -76,7 +76,7 @@
       </section>
 
       <section class="space-y-6">
-        <div class="bg-surface/65 border border-sky-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl">
+        <div class="bg-surface/65 border border-moss-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl">
           <div class="flex items-center justify-between mb-5">
             <h2 class="text-lg font-semibold">基础素材区（左/正/右 三张）</h2>
             <span class="text-xs text-on-surface-variant">系统将合成为 4:3 三视图</span>
@@ -91,13 +91,13 @@
             <div
               v-for="slot in imageSlots"
               :key="slot.key"
-              class="rounded-xl border border-dashed border-sky-400/25 bg-slate-950/20 p-3"
+              class="rounded-xl border border-dashed border-moss-400/25 bg-ink-950/20 p-3"
             >
               <div class="mb-2 flex items-center justify-between">
-                <p class="text-sm font-semibold text-sky-200">{{ slot.label }}</p>
+                <p class="text-sm font-semibold text-moss-200">{{ slot.label }}</p>
                 <span class="text-[11px] text-on-surface-variant">上半身</span>
               </div>
-              <div class="aspect-[9/16] rounded-lg overflow-hidden bg-surface/50 border border-sky-400/10">
+              <div class="aspect-[9/16] rounded-lg overflow-hidden bg-surface/50 border border-moss-400/10">
                 <img
                   v-if="slot.currentPreview"
                   :src="slot.currentPreview"
@@ -109,7 +109,7 @@
                   <p class="text-xs">未选择图片</p>
                 </div>
               </div>
-              <label class="mt-3 inline-flex cursor-pointer items-center justify-center w-full rounded-lg border border-sky-300/25 bg-sky-400/10 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/20 transition-colors">
+              <label class="mt-3 inline-flex cursor-pointer items-center justify-center w-full rounded-lg border border-moss-300/25 bg-moss-400/10 px-3 py-2 text-sm text-moss-100 hover:bg-moss-400/20 transition-colors">
                 选择图片
                 <input
                   type="file"
@@ -129,7 +129,7 @@
 
           <div class="mt-5">
             <button
-              class="px-5 py-2.5 rounded-lg bg-sky-400 text-slate-950 font-semibold hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
+              class="px-5 py-2.5 rounded-lg bg-moss-400 text-ink-950 font-semibold hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
               :disabled="isImageSubmitting || !canUploadImages || hasImageValidationError"
               @click="publishLatestThreeView"
             >
@@ -137,19 +137,19 @@
             </button>
           </div>
 
-          <p v-if="imageSuccessMessage" class="mt-3 text-sm text-emerald-300">{{ imageSuccessMessage }}</p>
+          <p v-if="imageSuccessMessage" class="mt-3 text-sm text-sage-300">{{ imageSuccessMessage }}</p>
           <p v-if="imageErrorMessage" class="mt-3 text-sm text-rose-300">{{ imageErrorMessage }}</p>
         </div>
 
         <div
           v-if="displayComposite"
-          class="bg-surface/65 border border-emerald-400/20 rounded-2xl p-5 md:p-6 backdrop-blur-xl"
+          class="bg-surface/65 border border-sage-400/20 rounded-2xl p-5 md:p-6 backdrop-blur-xl"
         >
           <div class="mb-4 flex items-center justify-between gap-3">
             <h2 class="text-lg font-semibold">当前三视图</h2>
             <span class="text-xs text-on-surface-variant">点击图片查看无损原图</span>
           </div>
-          <div class="rounded-xl overflow-hidden border border-emerald-300/25 bg-slate-950/25">
+          <div class="rounded-xl overflow-hidden border border-sage-300/25 bg-ink-950/25">
             <div class="aspect-[4/3]">
               <img
                 :src="displayComposite.composite_preview_url"
@@ -161,7 +161,7 @@
           </div>
         </div>
 
-        <div class="bg-surface/65 border border-sky-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl">
+        <div class="bg-surface/65 border border-moss-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl">
           <div class="flex items-start justify-between gap-4 mb-5">
             <div>
               <h2 class="text-lg font-semibold">动态视频区</h2>
@@ -171,7 +171,7 @@
             </div>
             <span
               class="text-xs px-2.5 py-1 rounded-full border"
-              :class="allRequiredVideosPublished ? 'border-emerald-300/40 text-emerald-200 bg-emerald-400/10' : 'border-amber-300/40 text-amber-200 bg-amber-400/10'"
+              :class="allRequiredVideosPublished ? 'border-sage-300/40 text-sage-200 bg-sage-400/10' : 'border-brass-300/40 text-brass-200 bg-brass-400/10'"
             >
               {{ allRequiredVideosPublished ? '已满足双视频要求' : '待补齐双视频' }}
             </span>
@@ -181,17 +181,17 @@
             <article
               v-for="slot in videoTypeSlots"
               :key="slot.key"
-              class="rounded-xl border border-sky-400/20 bg-slate-950/20 p-4 space-y-4"
+              class="rounded-xl border border-moss-400/20 bg-ink-950/20 p-4 space-y-4"
             >
               <div class="flex items-start justify-between gap-3">
                 <div>
-                  <p class="text-sm font-semibold text-sky-100">{{ slot.title }}</p>
+                  <p class="text-sm font-semibold text-moss-100">{{ slot.title }}</p>
                   <p class="text-xs text-on-surface-variant mt-1">{{ slot.subtitle }}</p>
                 </div>
-                <span class="text-[11px] text-sky-100 border border-sky-300/35 bg-sky-400/10 rounded-full px-2 py-0.5">必传</span>
+                <span class="text-[11px] text-moss-100 border border-moss-300/35 bg-moss-400/10 rounded-full px-2 py-0.5">必传</span>
               </div>
 
-              <div class="aspect-video rounded-lg overflow-hidden border border-sky-400/15 bg-surface/50">
+              <div class="aspect-video rounded-lg overflow-hidden border border-moss-400/15 bg-surface/50">
                 <video
                   v-if="slot.currentPreview"
                   :src="slot.currentPreview"
@@ -204,7 +204,7 @@
                 </div>
               </div>
 
-              <label class="mt-3 inline-flex cursor-pointer items-center justify-center w-full rounded-lg border border-sky-300/25 bg-sky-400/10 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/20 transition-colors">
+              <label class="mt-3 inline-flex cursor-pointer items-center justify-center w-full rounded-lg border border-moss-300/25 bg-moss-400/10 px-3 py-2 text-sm text-moss-100 hover:bg-moss-400/20 transition-colors">
                 选择视频
                 <input
                   type="file"
@@ -218,7 +218,7 @@
               </p>
 
               <div class="space-y-2">
-                <p class="text-sm font-semibold text-sky-100">上传要求</p>
+                <p class="text-sm font-semibold text-moss-100">上传要求</p>
                 <ul class="space-y-2 text-xs text-on-surface-variant">
                   <li v-for="tip in slot.tips" :key="`${slot.key}-${tip}`">- {{ tip }}</li>
                 </ul>
@@ -228,39 +228,39 @@
                 <input
                   v-model="videoOwnershipConfirmed[slot.key]"
                   type="checkbox"
-                  class="h-4 w-4 rounded border border-sky-300/40 bg-slate-900/70"
+                  class="h-4 w-4 rounded border border-moss-300/40 bg-ink-900/70"
                 />
                 确认该视频为本人出镜
               </label>
 
               <div class="flex flex-wrap gap-3">
               <button
-                class="px-5 py-2.5 rounded-lg border border-sky-300/35 text-sky-100 hover:bg-sky-400/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                class="px-5 py-2.5 rounded-lg border border-moss-300/35 text-moss-100 hover:bg-moss-400/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 :disabled="slot.form.uploading || !slot.form.file"
                 @click="submitVideo(slot.key)"
               >
                 {{ slot.form.uploading ? '视频上传中...' : '上传视频素材' }}
               </button>
               <button
-                class="px-5 py-2.5 rounded-lg border border-emerald-300/40 text-emerald-200 hover:bg-emerald-400/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                class="px-5 py-2.5 rounded-lg border border-sage-300/40 text-sage-200 hover:bg-sage-400/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 :disabled="slot.form.publishing || !slot.draft"
                 @click="publishVideoDraft(slot.key)"
               >
                 {{ slot.form.publishing ? '发布中...' : '发布当前视频草稿' }}
               </button>
               </div>
-              <p v-if="slot.form.success" class="text-sm text-emerald-300">{{ slot.form.success }}</p>
+              <p v-if="slot.form.success" class="text-sm text-sage-300">{{ slot.form.success }}</p>
               <p v-if="slot.form.error" class="text-sm text-rose-300">{{ slot.form.error }}</p>
 
-              <div v-if="slot.draft" class="rounded-xl border border-sky-300/20 bg-slate-950/25 p-3">
+              <div v-if="slot.draft" class="rounded-xl border border-moss-300/20 bg-ink-950/25 p-3">
                 <p class="text-xs font-semibold mb-2">视频草稿（未发布）</p>
-                <video :src="slot.draft.preview_url" controls class="w-full rounded-lg border border-sky-300/15" />
+                <video :src="slot.draft.preview_url" controls class="w-full rounded-lg border border-moss-300/15" />
                 <p class="mt-2 text-xs text-on-surface-variant truncate">{{ slot.draftFileName || '未命名文件' }}</p>
               </div>
 
-              <div v-if="slot.published" class="rounded-xl border border-emerald-300/25 bg-slate-950/25 p-3">
+              <div v-if="slot.published" class="rounded-xl border border-sage-300/25 bg-ink-950/25 p-3">
                 <p class="text-xs font-semibold mb-2">已发布视频</p>
-                <video :src="slot.published.preview_url" controls class="w-full rounded-lg border border-emerald-300/20" />
+                <video :src="slot.published.preview_url" controls class="w-full rounded-lg border border-sage-300/20" />
                 <p class="mt-2 text-xs text-on-surface-variant truncate">{{ slot.publishedFileName || '未命名文件' }}</p>
               </div>
             </article>
@@ -268,7 +268,7 @@
 
           <div
             class="mt-5 rounded-xl border px-4 py-3"
-            :class="allRequiredVideosPublished ? 'border-emerald-300/30 bg-emerald-400/5' : 'border-amber-300/30 bg-amber-400/5'"
+            :class="allRequiredVideosPublished ? 'border-sage-300/30 bg-sage-400/5' : 'border-brass-300/30 bg-brass-400/5'"
           >
             <p class="text-sm font-semibold">完整度检查</p>
             <p class="mt-1 text-xs text-on-surface-variant">
@@ -278,7 +278,7 @@
           </div>
         </div>
 
-        <div class="bg-surface/65 border border-sky-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl">
+        <div class="bg-surface/65 border border-moss-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl">
           <div class="flex flex-wrap items-start justify-between gap-4 mb-5">
             <div>
               <h2 class="text-lg font-semibold">录音素材区</h2>
@@ -288,16 +288,16 @@
             </div>
             <span
               class="text-xs px-2.5 py-1 rounded-full border"
-              :class="publishedAudioCount > 0 ? 'border-emerald-300/40 text-emerald-200 bg-emerald-400/10' : 'border-sky-300/35 text-sky-100 bg-sky-400/10'"
+              :class="publishedAudioCount > 0 ? 'border-sage-300/40 text-sage-200 bg-sage-400/10' : 'border-moss-300/35 text-moss-100 bg-moss-400/10'"
             >
               {{ publishedAudioCount > 0 ? `已发布 ${publishedAudioCount} 条录音` : '暂无已发布录音' }}
             </span>
           </div>
 
-          <div class="rounded-2xl border border-sky-400/15 bg-slate-950/20 p-4 md:p-5">
+          <div class="rounded-2xl border border-moss-400/15 bg-ink-950/20 p-4 md:p-5">
             <div class="flex flex-col lg:flex-row lg:items-center gap-4">
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold text-sky-100">上传新的录音素材</p>
+                <p class="text-sm font-semibold text-moss-100">上传新的录音素材</p>
                 <p class="mt-1 text-xs text-on-surface-variant">
                   支持常见音频格式，上传后可先试听，再决定是否发布到企业端广场。
                 </p>
@@ -306,7 +306,7 @@
                 </p>
               </div>
               <div class="flex flex-wrap gap-3">
-                <label class="inline-flex cursor-pointer items-center justify-center rounded-lg border border-sky-300/25 bg-sky-400/10 px-4 py-2.5 text-sm text-sky-100 hover:bg-sky-400/20 transition-colors">
+                <label class="inline-flex cursor-pointer items-center justify-center rounded-lg border border-moss-300/25 bg-moss-400/10 px-4 py-2.5 text-sm text-moss-100 hover:bg-moss-400/20 transition-colors">
                   选择录音
                   <input
                     type="file"
@@ -317,7 +317,7 @@
                   />
                 </label>
                 <button
-                  class="rounded-lg border border-emerald-300/35 px-4 py-2.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-400/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                  class="rounded-lg border border-sage-300/35 px-4 py-2.5 text-sm font-semibold text-sage-200 hover:bg-sage-400/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
                   :disabled="audioUpload.uploading || !selectedAudioFileCount"
                   @click="submitAudio"
                 >
@@ -326,38 +326,38 @@
               </div>
             </div>
             <p v-if="audioUpload.error" class="mt-3 text-sm text-rose-300">{{ audioUpload.error }}</p>
-            <p v-if="audioUpload.success" class="mt-3 text-sm text-emerald-300">{{ audioUpload.success }}</p>
+            <p v-if="audioUpload.success" class="mt-3 text-sm text-sage-300">{{ audioUpload.success }}</p>
           </div>
 
           <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <article
               v-for="asset in audioAssets"
               :key="asset.id"
-              class="rounded-2xl border border-sky-400/15 bg-slate-950/20 p-4 space-y-4"
+              class="rounded-2xl border border-moss-400/15 bg-ink-950/20 p-4 space-y-4"
             >
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
-                  <p class="text-sm font-semibold text-sky-100 truncate">{{ asset.source_filename || '未命名录音' }}</p>
+                  <p class="text-sm font-semibold text-moss-100 truncate">{{ asset.source_filename || '未命名录音' }}</p>
                   <p class="mt-1 text-xs text-on-surface-variant">
                     {{ formatAudioMeta(asset) }}
                   </p>
                 </div>
                 <span
                   class="shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium"
-                  :class="asset.is_published ? 'border-emerald-300/35 bg-emerald-400/10 text-emerald-200' : 'border-amber-300/35 bg-amber-400/10 text-amber-200'"
+                  :class="asset.is_published ? 'border-sage-300/35 bg-sage-400/10 text-sage-200' : 'border-brass-300/35 bg-brass-400/10 text-brass-200'"
                 >
                   {{ asset.is_published ? '已发布' : '未发布' }}
                 </span>
               </div>
 
-              <div class="rounded-xl border border-sky-400/12 bg-surface/45 p-3">
+              <div class="rounded-xl border border-moss-400/12 bg-surface/45 p-3">
                 <audio :src="asset.preview_url" controls class="w-full" preload="metadata" />
               </div>
 
               <div class="flex items-center justify-between gap-3">
                 <button
                   class="inline-flex min-w-[88px] items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium transition disabled:opacity-60 disabled:cursor-not-allowed"
-                  :class="asset.is_published ? 'border-amber-300/35 text-amber-200 hover:bg-amber-400/10' : 'border-emerald-300/35 text-emerald-200 hover:bg-emerald-400/10'"
+                  :class="asset.is_published ? 'border-brass-300/35 text-brass-200 hover:bg-brass-400/10' : 'border-sage-300/35 text-sage-200 hover:bg-sage-400/10'"
                   :disabled="audioActionLoadingId === asset.id"
                   @click="toggleAudioPublish(asset)"
                 >
@@ -375,10 +375,10 @@
 
             <div
               v-if="!audioAssets.length && !audioLoading"
-              class="md:col-span-2 xl:col-span-3 rounded-2xl border border-dashed border-sky-400/20 bg-slate-950/15 px-5 py-10 text-center"
+              class="md:col-span-2 xl:col-span-3 rounded-2xl border border-dashed border-moss-400/20 bg-ink-950/15 px-5 py-10 text-center"
             >
-              <span class="material-symbols-outlined text-4xl text-sky-200/80">mic</span>
-              <p class="mt-3 text-sm font-semibold text-sky-100">还没有录音素材</p>
+              <span class="material-symbols-outlined text-4xl text-moss-200/80">mic</span>
+              <p class="mt-3 text-sm font-semibold text-moss-100">还没有录音素材</p>
               <p class="mt-1 text-xs text-on-surface-variant">上传第一条录音后，就可以在这里统一试听、发布和删除。</p>
             </div>
           </div>
@@ -395,16 +395,16 @@
       @click.self="closeCompositeViewer"
     >
       <div class="mb-3 flex items-center justify-between">
-        <p class="text-xs text-slate-200/80">无损原图预览</p>
+        <p class="text-xs text-ink-200/80">无损原图预览</p>
         <button
           type="button"
-          class="rounded-md border border-slate-300/35 px-3 py-1.5 text-xs text-slate-100 hover:bg-white/10 transition"
+          class="rounded-md border border-ink-300/35 px-3 py-1.5 text-xs text-ink-100 hover:bg-white/10 transition"
           @click="closeCompositeViewer"
         >
           关闭
         </button>
       </div>
-      <div class="flex-1 min-h-0 rounded-xl border border-slate-300/20 bg-slate-950/40 overflow-hidden">
+      <div class="flex-1 min-h-0 rounded-xl border border-ink-300/20 bg-ink-950/40 overflow-hidden">
         <img
           :src="compositeViewer.url"
           alt="三视图无损原图"

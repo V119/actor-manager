@@ -10,10 +10,10 @@
             </p>
           </div>
           <div class="relative w-full md:w-96 group">
-            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-ink-400">search</span>
             <input
               v-model.trim="keyword"
-              class="w-full bg-surface/40 border border-sky-400/10 rounded-full py-3 pl-12 pr-6 text-on-surface placeholder:text-slate-500 focus:outline-none focus:border-sky-400/40 focus:ring-1 focus:ring-sky-400/40 transition-all backdrop-blur-sm"
+              class="w-full bg-surface/40 border border-moss-400/10 rounded-full py-3 pl-12 pr-6 text-on-surface placeholder:text-ink-500 focus:outline-none focus:border-moss-400/40 focus:ring-1 focus:ring-moss-400/40 transition-all backdrop-blur-sm"
               placeholder="搜索签约演员"
               type="text"
             />
@@ -23,7 +23,7 @@
 
       <div v-if="loading" class="text-sm text-on-surface-variant">正在加载签约演员...</div>
       <div v-else-if="errorMessage" class="text-sm text-rose-300">{{ errorMessage }}</div>
-      <div v-else-if="!filteredActors.length" class="rounded-2xl border border-sky-400/10 bg-surface/40 px-5 py-8 text-sm text-on-surface-variant">
+      <div v-else-if="!filteredActors.length" class="rounded-2xl border border-moss-400/10 bg-surface/40 px-5 py-8 text-sm text-on-surface-variant">
         当前还没有签约演员，去演员发布广场挑选合适的演员后即可在这里查看。
       </div>
 
@@ -32,7 +32,7 @@
           v-for="actor in filteredActors"
           :key="`${actor.actor_id}-${actor.signed_at}`"
           type="button"
-          class="bg-surface/40 backdrop-blur-md border border-sky-400/10 rounded-xl overflow-hidden flex flex-col group hover:border-sky-400/30 hover:translate-y-[-4px] transition-all duration-300 text-left"
+          class="bg-surface/40 backdrop-blur-md border border-moss-400/10 rounded-xl overflow-hidden flex flex-col group hover:border-moss-400/30 hover:translate-y-[-4px] transition-all duration-300 text-left"
           @click="openActor(actor.actor_id)"
         >
           <div class="relative aspect-[3/4] overflow-hidden">
@@ -41,8 +41,8 @@
               :alt="actor.name"
               class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             >
-            <div class="absolute top-3 right-3 bg-slate-950/50 backdrop-blur-md px-3 py-1 rounded-full border border-emerald-300/20">
-              <span class="text-[10px] font-bold text-emerald-300 tracking-wider">已签约</span>
+            <div class="absolute top-3 right-3 bg-ink-950/50 backdrop-blur-md px-3 py-1 rounded-full border border-sage-300/20">
+              <span class="text-[10px] font-bold text-sage-300 tracking-wider">已签约</span>
             </div>
           </div>
           <div class="p-5 flex flex-col gap-3">
@@ -54,7 +54,7 @@
               <span
                 v-for="tag in actor.tags"
                 :key="tag"
-                class="px-2.5 py-0.5 text-[10px] font-semibold rounded bg-sky-400/10 text-sky-300 border border-sky-400/20"
+                class="px-2.5 py-0.5 text-[10px] font-semibold rounded bg-moss-400/10 text-moss-300 border border-moss-400/20"
               >
                 {{ tag }}
               </span>
@@ -131,13 +131,13 @@ function formatCurrency(value) {
 
 function paymentStatusClass(status) {
   const normalized = String(status || '').toLowerCase()
-  if (normalized === 'settled') return 'border-emerald-300/30 bg-emerald-500/10 text-emerald-100'
-  if (normalized === 'paid') return 'border-sky-300/30 bg-sky-500/10 text-sky-100'
-  if (normalized === 'pending_payment') return 'border-amber-300/30 bg-amber-500/10 text-amber-100'
+  if (normalized === 'settled') return 'border-sage-300/30 bg-sage-500/10 text-sage-100'
+  if (normalized === 'paid') return 'border-moss-300/30 bg-moss-500/10 text-moss-100'
+  if (normalized === 'pending_payment') return 'border-brass-300/30 bg-brass-500/10 text-brass-100'
   if (normalized === 'payment_failed') return 'border-rose-300/30 bg-rose-500/10 text-rose-100'
   if (normalized === 'partially_refunded') return 'border-violet-300/30 bg-violet-500/10 text-violet-100'
-  if (normalized === 'refunded') return 'border-slate-300/30 bg-slate-500/10 text-slate-100'
-  return 'border-slate-300/20 bg-slate-500/10 text-slate-200'
+  if (normalized === 'refunded') return 'border-ink-300/30 bg-ink-500/10 text-ink-100'
+  return 'border-ink-300/20 bg-ink-500/10 text-ink-200'
 }
 
 function openActor(actorId) {

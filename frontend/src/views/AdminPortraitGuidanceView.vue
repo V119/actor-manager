@@ -1,24 +1,24 @@
 <template>
   <div class="min-h-screen pt-24 px-6 pb-10 lg:px-10">
     <section class="max-w-7xl mx-auto space-y-6">
-      <div class="rounded-2xl border border-emerald-400/20 bg-slate-950/60 backdrop-blur-xl p-6">
-        <p class="text-xs tracking-[0.2em] uppercase text-emerald-300">Portrait Standard</p>
-        <h1 class="text-2xl font-bold text-emerald-100 mt-2">拍摄示例图管理</h1>
+      <div class="rounded-2xl border border-sage-400/20 bg-ink-950/60 backdrop-blur-xl p-6">
+        <p class="text-xs tracking-[0.2em] uppercase text-sage-300">Portrait Standard</p>
+        <h1 class="text-2xl font-bold text-sage-100 mt-2">拍摄示例图管理</h1>
         <p class="text-sm text-on-surface-variant mt-2">
           单独维护演员端拍摄说明中的左侧面、正面、右侧面三张标准示例图。演员上传基础照时，会以这里的示例图作为规范参考。
         </p>
       </div>
 
-      <section class="rounded-2xl border border-emerald-400/15 bg-surface/60 backdrop-blur-xl p-6">
+      <section class="rounded-2xl border border-sage-400/15 bg-surface/60 backdrop-blur-xl p-6">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 class="text-lg font-semibold text-emerald-100">三视图示例配置</h2>
+            <h2 class="text-lg font-semibold text-sage-100">三视图示例配置</h2>
             <p class="text-sm text-on-surface-variant mt-2">
               建议上传 9:16 上半身示例图，取景范围保持腰部以上至头顶，背景简单干净。
             </p>
           </div>
           <button
-            class="px-3 py-2 rounded-lg border border-emerald-400/20 text-emerald-200 text-sm hover:bg-emerald-400/10 transition-colors"
+            class="px-3 py-2 rounded-lg border border-sage-400/20 text-sage-200 text-sm hover:bg-sage-400/10 transition-colors"
             type="button"
             @click="loadGuidanceSamples"
           >
@@ -27,19 +27,19 @@
         </div>
 
         <p v-if="guidanceErrorMessage" class="text-sm text-rose-300 mt-4">{{ guidanceErrorMessage }}</p>
-        <p v-if="guidanceSuccessMessage" class="text-sm text-emerald-300 mt-4">{{ guidanceSuccessMessage }}</p>
+        <p v-if="guidanceSuccessMessage" class="text-sm text-sage-300 mt-4">{{ guidanceSuccessMessage }}</p>
 
         <div class="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
           <article
             v-for="slot in guidanceSlots"
             :key="slot.key"
-            class="rounded-xl border border-emerald-400/10 bg-slate-950/35 p-4"
+            class="rounded-xl border border-sage-400/10 bg-ink-950/35 p-4"
           >
             <div class="flex items-center justify-between mb-3">
-              <h3 class="text-sm font-semibold text-emerald-100">{{ slot.label }}</h3>
+              <h3 class="text-sm font-semibold text-sage-100">{{ slot.label }}</h3>
               <span class="text-[11px] text-on-surface-variant">9:16 上半身</span>
             </div>
-            <div class="aspect-[9/16] rounded-lg overflow-hidden border border-emerald-400/15 bg-surface/45">
+            <div class="aspect-[9/16] rounded-lg overflow-hidden border border-sage-400/15 bg-surface/45">
               <img
                 v-if="guidancePreviewFor(slot.key)"
                 :src="guidancePreviewFor(slot.key)"
@@ -52,7 +52,7 @@
               </div>
             </div>
             <p class="mt-3 text-xs text-on-surface-variant leading-relaxed">{{ slot.hint }}</p>
-            <label class="mt-3 inline-flex cursor-pointer items-center justify-center w-full rounded-lg border border-emerald-300/25 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-100 hover:bg-emerald-400/20 transition-colors">
+            <label class="mt-3 inline-flex cursor-pointer items-center justify-center w-full rounded-lg border border-sage-300/25 bg-sage-400/10 px-3 py-2 text-sm text-sage-100 hover:bg-sage-400/20 transition-colors">
               选择示例图
               <input
                 type="file"
@@ -67,7 +67,7 @@
             <button
               type="button"
               :disabled="guidanceUploading === slot.key || !guidanceFiles[slot.key]"
-              class="mt-3 w-full px-4 py-2 rounded-lg bg-emerald-300 text-slate-950 text-sm font-semibold hover:brightness-110 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              class="mt-3 w-full px-4 py-2 rounded-lg bg-sage-300 text-ink-950 text-sm font-semibold hover:brightness-110 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               @click="uploadGuidanceSample(slot.key)"
             >
               {{ guidanceUploading === slot.key ? '上传中...' : '保存此示例图' }}

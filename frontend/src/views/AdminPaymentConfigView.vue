@@ -1,7 +1,7 @@
 <template>
   <div class="flex-1 overflow-y-auto bg-background p-8 pt-24 min-h-screen text-on-surface">
     <div class="max-w-6xl mx-auto space-y-6">
-      <section class="rounded-2xl border border-sky-400/10 bg-surface/60 p-6 backdrop-blur-xl">
+      <section class="rounded-2xl border border-moss-400/10 bg-surface/60 p-6 backdrop-blur-xl">
         <h1 class="text-3xl font-bold tracking-tight">支付配置</h1>
         <p class="mt-2 text-sm text-on-surface-variant">
           在管理端设置平台手续费率与支付参数。手续费率会作用于后续新创建订单。
@@ -9,15 +9,15 @@
       </section>
 
       <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <article class="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-5">
-          <p class="text-xs tracking-[0.16em] uppercase text-emerald-100/70">当前手续费率</p>
-          <p class="mt-3 text-2xl font-bold text-emerald-100">{{ feeRatePercent }}</p>
-          <p class="mt-1 text-xs text-emerald-100/70">{{ form.feeRateBps }} bps</p>
+        <article class="rounded-2xl border border-sage-300/20 bg-sage-500/10 p-5">
+          <p class="text-xs tracking-[0.16em] uppercase text-sage-100/70">当前手续费率</p>
+          <p class="mt-3 text-2xl font-bold text-sage-100">{{ feeRatePercent }}</p>
+          <p class="mt-1 text-xs text-sage-100/70">{{ form.feeRateBps }} bps</p>
         </article>
-        <article class="rounded-2xl border border-sky-300/20 bg-sky-500/10 p-5">
-          <p class="text-xs tracking-[0.16em] uppercase text-sky-100/70">示例报价</p>
-          <p class="mt-3 text-2xl font-bold text-sky-100">{{ formatCurrency(sampleActorQuoteAmount) }}</p>
-          <p class="mt-1 text-xs text-sky-100/70">演员报价</p>
+        <article class="rounded-2xl border border-moss-300/20 bg-moss-500/10 p-5">
+          <p class="text-xs tracking-[0.16em] uppercase text-moss-100/70">示例报价</p>
+          <p class="mt-3 text-2xl font-bold text-moss-100">{{ formatCurrency(sampleActorQuoteAmount) }}</p>
+          <p class="mt-1 text-xs text-moss-100/70">演员报价</p>
         </article>
         <article class="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-5">
           <p class="text-xs tracking-[0.16em] uppercase text-violet-100/70">示例手续费</p>
@@ -26,12 +26,12 @@
         </article>
       </section>
 
-      <section class="rounded-2xl border border-sky-400/10 bg-surface/50 p-6">
+      <section class="rounded-2xl border border-moss-400/10 bg-surface/50 p-6">
         <div class="flex items-center justify-between gap-3">
           <h2 class="text-lg font-semibold">参数设置</h2>
           <button
             type="button"
-            class="rounded-full border border-sky-300/30 px-4 py-2 text-xs text-sky-100 transition hover:bg-sky-400/10"
+            class="rounded-full border border-moss-300/30 px-4 py-2 text-xs text-moss-100 transition hover:bg-moss-400/10"
             :disabled="loading"
             @click="loadConfig"
           >
@@ -50,20 +50,20 @@
                 min="0"
                 max="4000"
                 step="1"
-                class="mt-2 w-full rounded-xl border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm outline-none transition focus:border-sky-300/40 focus:ring-1 focus:ring-sky-300/30"
+                class="mt-2 w-full rounded-xl border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm outline-none transition focus:border-moss-300/40 focus:ring-1 focus:ring-moss-300/30"
               />
               <p class="mt-1 text-xs text-on-surface-variant">100 bps = 1%。例如 600 bps = 6%。</p>
             </label>
 
-            <div class="rounded-xl border border-sky-300/10 bg-slate-950/20 px-4 py-3">
+            <div class="rounded-xl border border-moss-300/10 bg-ink-950/20 px-4 py-3">
               <p class="text-xs text-on-surface-variant">支付通道开关</p>
               <div class="mt-3 flex items-center gap-6">
                 <label class="inline-flex items-center gap-2 text-sm text-on-surface">
-                  <input v-model="form.allowWechat" type="checkbox" class="accent-sky-400" />
+                  <input v-model="form.allowWechat" type="checkbox" class="accent-moss-400" />
                   微信支付
                 </label>
                 <label class="inline-flex items-center gap-2 text-sm text-on-surface">
-                  <input v-model="form.allowAlipay" type="checkbox" class="accent-sky-400" />
+                  <input v-model="form.allowAlipay" type="checkbox" class="accent-moss-400" />
                   支付宝支付
                 </label>
               </div>
@@ -79,7 +79,7 @@
                 min="1"
                 max="2160"
                 step="1"
-                class="mt-2 w-full rounded-xl border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm outline-none transition focus:border-sky-300/40 focus:ring-1 focus:ring-sky-300/30"
+                class="mt-2 w-full rounded-xl border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm outline-none transition focus:border-moss-300/40 focus:ring-1 focus:ring-moss-300/30"
               />
             </label>
             <label class="block">
@@ -90,7 +90,7 @@
                 min="0"
                 max="2160"
                 step="1"
-                class="mt-2 w-full rounded-xl border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm outline-none transition focus:border-sky-300/40 focus:ring-1 focus:ring-sky-300/30"
+                class="mt-2 w-full rounded-xl border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm outline-none transition focus:border-moss-300/40 focus:ring-1 focus:ring-moss-300/30"
               />
             </label>
             <label class="block">
@@ -101,7 +101,7 @@
                 min="24"
                 max="8760"
                 step="1"
-                class="mt-2 w-full rounded-xl border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm outline-none transition focus:border-sky-300/40 focus:ring-1 focus:ring-sky-300/30"
+                class="mt-2 w-full rounded-xl border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm outline-none transition focus:border-moss-300/40 focus:ring-1 focus:ring-moss-300/30"
               />
             </label>
             <label class="block">
@@ -112,18 +112,18 @@
                 min="0"
                 max="168"
                 step="1"
-                class="mt-2 w-full rounded-xl border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm outline-none transition focus:border-sky-300/40 focus:ring-1 focus:ring-sky-300/30"
+                class="mt-2 w-full rounded-xl border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm outline-none transition focus:border-moss-300/40 focus:ring-1 focus:ring-moss-300/30"
               />
             </label>
           </div>
 
           <p v-if="errorMessage" class="text-sm text-rose-300">{{ errorMessage }}</p>
-          <p v-if="successMessage" class="text-sm text-emerald-300">{{ successMessage }}</p>
+          <p v-if="successMessage" class="text-sm text-sage-300">{{ successMessage }}</p>
 
           <div class="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              class="rounded-xl bg-sky-400/90 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:opacity-60"
+              class="rounded-xl bg-moss-400/90 px-5 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-moss-300 disabled:cursor-not-allowed disabled:opacity-60"
               :disabled="saving || loading"
               @click="saveConfig"
             >

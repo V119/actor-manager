@@ -2,25 +2,25 @@
   <router-view v-if="isAuthPage" />
 
   <div v-else class="flex h-screen w-full relative bg-background text-on-surface">
-    <aside class="h-screen w-64 border-r border-sky-400/10 bg-slate-950/75 backdrop-blur-2xl flex flex-col flex-shrink-0 z-40 pt-16 fixed left-0">
+    <aside class="h-screen w-64 border-r border-moss-400/10 bg-ink-950/75 backdrop-blur-2xl flex flex-col flex-shrink-0 z-40 pt-16 fixed left-0">
       <div class="px-6 mb-8">
-        <h1 class="text-lg font-bold text-sky-400 tracking-wider">Glacier AI Actor</h1>
-        <p class="text-slate-500 text-xs mt-1">{{ roleSubtitle }}</p>
+        <h1 class="text-lg font-bold text-moss-400 tracking-wider">Glacier AI Actor</h1>
+        <p class="text-ink-400 text-xs mt-1">{{ roleSubtitle }}</p>
       </div>
       <nav class="flex-1 space-y-1">
         <router-link
           v-for="item in navItems"
           :key="item.to"
           :to="item.to"
-          class="text-slate-400 flex items-center px-6 py-3 hover:bg-white/5 hover:text-sky-200 transition-all"
-          active-class="bg-sky-400/10 text-sky-300 border-r-2 border-sky-300"
+          class="text-ink-400 flex items-center px-6 py-3 hover:bg-white/5 hover:text-moss-200 transition-all"
+          active-class="bg-moss-400/10 text-moss-300 border-r-2 border-moss-300"
         >
           <span class="material-symbols-outlined mr-3">{{ item.icon }}</span>
           <span class="font-inter text-sm">{{ item.label }}</span>
         </router-link>
       </nav>
       <div class="p-6 border-t border-white/5">
-        <button class="text-slate-400 flex items-center hover:text-rose-300 transition-colors" @click="handleLogout">
+        <button class="text-ink-400 flex items-center hover:text-rose-300 transition-colors" @click="handleLogout">
           <span class="material-symbols-outlined mr-3">logout</span>
           <span class="font-inter text-sm">退出</span>
         </button>
@@ -28,8 +28,8 @@
     </aside>
 
     <main class="flex-1 ml-64 relative overflow-y-auto">
-      <nav class="fixed top-0 left-64 right-0 bg-[#0a0e1a]/60 backdrop-blur-xl border-b border-sky-400/10 shadow-[0_0_30px_rgba(125,211,252,0.05)] z-50 flex justify-between items-center px-6 h-16">
-        <div class="text-2xl font-semibold tracking-tighter text-sky-300">Glacier AI</div>
+      <nav class="fixed top-0 left-64 right-0 bg-[#08110e]/70 backdrop-blur-xl border-b border-moss-400/10 shadow-[0_0_30px_rgba(111,169,138,0.14)] z-50 flex justify-between items-center px-6 h-16">
+        <div class="text-2xl font-semibold tracking-tighter text-moss-300">Glacier AI</div>
         <button
           v-if="currentUser?.role === 'individual'"
           type="button"
@@ -37,10 +37,10 @@
           @click="goToActorBasicInfo"
         >
           <div class="text-right">
-            <p class="text-sm font-semibold text-sky-200">{{ currentUser?.display_name || '未登录' }}</p>
-            <p class="text-xs text-slate-400">{{ profileSubtitle }}</p>
+            <p class="text-sm font-semibold text-moss-200">{{ currentUser?.display_name || '未登录' }}</p>
+            <p class="text-xs text-ink-400">{{ profileSubtitle }}</p>
           </div>
-          <div class="w-9 h-9 rounded-full overflow-hidden border border-sky-400/30 bg-sky-400/10 text-sky-200 flex items-center justify-center text-xs font-bold">
+          <div class="w-9 h-9 rounded-full overflow-hidden border border-moss-400/30 bg-moss-400/10 text-moss-200 flex items-center justify-center text-xs font-bold">
             <img
               v-if="headerAvatarUrl"
               :src="headerAvatarUrl"
@@ -52,10 +52,10 @@
         </button>
         <div v-else class="flex items-center gap-4">
           <div class="text-right">
-            <p class="text-sm font-semibold text-sky-200">{{ currentUser?.display_name || '未登录' }}</p>
-            <p class="text-xs text-slate-400">{{ profileSubtitle }}</p>
+            <p class="text-sm font-semibold text-moss-200">{{ currentUser?.display_name || '未登录' }}</p>
+            <p class="text-xs text-ink-400">{{ profileSubtitle }}</p>
           </div>
-          <div class="w-9 h-9 rounded-full overflow-hidden border border-sky-400/30 bg-sky-400/10 text-sky-200 flex items-center justify-center text-xs font-bold">
+          <div class="w-9 h-9 rounded-full overflow-hidden border border-moss-400/30 bg-moss-400/10 text-moss-200 flex items-center justify-center text-xs font-bold">
             <img
               v-if="headerAvatarUrl"
               :src="headerAvatarUrl"

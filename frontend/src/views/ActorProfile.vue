@@ -5,10 +5,10 @@
       <div v-else-if="errorMessage" class="text-sm text-rose-300">{{ errorMessage }}</div>
 
       <template v-else-if="detail">
-        <section class="bg-surface/60 backdrop-blur-xl border border-sky-400/10 p-6 rounded-xl">
+        <section class="bg-surface/60 backdrop-blur-xl border border-moss-400/10 p-6 rounded-xl">
           <div class="flex flex-col xl:flex-row gap-6 items-start xl:justify-between">
             <div class="flex flex-col md:flex-row gap-6 items-start flex-1">
-              <div class="w-40 h-52 rounded-xl overflow-hidden border border-sky-300/20 bg-slate-950/30">
+              <div class="w-40 h-52 rounded-xl overflow-hidden border border-moss-300/20 bg-ink-950/30">
                 <img :src="coverImage" :alt="detail.actor.name" class="w-full h-full object-cover" />
               </div>
               <div class="space-y-3">
@@ -18,7 +18,7 @@
                   <span
                     v-for="tag in detail.actor.tags"
                     :key="tag"
-                    class="px-2.5 py-0.5 text-[10px] font-semibold rounded bg-sky-400/10 text-sky-300 border border-sky-400/20"
+                    class="px-2.5 py-0.5 text-[10px] font-semibold rounded bg-moss-400/10 text-moss-300 border border-moss-400/20"
                   >
                     {{ tag }}
                   </span>
@@ -27,17 +27,17 @@
               </div>
             </div>
 
-            <div class="w-full xl:w-80 rounded-2xl border border-emerald-300/20 bg-emerald-500/5 p-4 space-y-3">
+            <div class="w-full xl:w-80 rounded-2xl border border-sage-300/20 bg-sage-500/5 p-4 space-y-3">
               <div class="flex items-center justify-between gap-3">
                 <div>
-                  <p class="text-[11px] tracking-[0.18em] uppercase text-emerald-200/80">签约状态</p>
+                  <p class="text-[11px] tracking-[0.18em] uppercase text-sage-200/80">签约状态</p>
                   <p class="mt-2 text-sm text-on-surface-variant">
                     {{ detail.is_signed_by_current_enterprise ? '该演员已加入当前企业的签约列表。' : '确认签约后，可在左侧“签约演员”中随时查看。' }}
                   </p>
                 </div>
                 <span
                   class="rounded-full border px-3 py-1 text-xs font-semibold"
-                  :class="detail.is_signed_by_current_enterprise ? 'border-emerald-300/25 bg-emerald-500/15 text-emerald-200' : 'border-amber-300/25 bg-amber-500/10 text-amber-100'"
+                  :class="detail.is_signed_by_current_enterprise ? 'border-sage-300/25 bg-sage-500/15 text-sage-200' : 'border-brass-300/25 bg-brass-500/10 text-brass-100'"
                 >
                   {{ detail.is_signed_by_current_enterprise ? '已签约' : '待签约' }}
                 </span>
@@ -46,7 +46,7 @@
               <button
                 type="button"
                 class="w-full rounded-xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
-                :class="detail.is_signed_by_current_enterprise ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-300/25' : 'bg-sky-400 text-slate-950 hover:brightness-110'"
+                :class="detail.is_signed_by_current_enterprise ? 'bg-sage-500/15 text-sage-200 border border-sage-300/25' : 'bg-moss-400 text-ink-950 hover:brightness-110'"
                 :disabled="detail.is_signed_by_current_enterprise || signing"
                 @click="handleSignActor"
               >
@@ -55,7 +55,7 @@
 
               <button
                 type="button"
-                class="w-full rounded-xl border border-sky-300/25 bg-sky-500/10 px-4 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                class="w-full rounded-xl border border-moss-300/25 bg-moss-500/10 px-4 py-3 text-sm font-semibold text-moss-100 transition hover:bg-moss-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                 :disabled="!detail.is_signed_by_current_enterprise || addingToCart || actorInCart"
                 @click="handleAddToCart"
               >
@@ -72,13 +72,13 @@
 
               <button
                 type="button"
-                class="w-full rounded-xl border border-sky-300/25 px-4 py-2.5 text-xs text-sky-100 transition hover:bg-sky-500/10"
+                class="w-full rounded-xl border border-moss-300/25 px-4 py-2.5 text-xs text-moss-100 transition hover:bg-moss-500/10"
                 @click="goToCartCheckout"
               >
                 前往购物车与结算
               </button>
 
-              <p v-if="signActionMessage" class="text-sm text-emerald-200 leading-6">{{ signActionMessage }}</p>
+              <p v-if="signActionMessage" class="text-sm text-sage-200 leading-6">{{ signActionMessage }}</p>
               <p v-if="signActionError" class="rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-200 leading-6">
                 {{ signActionError }}
               </p>
@@ -87,26 +87,26 @@
         </section>
 
         <section class="grid xl:grid-cols-[1.2fr_1fr] gap-6">
-          <div class="bg-surface/60 border border-sky-400/15 rounded-xl p-5">
+          <div class="bg-surface/60 border border-moss-400/15 rounded-xl p-5">
             <h2 class="text-lg font-semibold">演员基本信息</h2>
             <div class="mt-4 grid md:grid-cols-2 xl:grid-cols-3 gap-3">
               <div
                 v-for="item in basicInfoItems"
                 :key="item.label"
-                class="rounded-xl border border-sky-300/15 bg-slate-950/20 px-4 py-3"
+                class="rounded-xl border border-moss-300/15 bg-ink-950/20 px-4 py-3"
               >
-                <p class="text-[11px] tracking-[0.16em] uppercase text-slate-400">{{ item.label }}</p>
-                <p class="mt-2 text-sm font-medium text-sky-50 break-words">{{ item.value }}</p>
+                <p class="text-[11px] tracking-[0.16em] uppercase text-ink-400">{{ item.label }}</p>
+                <p class="mt-2 text-sm font-medium text-moss-50 break-words">{{ item.value }}</p>
               </div>
             </div>
 
-            <div class="mt-5 rounded-xl border border-sky-300/15 bg-slate-950/20 px-4 py-4">
-              <p class="text-[11px] tracking-[0.16em] uppercase text-slate-400">擅长标签</p>
+            <div class="mt-5 rounded-xl border border-moss-300/15 bg-ink-950/20 px-4 py-4">
+              <p class="text-[11px] tracking-[0.16em] uppercase text-ink-400">擅长标签</p>
               <div v-if="detail.actor.tags?.length" class="mt-3 flex flex-wrap gap-2">
                 <span
                   v-for="tag in detail.actor.tags"
                   :key="tag"
-                  class="px-2.5 py-1 text-xs font-semibold rounded-full bg-sky-400/10 text-sky-300 border border-sky-400/20"
+                  class="px-2.5 py-1 text-xs font-semibold rounded-full bg-moss-400/10 text-moss-300 border border-moss-400/20"
                 >
                   {{ tag }}
                 </span>
@@ -115,15 +115,15 @@
             </div>
           </div>
 
-          <div class="bg-surface/60 border border-sky-400/15 rounded-xl p-5">
+          <div class="bg-surface/60 border border-moss-400/15 rounded-xl p-5">
             <h2 class="text-lg font-semibold">合作偏好与说明</h2>
             <div class="mt-4 space-y-4">
               <div
                 v-for="item in profileTextBlocks"
                 :key="item.label"
-                class="rounded-xl border border-sky-300/15 bg-slate-950/20 px-4 py-4"
+                class="rounded-xl border border-moss-300/15 bg-ink-950/20 px-4 py-4"
               >
-                <p class="text-[11px] tracking-[0.16em] uppercase text-slate-400">{{ item.label }}</p>
+                <p class="text-[11px] tracking-[0.16em] uppercase text-ink-400">{{ item.label }}</p>
                 <p class="mt-2 text-sm leading-7 text-on-surface-variant whitespace-pre-wrap">{{ item.value }}</p>
               </div>
             </div>
@@ -131,10 +131,10 @@
         </section>
 
         <section class="grid lg:grid-cols-2 gap-6">
-          <div class="bg-surface/60 border border-emerald-300/20 rounded-xl p-4">
+          <div class="bg-surface/60 border border-sage-300/20 rounded-xl p-4">
             <h2 class="text-lg font-semibold mb-3">三视图</h2>
             <div v-if="detail.published_three_view" class="space-y-4">
-              <div class="aspect-[4/3] rounded-lg overflow-hidden border border-emerald-300/20">
+              <div class="aspect-[4/3] rounded-lg overflow-hidden border border-sage-300/20">
                 <img
                   :src="detail.published_three_view.composite_variant_urls?.detail || detail.published_three_view.composite_preview_url"
                   alt="已发布三视图"
@@ -148,39 +148,39 @@
             <div v-else class="text-xs text-on-surface-variant">暂无已发布三视图。</div>
           </div>
 
-          <div class="bg-surface/60 border border-emerald-300/20 rounded-xl p-4">
+          <div class="bg-surface/60 border border-sage-300/20 rounded-xl p-4">
             <h2 class="text-lg font-semibold mb-3">视频</h2>
             <div v-if="publishedVideos.length" class="space-y-4">
               <div
                 v-for="video in publishedVideos"
                 :key="video.id"
-                class="rounded-lg border border-emerald-300/20 bg-slate-950/20 p-3 space-y-2"
+                class="rounded-lg border border-sage-300/20 bg-ink-950/20 p-3 space-y-2"
               >
-                <p class="text-xs font-semibold text-emerald-200">
+                <p class="text-xs font-semibold text-sage-200">
                   {{ videoLabelMap[video.video_type] || '已发布视频' }}
                 </p>
-                <video :src="video.preview_url" controls class="w-full rounded-lg border border-emerald-300/20" />
+                <video :src="video.preview_url" controls class="w-full rounded-lg border border-sage-300/20" />
               </div>
             </div>
             <div v-else class="text-xs text-on-surface-variant">暂无已发布视频。</div>
           </div>
         </section>
 
-        <section class="bg-surface/60 border border-emerald-300/20 rounded-xl p-4">
+        <section class="bg-surface/60 border border-sage-300/20 rounded-xl p-4">
           <h2 class="text-lg font-semibold mb-3">已发布风格图</h2>
           <div v-if="detail.published_styles?.length" class="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
             <div
               v-for="item in detail.published_styles"
               :key="item.id"
-              class="break-inside-avoid rounded-lg overflow-hidden border border-emerald-300/20 bg-slate-950/20"
+              class="break-inside-avoid rounded-lg overflow-hidden border border-sage-300/20 bg-ink-950/20"
             >
               <div class="relative">
                 <img :src="item.preview_url || item.image_url" :alt="item.style_name" class="w-full h-auto" />
                 <div class="absolute left-3 top-3 flex flex-wrap gap-2">
-                  <span class="rounded-full border border-sky-300/35 bg-slate-950/75 px-2.5 py-1 text-[11px] font-semibold text-sky-100 backdrop-blur">
+                  <span class="rounded-full border border-moss-300/35 bg-ink-950/75 px-2.5 py-1 text-[11px] font-semibold text-moss-100 backdrop-blur">
                     {{ item.style_name }}
                   </span>
-                  <span class="rounded-full border border-emerald-300/30 bg-slate-950/75 px-2.5 py-1 text-[11px] font-semibold text-emerald-100 backdrop-blur">
+                  <span class="rounded-full border border-sage-300/30 bg-ink-950/75 px-2.5 py-1 text-[11px] font-semibold text-sage-100 backdrop-blur">
                     {{ styleCategoryLabelMap[item.style_category] || item.style_category || '未分类' }}
                   </span>
                 </div>
@@ -190,15 +190,15 @@
           <div v-else class="text-xs text-on-surface-variant">暂无已发布风格图。</div>
         </section>
 
-        <section class="bg-surface/60 border border-emerald-300/20 rounded-xl p-4">
+        <section class="bg-surface/60 border border-sage-300/20 rounded-xl p-4">
           <h2 class="text-lg font-semibold mb-3">录音</h2>
           <div v-if="publishedAudios.length" class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
             <div
               v-for="audio in publishedAudios"
               :key="audio.id"
-              class="rounded-lg border border-emerald-300/20 bg-slate-950/20 p-3 space-y-2"
+              class="rounded-lg border border-sage-300/20 bg-ink-950/20 p-3 space-y-2"
             >
-              <p class="text-xs font-semibold text-emerald-200 truncate">
+              <p class="text-xs font-semibold text-sage-200 truncate">
                 {{ audio.source_filename || '已发布录音' }}
               </p>
               <audio :src="audio.preview_url" controls class="w-full" preload="metadata" />

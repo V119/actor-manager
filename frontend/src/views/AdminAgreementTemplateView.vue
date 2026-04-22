@@ -1,30 +1,30 @@
 <template>
   <div class="min-h-screen pt-24 px-6 pb-10 lg:px-10">
     <section class="max-w-6xl mx-auto space-y-6">
-      <div class="rounded-2xl border border-amber-400/20 bg-slate-950/60 backdrop-blur-xl p-6">
-        <p class="text-xs tracking-[0.2em] uppercase text-amber-300">Agreement Template</p>
-        <h1 class="text-2xl font-bold text-amber-100 mt-2">协议模板配置</h1>
+      <div class="rounded-2xl border border-brass-400/20 bg-ink-950/60 backdrop-blur-xl p-6">
+        <p class="text-xs tracking-[0.2em] uppercase text-brass-300">Agreement Template</p>
+        <h1 class="text-2xl font-bold text-brass-100 mt-2">协议模板配置</h1>
         <p class="text-sm text-on-surface-variant mt-2">
           管理演员签署协议中的甲方信息与授权日期。演员端展示内容固定采用《AI肖像权独家授权合作协议.docx》版本。
         </p>
       </div>
 
-      <section class="rounded-2xl border border-amber-400/15 bg-surface/60 backdrop-blur-xl p-6 space-y-5">
+      <section class="rounded-2xl border border-brass-400/15 bg-surface/60 backdrop-blur-xl p-6 space-y-5">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 class="text-lg font-semibold text-amber-100">甲方信息</h2>
+            <h2 class="text-lg font-semibold text-brass-100">甲方信息</h2>
             <p class="text-sm text-on-surface-variant mt-2">
               每次修改会生成新的协议模板版本。演员若已签署旧版本，系统会提示重新签署后才能继续发布内容。
             </p>
           </div>
           <div class="text-right text-xs text-on-surface-variant">
-            <p>当前版本：<span class="text-amber-200 font-semibold">V{{ template.version || 1 }}</span></p>
-            <p class="mt-1">模板状态：<span :class="template.is_ready ? 'text-emerald-300' : 'text-amber-300'">{{ template.is_ready ? '可签署' : '待完善' }}</span></p>
+            <p>当前版本：<span class="text-brass-200 font-semibold">V{{ template.version || 1 }}</span></p>
+            <p class="mt-1">模板状态：<span :class="template.is_ready ? 'text-sage-300' : 'text-brass-300'">{{ template.is_ready ? '可签署' : '待完善' }}</span></p>
           </div>
         </div>
 
         <p v-if="errorMessage" class="text-sm text-rose-300">{{ errorMessage }}</p>
-        <p v-if="successMessage" class="text-sm text-emerald-300">{{ successMessage }}</p>
+        <p v-if="successMessage" class="text-sm text-sage-300">{{ successMessage }}</p>
 
         <form class="grid grid-cols-1 lg:grid-cols-2 gap-4" @submit.prevent="saveTemplate">
           <label class="space-y-1 lg:col-span-2">
@@ -33,7 +33,7 @@
               :value="template.source_document_name || 'AI肖像权独家授权合作协议.docx'"
               type="text"
               disabled
-              class="w-full rounded-xl border border-amber-300/20 bg-slate-950/40 px-4 py-3 text-sm text-slate-400"
+              class="w-full rounded-xl border border-brass-300/20 bg-ink-950/40 px-4 py-3 text-sm text-ink-400"
             />
           </label>
 
@@ -43,7 +43,7 @@
               v-model="form.party_a_company_name"
               type="text"
               maxlength="128"
-              class="w-full rounded-xl border border-amber-300/20 bg-slate-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-amber-300/60"
+              class="w-full rounded-xl border border-brass-300/20 bg-ink-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-brass-300/60"
               placeholder="请输入甲方公司名称"
             />
           </label>
@@ -54,7 +54,7 @@
               v-model="form.party_a_credit_code"
               type="text"
               maxlength="64"
-              class="w-full rounded-xl border border-amber-300/20 bg-slate-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-amber-300/60"
+              class="w-full rounded-xl border border-brass-300/20 bg-ink-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-brass-300/60"
               placeholder="请输入统一社会信用代码"
             />
           </label>
@@ -65,7 +65,7 @@
               v-model="form.party_a_registered_address"
               rows="3"
               maxlength="512"
-              class="w-full rounded-xl border border-amber-300/20 bg-slate-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-amber-300/60"
+              class="w-full rounded-xl border border-brass-300/20 bg-ink-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-brass-300/60"
               placeholder="请输入甲方注册地址"
             />
           </label>
@@ -74,7 +74,7 @@
             <span class="text-xs text-on-surface-variant">授权期限模式</span>
             <select
               v-model="form.authorization_date_mode"
-              class="w-full rounded-xl border border-amber-300/20 bg-slate-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-amber-300/60"
+              class="w-full rounded-xl border border-brass-300/20 bg-ink-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-brass-300/60"
             >
               <option value="fixed">指定开始时间和结束时间</option>
               <option value="relative_months">签署时间 + N个月</option>
@@ -88,7 +88,7 @@
               type="number"
               min="1"
               max="120"
-              class="w-full rounded-xl border border-amber-300/20 bg-slate-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-amber-300/60"
+              class="w-full rounded-xl border border-brass-300/20 bg-ink-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-brass-300/60"
               placeholder="例如 6"
             />
           </label>
@@ -98,7 +98,7 @@
             <input
               v-model="form.authorization_start_date"
               type="date"
-              class="w-full rounded-xl border border-amber-300/20 bg-slate-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-amber-300/60"
+              class="w-full rounded-xl border border-brass-300/20 bg-ink-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-brass-300/60"
             />
           </label>
 
@@ -107,17 +107,17 @@
             <input
               v-model="form.authorization_end_date"
               type="date"
-              class="w-full rounded-xl border border-amber-300/20 bg-slate-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-amber-300/60"
+              class="w-full rounded-xl border border-brass-300/20 bg-ink-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-brass-300/60"
             />
           </label>
 
           <div
             v-else
-            class="space-y-2 rounded-xl border border-amber-300/15 bg-slate-950/20 px-4 py-3 text-sm text-on-surface-variant"
+            class="space-y-2 rounded-xl border border-brass-300/15 bg-ink-950/20 px-4 py-3 text-sm text-on-surface-variant"
           >
             <p>开始日期将在演员签署协议当天自动取签署日期，结束日期按签署日期顺延对应月数。</p>
-            <p>若今日签署，预计开始日期：<span class="text-amber-200">{{ relativeDatePreview.start }}</span></p>
-            <p>若今日签署，预计结束日期：<span class="text-amber-200">{{ relativeDatePreview.end }}</span></p>
+            <p>若今日签署，预计开始日期：<span class="text-brass-200">{{ relativeDatePreview.start }}</span></p>
+            <p>若今日签署，预计结束日期：<span class="text-brass-200">{{ relativeDatePreview.end }}</span></p>
           </div>
 
           <label class="space-y-1">
@@ -126,7 +126,7 @@
               v-model="form.party_a_signature_label"
               type="text"
               maxlength="128"
-              class="w-full rounded-xl border border-amber-300/20 bg-slate-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-amber-300/60"
+              class="w-full rounded-xl border border-brass-300/20 bg-ink-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-brass-300/60"
               placeholder="默认为甲方公司名称"
             />
           </label>
@@ -136,7 +136,7 @@
             <input
               v-model="form.party_a_signed_date"
               type="date"
-              class="w-full rounded-xl border border-amber-300/20 bg-slate-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-amber-300/60"
+              class="w-full rounded-xl border border-brass-300/20 bg-ink-950/30 px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-brass-300/60"
             />
           </label>
 
@@ -144,7 +144,7 @@
             <button
               type="submit"
               :disabled="saving"
-              class="px-5 py-3 rounded-xl bg-amber-300 text-slate-900 text-sm font-semibold hover:brightness-110 transition-all disabled:opacity-60"
+              class="px-5 py-3 rounded-xl bg-moss-400 text-ink-950 text-sm font-semibold hover:brightness-110 transition-all disabled:opacity-60"
             >
               {{ saving ? '保存中...' : '保存协议模板' }}
             </button>

@@ -1,22 +1,43 @@
 <svg width="720" height="960" viewBox="0 0 720 960" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="96" y1="72" x2="624" y2="888" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#123B52"/>
-      <stop offset="0.52" stop-color="#1D5A6F"/>
-      <stop offset="1" stop-color="#E59F53"/>
+    <linearGradient id="bg" x1="108" y1="76" x2="612" y2="884" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#132822" />
+      <stop offset="0.56" stop-color="#1d3a30" />
+      <stop offset="1" stop-color="#6b5030" />
     </linearGradient>
-    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(542 190) rotate(121.44) scale(478.188 390.988)">
-      <stop stop-color="#FFF1C8" stop-opacity="0.85"/>
-      <stop offset="1" stop-color="#FFF1C8" stop-opacity="0"/>
+    <radialGradient id="glowMoss" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(554 182) rotate(123.154) scale(480.221 403.863)">
+      <stop stop-color="#B9D8C3" stop-opacity="0.78" />
+      <stop offset="1" stop-color="#B9D8C3" stop-opacity="0" />
     </radialGradient>
+    <radialGradient id="glowBrass" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(164 776) rotate(36.659) scale(309.452 240.881)">
+      <stop stop-color="#D9B98B" stop-opacity="0.48" />
+      <stop offset="1" stop-color="#D9B98B" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="button" x1="238" y1="730" x2="482" y2="782" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7FB093" />
+      <stop offset="1" stop-color="#4F876B" />
+    </linearGradient>
   </defs>
-  <rect width="720" height="960" rx="36" fill="url(#bg)"/>
-  <rect width="720" height="960" rx="36" fill="url(#glow)"/>
-  <rect x="90" y="116" width="540" height="728" rx="28" fill="rgba(7,17,26,0.18)" stroke="rgba(255,255,255,0.24)" stroke-width="3"/>
-  <rect x="190" y="274" width="340" height="340" rx="26" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.32)" stroke-width="3" stroke-dasharray="14 14"/>
-  <path d="M304 398C304 360.445 334.445 330 372 330C409.555 330 440 360.445 440 398C440 426.457 420.827 446.914 393.604 455.903C375.993 461.718 364 478.211 364 496V506" stroke="white" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="364" cy="550" r="14" fill="white"/>
-  <rect x="206" y="664" width="308" height="60" rx="30" fill="rgba(9,24,35,0.45)" stroke="rgba(255,255,255,0.28)" stroke-width="2"/>
-  <text x="360" y="705" text-anchor="middle" fill="white" font-size="30" font-family="Arial, sans-serif" font-weight="700">Custom Upload</text>
-  <text x="360" y="188" text-anchor="middle" fill="white" font-size="38" font-family="Arial, sans-serif" font-weight="700" letter-spacing="2">自定义风格</text>
+
+  <rect width="720" height="960" rx="36" fill="url(#bg)" />
+  <rect width="720" height="960" rx="36" fill="url(#glowMoss)" />
+  <rect width="720" height="960" rx="36" fill="url(#glowBrass)" />
+
+  <rect x="90" y="116" width="540" height="728" rx="28" fill="#0C1512" fill-opacity="0.30" stroke="#E6F0EA" stroke-opacity="0.18" stroke-width="3" />
+  <rect x="132" y="156" width="456" height="90" rx="22" fill="#13231D" fill-opacity="0.58" stroke="#DDE9E2" stroke-opacity="0.14" stroke-width="2" />
+  <text x="360" y="194" text-anchor="middle" fill="#F3FAF5" font-size="38" font-family="Inter, Arial, sans-serif" font-weight="700" letter-spacing="2">自定义风格</text>
+  <text x="360" y="223" text-anchor="middle" fill="#B9C9BF" font-size="18" font-family="Inter, Arial, sans-serif" font-weight="500">上传参考图，生成统一的墨绿质感视觉</text>
+
+  <rect x="190" y="274" width="340" height="340" rx="26" fill="#F3FAF5" fill-opacity="0.08" stroke="#E6F0EA" stroke-opacity="0.28" stroke-width="3" stroke-dasharray="14 14" />
+  <circle cx="360" cy="436" r="78" fill="#10201B" fill-opacity="0.62" stroke="#A9CCB6" stroke-opacity="0.25" stroke-width="2" />
+  <path d="M360 374C378.778 374 394 389.222 394 408C394 422.228 384.413 432.457 370.802 436.952C361.997 439.859 356 448.105 356 457V462" stroke="#F3FAF5" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="356" cy="488" r="12" fill="#F3FAF5" />
+  <path d="M278 558C311.838 529.612 351.964 514.392 398.392 512.34C435.354 510.707 470.557 519.186 504 537.778" stroke="#B1834D" stroke-opacity="0.72" stroke-width="12" stroke-linecap="round" />
+
+  <rect x="158" y="648" width="404" height="168" rx="30" fill="#0E1915" fill-opacity="0.56" stroke="#E6F0EA" stroke-opacity="0.18" stroke-width="2" />
+  <text x="360" y="698" text-anchor="middle" fill="#F3FAF5" font-size="30" font-family="Inter, Arial, sans-serif" font-weight="700">Custom Upload</text>
+  <text x="360" y="732" text-anchor="middle" fill="#B5C5BB" font-size="18" font-family="Inter, Arial, sans-serif">拖拽图片或补充创意描述，生成专属风格参考</text>
+
+  <rect x="238" y="748" width="244" height="52" rx="26" fill="url(#button)" />
+  <text x="360" y="781" text-anchor="middle" fill="#07100D" font-size="20" font-family="Inter, Arial, sans-serif" font-weight="700">选择参考图</text>
 </svg>

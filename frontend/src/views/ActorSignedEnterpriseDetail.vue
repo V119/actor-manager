@@ -3,7 +3,7 @@
     <div class="max-w-5xl mx-auto space-y-6">
       <button
         type="button"
-        class="inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-surface/40 px-4 py-2 text-sm text-sky-100 transition hover:bg-sky-400/10"
+        class="inline-flex items-center gap-2 rounded-full border border-moss-300/20 bg-surface/40 px-4 py-2 text-sm text-moss-100 transition hover:bg-moss-400/10"
         @click="goBack"
       >
         <span class="material-symbols-outlined text-base">arrow_back</span>
@@ -16,16 +16,16 @@
       </div>
 
       <template v-else-if="enterprise">
-        <section class="rounded-2xl border border-sky-400/10 bg-surface/60 p-6 backdrop-blur-xl">
+        <section class="rounded-2xl border border-moss-400/10 bg-surface/60 p-6 backdrop-blur-xl">
           <div class="flex flex-col md:flex-row gap-5 md:items-start md:justify-between">
             <div>
-              <p class="text-xs tracking-[0.18em] uppercase text-slate-400">签约企业</p>
+              <p class="text-xs tracking-[0.18em] uppercase text-ink-400">签约企业</p>
               <h1 class="mt-3 text-3xl font-bold tracking-tight">{{ enterprise.company_name }}</h1>
               <p class="mt-3 max-w-3xl text-sm leading-7 text-on-surface-variant whitespace-pre-wrap">
                 {{ enterprise.company_intro || '该企业暂未填写企业简介。' }}
               </p>
             </div>
-            <div class="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+            <div class="rounded-2xl border border-sage-300/20 bg-sage-500/10 px-4 py-3 text-sm text-sage-100">
               签约时间：{{ formatDateTime(enterprise.signed_at) }}
             </div>
           </div>
@@ -47,10 +47,10 @@
           <div
             v-for="item in infoItems"
             :key="item.label"
-            class="rounded-2xl border border-sky-400/10 bg-surface/50 px-5 py-4"
+            class="rounded-2xl border border-moss-400/10 bg-surface/50 px-5 py-4"
           >
-            <p class="text-[11px] tracking-[0.16em] uppercase text-slate-400">{{ item.label }}</p>
-            <p class="mt-2 text-sm leading-7 break-words text-sky-50 whitespace-pre-wrap">{{ item.value }}</p>
+            <p class="text-[11px] tracking-[0.16em] uppercase text-ink-400">{{ item.label }}</p>
+            <p class="mt-2 text-sm leading-7 break-words text-moss-50 whitespace-pre-wrap">{{ item.value }}</p>
           </div>
         </section>
       </template>
@@ -103,13 +103,13 @@ function formatCurrency(value) {
 
 function paymentStatusClass(status) {
   const normalized = String(status || '').toLowerCase()
-  if (normalized === 'settled') return 'border-emerald-300/30 bg-emerald-500/10 text-emerald-100'
-  if (normalized === 'paid') return 'border-sky-300/30 bg-sky-500/10 text-sky-100'
-  if (normalized === 'pending_payment') return 'border-amber-300/30 bg-amber-500/10 text-amber-100'
+  if (normalized === 'settled') return 'border-sage-300/30 bg-sage-500/10 text-sage-100'
+  if (normalized === 'paid') return 'border-moss-300/30 bg-moss-500/10 text-moss-100'
+  if (normalized === 'pending_payment') return 'border-brass-300/30 bg-brass-500/10 text-brass-100'
   if (normalized === 'payment_failed') return 'border-rose-300/30 bg-rose-500/10 text-rose-100'
   if (normalized === 'partially_refunded') return 'border-violet-300/30 bg-violet-500/10 text-violet-100'
-  if (normalized === 'refunded') return 'border-slate-300/30 bg-slate-500/10 text-slate-100'
-  return 'border-slate-300/20 bg-slate-500/10 text-slate-200'
+  if (normalized === 'refunded') return 'border-ink-300/30 bg-ink-500/10 text-ink-100'
+  return 'border-ink-300/20 bg-ink-500/10 text-ink-200'
 }
 
 async function goBack() {

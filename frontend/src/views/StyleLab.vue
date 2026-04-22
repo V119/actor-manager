@@ -26,22 +26,22 @@
         <div
           v-for="item in basePhotoSlots"
           :key="item.view_angle"
-          class="flex-shrink-0 w-44 h-56 rounded-xl bg-surface/60 backdrop-blur-xl border border-sky-400/10 p-1.5"
+          class="flex-shrink-0 w-44 h-56 rounded-xl bg-surface/60 backdrop-blur-xl border border-moss-400/10 p-1.5"
         >
-          <div class="w-full h-full rounded-lg overflow-hidden bg-slate-950/30 relative">
+          <div class="w-full h-full rounded-lg overflow-hidden bg-ink-950/30 relative">
             <img :src="item.preview_url" :alt="item.label" class="w-full h-full object-cover" />
-            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/80 to-transparent px-2 py-1.5">
-              <p class="text-[11px] text-sky-100 font-medium">{{ item.label }}</p>
+            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink-950/80 to-transparent px-2 py-1.5">
+              <p class="text-[11px] text-moss-100 font-medium">{{ item.label }}</p>
             </div>
           </div>
         </div>
       </div>
-      <div v-else class="rounded-xl border border-dashed border-sky-300/25 bg-slate-950/20 p-6 text-sm text-on-surface-variant">
+      <div v-else class="rounded-xl border border-dashed border-moss-300/25 bg-ink-950/20 p-6 text-sm text-on-surface-variant">
         暂无已发布基础照，请先在“肖像上传”中上传并发布左侧面、正面、右侧面三张照片。
       </div>
     </section>
 
-    <section class="rounded-2xl border border-sky-400/10 bg-surface/55 backdrop-blur-xl p-5 space-y-6">
+    <section class="rounded-2xl border border-moss-400/10 bg-surface/55 backdrop-blur-xl p-5 space-y-6">
       <div class="flex items-center justify-between gap-4 flex-wrap">
         <h3 class="text-sm font-semibold text-primary uppercase tracking-widest flex items-center gap-2">
           <span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
@@ -56,7 +56,7 @@
           :key="style.name"
           type="button"
           class="group cursor-pointer relative overflow-hidden rounded-2xl bg-surface/60 backdrop-blur-xl border p-2 transition-all duration-300 text-left"
-          :class="selectedStyleId === style.id ? 'border-sky-300/80 shadow-[0_0_24px_rgba(125,211,252,0.28)]' : 'border-sky-400/10 hover:border-primary/40'"
+          :class="selectedStyleId === style.id ? 'border-moss-300/80 shadow-[0_0_24px_rgba(111,169,138,0.22)]' : 'border-moss-400/10 hover:border-primary/40'"
           :disabled="!style.id"
           @click="selectStyle(style)"
         >
@@ -68,16 +68,16 @@
             <p class="text-sm font-bold text-on-surface">{{ style.name }}</p>
             <p class="text-[10px] text-on-surface-variant">{{ style.en }}</p>
           </div>
-          <div v-if="!style.id" class="absolute inset-0 bg-slate-950/55 flex items-center justify-center text-xs text-slate-200">
+          <div v-if="!style.id" class="absolute inset-0 bg-ink-950/55 flex items-center justify-center text-xs text-ink-200">
             暂不可用
           </div>
         </button>
       </div>
 
-      <div class="rounded-xl border border-sky-300/20 bg-slate-950/25 p-4 space-y-3">
+      <div class="rounded-xl border border-moss-300/20 bg-ink-950/25 p-4 space-y-3">
         <div class="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h4 class="text-base font-semibold text-sky-100">{{ activeStyleCard?.name || '请选择风格' }}</h4>
+            <h4 class="text-base font-semibold text-moss-100">{{ activeStyleCard?.name || '请选择风格' }}</h4>
             <p class="text-xs text-on-surface-variant">{{ activeStyleCard?.en || '选择风格后可生成并管理图片' }}</p>
           </div>
           <div class="text-xs text-on-surface-variant">
@@ -94,7 +94,7 @@
               type="text"
               maxlength="1000"
               placeholder="例如：夜晚街头，微雨，电影级侧光，情绪感强烈"
-              class="flex-1 min-w-[240px] rounded-lg border border-sky-300/25 bg-slate-950/40 px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/70 focus:outline-none focus:ring-2 focus:ring-primary/35 focus:border-primary/45"
+              class="flex-1 min-w-[240px] rounded-lg border border-moss-300/25 bg-ink-950/40 px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/70 focus:outline-none focus:ring-2 focus:ring-primary/35 focus:border-primary/45"
             />
             <button
               class="relative group px-5 py-2.5 bg-primary/20 rounded-full border border-primary/50 text-primary font-semibold text-sm flex items-center gap-2 transition-all duration-300 hover:bg-primary/30 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
@@ -112,7 +112,7 @@
           <div class="flex items-center gap-3 flex-wrap">
             <label
               for="custom-style-upload"
-              class="flex-1 min-w-[240px] rounded-lg border border-dashed border-sky-300/25 bg-slate-950/40 px-3 py-2.5 text-sm text-on-surface-variant cursor-pointer hover:border-primary/45 hover:text-on-surface transition-colors"
+              class="flex-1 min-w-[240px] rounded-lg border border-dashed border-moss-300/25 bg-ink-950/40 px-3 py-2.5 text-sm text-on-surface-variant cursor-pointer hover:border-primary/45 hover:text-on-surface transition-colors"
             >
               <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-base">upload_file</span>
@@ -141,14 +141,14 @@
       </div>
 
       <div>
-        <div v-if="!activeStyleResults.length" class="rounded-xl border border-dashed border-sky-300/25 bg-slate-950/20 p-8 text-sm text-on-surface-variant text-center">
+        <div v-if="!activeStyleResults.length" class="rounded-xl border border-dashed border-moss-300/25 bg-ink-950/20 p-8 text-sm text-on-surface-variant text-center">
           {{ isCustomStyle ? '当前风格暂无图片，选择图片后点击“上传当前图片”开始添加。' : '当前风格暂无图片，输入描述后点击“生成当前风格图片”开始创作。' }}
         </div>
         <div v-else class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <article
             v-for="item in activeStyleResults"
             :key="item.id"
-            class="group rounded-xl border border-sky-300/20 bg-slate-950/30 overflow-hidden"
+            class="group rounded-xl border border-moss-300/20 bg-ink-950/30 overflow-hidden"
           >
             <div class="relative">
               <img
@@ -159,14 +159,14 @@
               <div class="absolute top-2 right-2">
                 <span
                   class="px-2 py-1 rounded-full text-[11px] font-medium border"
-                  :class="item.lifecycle_state === 'published' ? 'bg-emerald-500/25 border-emerald-300/60 text-emerald-50' : 'bg-amber-500/20 border-amber-300/60 text-amber-50'"
+                  :class="item.lifecycle_state === 'published' ? 'bg-sage-500/25 border-sage-300/60 text-sage-50' : 'bg-brass-500/20 border-brass-300/60 text-brass-50'"
                 >
                   {{ item.lifecycle_state === 'published' ? '已发布' : '未发布' }}
                 </span>
               </div>
               <div class="absolute inset-x-0 bottom-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                <div class="rounded-lg border border-white/15 bg-slate-950/78 backdrop-blur-sm shadow-[0_10px_24px_rgba(2,6,23,0.45)] px-3 py-2">
-                  <p class="text-[11px] text-slate-100 leading-relaxed line-clamp-3 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]">
+                <div class="rounded-lg border border-white/15 bg-ink-950/78 backdrop-blur-sm shadow-[0_10px_24px_rgba(2,6,23,0.45)] px-3 py-2">
+                  <p class="text-[11px] text-ink-100 leading-relaxed line-clamp-3 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]">
                   {{ item.custom_prompt || '无自定义描述' }}
                   </p>
                 </div>
@@ -180,8 +180,8 @@
                   type="button"
                   class="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
                   :class="item.lifecycle_state === 'published'
-                    ? 'border-amber-300/45 bg-amber-500/15 text-amber-50 hover:bg-amber-500/22 hover:border-amber-300/60'
-                    : 'border-emerald-300/45 bg-emerald-500/18 text-emerald-50 hover:bg-emerald-500/25 hover:border-emerald-300/60'"
+                    ? 'border-brass-300/45 bg-brass-500/15 text-brass-50 hover:bg-brass-500/22 hover:border-brass-300/60'
+                    : 'border-sage-300/45 bg-sage-500/18 text-sage-50 hover:bg-sage-500/25 hover:border-sage-300/60'"
                   :disabled="updatingResultId === item.id"
                   @click="toggleResultState(item)"
                 >
@@ -211,7 +211,7 @@
     </section>
 
     <p v-if="errorMessage" class="text-sm text-rose-300 mt-3">{{ errorMessage }}</p>
-    <p v-if="successMessage" class="text-sm text-emerald-300 mt-3">{{ successMessage }}</p>
+    <p v-if="successMessage" class="text-sm text-sage-300 mt-3">{{ successMessage }}</p>
   </div>
 </template>
 

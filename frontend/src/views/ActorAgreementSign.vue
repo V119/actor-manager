@@ -1,17 +1,17 @@
 <template>
   <div class="min-h-screen bg-background text-on-surface">
     <main class="max-w-5xl mx-auto px-6 md:px-8 pt-24 pb-14 space-y-8">
-      <header class="rounded-3xl border border-sky-400/15 bg-slate-950/55 backdrop-blur-xl p-6 md:p-8">
+      <header class="rounded-3xl border border-moss-400/15 bg-ink-950/55 backdrop-blur-xl p-6 md:p-8">
         <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
           <div>
-            <p class="text-xs tracking-[0.2em] uppercase text-sky-300">Agreement Sign</p>
+            <p class="text-xs tracking-[0.2em] uppercase text-moss-300">Agreement Sign</p>
             <h1 class="mt-2 text-3xl font-bold tracking-tight">协议签署</h1>
           </div>
-          <div class="min-w-[220px] rounded-2xl border border-sky-300/20 bg-slate-900/45 p-4">
+          <div class="min-w-[220px] rounded-2xl border border-moss-300/20 bg-ink-900/45 p-4">
             <p class="text-xs text-on-surface-variant">当前状态</p>
             <p
               class="mt-2 text-sm font-semibold"
-              :class="agreementStatus.is_signed ? 'text-emerald-300' : 'text-amber-300'"
+              :class="agreementStatus.is_signed ? 'text-sage-300' : 'text-brass-300'"
             >
               {{ agreementStatus.is_signed ? '已签署' : '未签署' }}
             </p>
@@ -22,15 +22,15 @@
       <section v-if="errorMessage" class="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
         {{ errorMessage }}
       </section>
-      <section v-if="successMessage" class="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+      <section v-if="successMessage" class="rounded-2xl border border-sage-400/20 bg-sage-500/10 px-4 py-3 text-sm text-sage-200">
         {{ successMessage }}
       </section>
 
-      <section v-if="loading" class="rounded-2xl border border-sky-400/10 bg-surface/50 p-8 text-sm text-on-surface-variant">
+      <section v-if="loading" class="rounded-2xl border border-moss-400/10 bg-surface/50 p-8 text-sm text-on-surface-variant">
         正在加载协议内容...
       </section>
 
-      <section v-else class="rounded-[28px] border border-sky-400/12 bg-[#f9f4ea] text-[#1f1a14] shadow-[0_24px_80px_rgba(15,23,42,0.28)] overflow-hidden">
+      <section v-else class="rounded-[28px] border border-moss-400/12 bg-[#f9f4ea] text-[#1f1a14] shadow-[0_24px_80px_rgba(15,23,42,0.28)] overflow-hidden">
         <div class="border-b border-[#d9cfbc] bg-[linear-gradient(135deg,rgba(255,249,240,0.95),rgba(245,236,220,0.92))] px-6 py-5 md:px-10">
           <p class="text-xs tracking-[0.18em] uppercase text-[#7a6544]">DOCX Rendered Template</p>
           <p class="mt-2 text-sm text-[#66563d]">
@@ -211,7 +211,7 @@
                   <transition name="agreement-hint">
                     <div
                       v-if="signatureHint.visible"
-                      class="mt-3 rounded-2xl border border-amber-300/60 bg-amber-100/90 px-4 py-3 text-sm text-amber-900 shadow-[0_10px_30px_rgba(120,53,15,0.12)]"
+                      class="mt-3 rounded-2xl border border-brass-300/60 bg-brass-100/90 px-4 py-3 text-sm text-brass-900 shadow-[0_10px_30px_rgba(120,53,15,0.12)]"
                       role="alert"
                     >
                       <p class="font-semibold">{{ signatureHint.title }}</p>
@@ -244,7 +244,7 @@
         <button
           type="button"
           :disabled="submitting || !agreement.template?.is_ready"
-          class="rounded-full bg-sky-400 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+          class="rounded-full bg-moss-400 px-6 py-3 text-sm font-semibold text-ink-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
           @click="submitAgreement"
         >
           {{ submitting ? '签署提交中...' : '确认签署协议' }}
@@ -703,7 +703,7 @@ onBeforeUnmount(() => {
 
 .agreement-inline-input-locked {
   cursor: default;
-  color: #4b3d2a;
+  color: #2f4a3d;
 }
 
 .agreement-signoff-row {
@@ -751,16 +751,16 @@ onBeforeUnmount(() => {
 
 .secondary-button {
   border-radius: 9999px;
-  border: 1px solid rgba(84, 69, 47, 0.35);
-  background: rgba(84, 69, 47, 0.08);
+  border: 1px solid rgba(72, 99, 83, 0.35);
+  background: rgba(72, 99, 83, 0.12);
   padding: 0.55rem 1rem;
   font-size: 0.85rem;
-  color: #4b3d2a;
+  color: #2f4a3d;
   transition: background 0.2s ease;
 }
 
 .secondary-button:hover {
-  background: rgba(84, 69, 47, 0.14);
+  background: rgba(72, 99, 83, 0.18);
 }
 
 .sr-only {

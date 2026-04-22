@@ -9,10 +9,10 @@
           </p>
         </div>
         <div class="relative w-full md:w-96">
-          <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+          <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-ink-400">search</span>
           <input
             v-model.trim="keyword"
-            class="w-full bg-surface/40 border border-sky-400/10 rounded-full py-3 pl-12 pr-6 text-on-surface placeholder:text-slate-500 focus:outline-none focus:border-sky-400/40 focus:ring-1 focus:ring-sky-400/40 transition-all backdrop-blur-sm"
+            class="w-full bg-surface/40 border border-moss-400/10 rounded-full py-3 pl-12 pr-6 text-on-surface placeholder:text-ink-500 focus:outline-none focus:border-moss-400/40 focus:ring-1 focus:ring-moss-400/40 transition-all backdrop-blur-sm"
             placeholder="搜索签约企业"
             type="text"
           />
@@ -21,7 +21,7 @@
 
       <div v-if="loading" class="text-sm text-on-surface-variant">正在加载签约企业...</div>
       <div v-else-if="errorMessage" class="text-sm text-rose-300">{{ errorMessage }}</div>
-      <div v-else-if="!filteredEnterprises.length" class="rounded-2xl border border-sky-400/10 bg-surface/40 px-5 py-8 text-sm text-on-surface-variant">
+      <div v-else-if="!filteredEnterprises.length" class="rounded-2xl border border-moss-400/10 bg-surface/40 px-5 py-8 text-sm text-on-surface-variant">
         当前还没有企业与您完成签约。
       </div>
 
@@ -30,7 +30,7 @@
           v-for="enterprise in filteredEnterprises"
           :key="`${enterprise.enterprise_user_id}-${enterprise.signed_at}`"
           type="button"
-          class="rounded-2xl border border-sky-400/10 bg-surface/50 p-5 text-left transition hover:border-sky-300/30 hover:-translate-y-1"
+          class="rounded-2xl border border-moss-400/10 bg-surface/50 p-5 text-left transition hover:border-moss-300/30 hover:-translate-y-1"
           @click="openEnterprise(enterprise.enterprise_user_id)"
         >
           <div class="flex items-start justify-between gap-4">
@@ -40,23 +40,23 @@
                 {{ enterprise.company_intro || '企业暂未填写企业简介。' }}
               </p>
             </div>
-            <span class="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+            <span class="rounded-full border border-sage-300/20 bg-sage-500/10 px-3 py-1 text-xs font-semibold text-sage-200">
               已签约
             </span>
           </div>
 
           <div class="mt-5 grid md:grid-cols-2 gap-3 text-sm">
-            <div class="rounded-xl border border-sky-300/10 bg-slate-950/20 px-4 py-3">
-              <p class="text-[11px] tracking-[0.16em] uppercase text-slate-400">统一社会信用代码</p>
-              <p class="mt-2 break-all text-sky-50">{{ enterprise.credit_code || '未填写' }}</p>
+            <div class="rounded-xl border border-moss-300/10 bg-ink-950/20 px-4 py-3">
+              <p class="text-[11px] tracking-[0.16em] uppercase text-ink-400">统一社会信用代码</p>
+              <p class="mt-2 break-all text-moss-50">{{ enterprise.credit_code || '未填写' }}</p>
             </div>
-            <div class="rounded-xl border border-sky-300/10 bg-slate-950/20 px-4 py-3">
-              <p class="text-[11px] tracking-[0.16em] uppercase text-slate-400">签约时间</p>
-              <p class="mt-2 text-sky-50">{{ formatDateTime(enterprise.signed_at) }}</p>
+            <div class="rounded-xl border border-moss-300/10 bg-ink-950/20 px-4 py-3">
+              <p class="text-[11px] tracking-[0.16em] uppercase text-ink-400">签约时间</p>
+              <p class="mt-2 text-moss-50">{{ formatDateTime(enterprise.signed_at) }}</p>
             </div>
-            <div class="rounded-xl border border-sky-300/10 bg-slate-950/20 px-4 py-3 md:col-span-2">
+            <div class="rounded-xl border border-moss-300/10 bg-ink-950/20 px-4 py-3 md:col-span-2">
               <div class="flex flex-wrap items-center justify-between gap-2">
-                <p class="text-[11px] tracking-[0.16em] uppercase text-slate-400">付款情况</p>
+                <p class="text-[11px] tracking-[0.16em] uppercase text-ink-400">付款情况</p>
                 <span
                   class="rounded-full border px-2.5 py-1 text-[11px] font-semibold"
                   :class="paymentStatusClass(enterprise.payment_status)"
@@ -64,7 +64,7 @@
                   {{ enterprise.payment_status_label || '未下单' }}
                 </span>
               </div>
-              <p class="mt-2 text-sky-50">
+              <p class="mt-2 text-moss-50">
                 <template v-if="enterprise.latest_order_no">
                   最近订单：{{ enterprise.latest_order_no }} · {{ formatCurrency(enterprise.latest_line_total_amount) }}
                 </template>
@@ -124,13 +124,13 @@ function formatCurrency(value) {
 
 function paymentStatusClass(status) {
   const normalized = String(status || '').toLowerCase()
-  if (normalized === 'settled') return 'border-emerald-300/30 bg-emerald-500/10 text-emerald-100'
-  if (normalized === 'paid') return 'border-sky-300/30 bg-sky-500/10 text-sky-100'
-  if (normalized === 'pending_payment') return 'border-amber-300/30 bg-amber-500/10 text-amber-100'
+  if (normalized === 'settled') return 'border-sage-300/30 bg-sage-500/10 text-sage-100'
+  if (normalized === 'paid') return 'border-moss-300/30 bg-moss-500/10 text-moss-100'
+  if (normalized === 'pending_payment') return 'border-brass-300/30 bg-brass-500/10 text-brass-100'
   if (normalized === 'payment_failed') return 'border-rose-300/30 bg-rose-500/10 text-rose-100'
   if (normalized === 'partially_refunded') return 'border-violet-300/30 bg-violet-500/10 text-violet-100'
-  if (normalized === 'refunded') return 'border-slate-300/30 bg-slate-500/10 text-slate-100'
-  return 'border-slate-300/20 bg-slate-500/10 text-slate-200'
+  if (normalized === 'refunded') return 'border-ink-300/30 bg-ink-500/10 text-ink-100'
+  return 'border-ink-300/20 bg-ink-500/10 text-ink-200'
 }
 
 function openEnterprise(enterpriseUserId) {

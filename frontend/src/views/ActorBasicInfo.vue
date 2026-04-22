@@ -9,26 +9,26 @@
           </p>
         </div>
         <div class="text-xs text-on-surface-variant">
-          资料完整度：<span class="text-sky-300 font-semibold">{{ profileCompletion }}%</span>
+          资料完整度：<span class="text-moss-300 font-semibold">{{ profileCompletion }}%</span>
         </div>
       </header>
 
-      <section class="bg-surface/65 border border-sky-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl">
+      <section class="bg-surface/65 border border-moss-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl">
         <div class="flex flex-col md:flex-row md:items-center gap-5">
-          <div class="w-24 h-24 rounded-full overflow-hidden border border-sky-300/30 bg-slate-950/30 flex-shrink-0">
+          <div class="w-24 h-24 rounded-full overflow-hidden border border-moss-300/30 bg-ink-950/30 flex-shrink-0">
             <img
               v-if="basicInfo?.avatar_url"
               :src="basicInfo.avatar_url"
               alt="演员头像"
               class="w-full h-full object-cover"
             />
-            <div v-else class="w-full h-full flex items-center justify-center text-sky-200">
+            <div v-else class="w-full h-full flex items-center justify-center text-moss-200">
               <span class="material-symbols-outlined text-3xl">person</span>
             </div>
           </div>
 
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-semibold text-sky-100">头像设置</p>
+            <p class="text-sm font-semibold text-moss-100">头像设置</p>
             <p class="mt-1 text-xs text-on-surface-variant">
               {{
                 basicInfo?.avatar_source === 'three_view'
@@ -38,7 +38,7 @@
             </p>
             <div class="mt-3 flex flex-wrap gap-3">
               <button
-                class="px-4 py-2 rounded-lg border border-sky-300/35 text-sm text-sky-100 hover:bg-sky-400/10 transition"
+                class="px-4 py-2 rounded-lg border border-moss-300/35 text-sm text-moss-100 hover:bg-moss-400/10 transition"
                 @click="goToPortraitUpload"
               >
                 前往肖像上传
@@ -49,7 +49,7 @@
       </section>
 
       <form class="space-y-6" @submit.prevent="saveBasicInfo">
-        <section class="bg-surface/65 border border-sky-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl space-y-4">
+        <section class="bg-surface/65 border border-moss-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl space-y-4">
           <h2 class="text-lg font-semibold">基础资料</h2>
           <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             <label class="space-y-1">
@@ -58,7 +58,7 @@
                 v-model="form.name"
                 type="text"
                 maxlength="64"
-                class="w-full rounded-lg border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/50"
+                class="w-full rounded-lg border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/50"
                 placeholder="请输入姓名"
               />
             </label>
@@ -70,7 +70,7 @@
                 type="number"
                 min="0"
                 max="100"
-                class="w-full rounded-lg border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/50"
+                class="w-full rounded-lg border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/50"
               />
             </label>
 
@@ -81,7 +81,7 @@
                 type="number"
                 min="0"
                 max="250"
-                class="w-full rounded-lg border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/50"
+                class="w-full rounded-lg border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/50"
               />
             </label>
 
@@ -92,7 +92,7 @@
                 type="number"
                 min="0"
                 max="300"
-                class="w-full rounded-lg border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/50"
+                class="w-full rounded-lg border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/50"
               />
             </label>
 
@@ -102,7 +102,7 @@
                 v-model="form.location"
                 type="text"
                 maxlength="64"
-                class="w-full rounded-lg border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/50"
+                class="w-full rounded-lg border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/50"
                 placeholder="如：上海"
               />
             </label>
@@ -113,14 +113,14 @@
                 v-model="form.hometown"
                 type="text"
                 maxlength="64"
-                class="w-full rounded-lg border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/50"
+                class="w-full rounded-lg border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/50"
                 placeholder="如：四川成都"
               />
             </label>
           </div>
         </section>
 
-        <section class="bg-surface/65 border border-sky-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl space-y-4">
+        <section class="bg-surface/65 border border-moss-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl space-y-4">
           <h2 class="text-lg font-semibold">身材参数</h2>
           <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
             <label class="space-y-1">
@@ -130,7 +130,7 @@
                 type="number"
                 min="0"
                 max="200"
-                class="w-full rounded-lg border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/50"
+                class="w-full rounded-lg border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/50"
               />
             </label>
             <label class="space-y-1">
@@ -140,7 +140,7 @@
                 type="number"
                 min="0"
                 max="200"
-                class="w-full rounded-lg border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/50"
+                class="w-full rounded-lg border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/50"
               />
             </label>
             <label class="space-y-1">
@@ -150,7 +150,7 @@
                 type="number"
                 min="0"
                 max="220"
-                class="w-full rounded-lg border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/50"
+                class="w-full rounded-lg border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/50"
               />
             </label>
             <label class="space-y-1">
@@ -159,19 +159,19 @@
                 v-model="form.shoe_size"
                 type="text"
                 maxlength="16"
-                class="w-full rounded-lg border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/50"
+                class="w-full rounded-lg border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/50"
                 placeholder="如：38 / 39"
               />
             </label>
           </div>
         </section>
 
-        <section class="bg-surface/65 border border-sky-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl space-y-4">
+        <section class="bg-surface/65 border border-moss-400/10 rounded-2xl p-5 md:p-6 backdrop-blur-xl space-y-4">
           <h2 class="text-lg font-semibold">职业信息与接戏偏好</h2>
 
-          <div class="rounded-2xl border border-sky-400/15 bg-slate-950/20 p-4 md:p-5 space-y-4">
+          <div class="rounded-2xl border border-moss-400/15 bg-ink-950/20 p-4 md:p-5 space-y-4">
             <div>
-              <p class="text-sm font-semibold text-sky-100">自我定价</p>
+              <p class="text-sm font-semibold text-moss-100">自我定价</p>
               <p class="mt-1 text-xs text-on-surface-variant">
                 设置你的基础合作报价，企业端沟通时可更快了解合作预期。
               </p>
@@ -185,8 +185,8 @@
                     type="button"
                     class="rounded-xl border px-4 py-3 text-left transition"
                     :class="form.pricing_unit === 'day'
-                      ? 'border-sky-300/40 bg-sky-400/12 text-sky-50 shadow-[0_0_0_1px_rgba(125,211,252,0.18)]'
-                      : 'border-sky-300/15 bg-slate-950/25 text-on-surface-variant hover:border-sky-300/30 hover:text-sky-100'"
+                      ? 'border-moss-300/40 bg-moss-400/12 text-moss-50 shadow-[0_0_0_1px_rgba(111,169,138,0.22)]'
+                      : 'border-moss-300/15 bg-ink-950/25 text-on-surface-variant hover:border-moss-300/30 hover:text-moss-100'"
                     @click="form.pricing_unit = 'day'"
                   >
                     <p class="text-sm font-semibold">按天计费</p>
@@ -196,8 +196,8 @@
                     type="button"
                     class="rounded-xl border px-4 py-3 text-left transition"
                     :class="form.pricing_unit === 'project'
-                      ? 'border-sky-300/40 bg-sky-400/12 text-sky-50 shadow-[0_0_0_1px_rgba(125,211,252,0.18)]'
-                      : 'border-sky-300/15 bg-slate-950/25 text-on-surface-variant hover:border-sky-300/30 hover:text-sky-100'"
+                      ? 'border-moss-300/40 bg-moss-400/12 text-moss-50 shadow-[0_0_0_1px_rgba(111,169,138,0.22)]'
+                      : 'border-moss-300/15 bg-ink-950/25 text-on-surface-variant hover:border-moss-300/30 hover:text-moss-100'"
                     @click="form.pricing_unit = 'project'"
                   >
                     <p class="text-sm font-semibold">按项目计费</p>
@@ -211,14 +211,14 @@
                   价格（元/{{ form.pricing_unit === 'day' ? '天' : '项目' }}）
                 </span>
                 <div class="relative">
-                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-sky-200/80">￥</span>
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-moss-200/80">￥</span>
                   <input
                     v-model.number="form.pricing_amount"
                     type="number"
                     min="0"
                     max="100000000"
                     step="1"
-                    class="w-full rounded-xl border border-sky-300/20 bg-slate-950/30 pl-8 pr-3 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/50"
+                    class="w-full rounded-xl border border-moss-300/20 bg-ink-950/30 pl-8 pr-3 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/50"
                     :placeholder="form.pricing_unit === 'day' ? '例如：3000' : '例如：20000'"
                   />
                 </div>
@@ -231,17 +231,17 @@
 
           <label class="space-y-1 block">
             <span class="text-xs text-on-surface-variant">擅长标签</span>
-            <div class="rounded-lg border border-sky-300/20 bg-slate-950/30 p-2.5">
+            <div class="rounded-lg border border-moss-300/20 bg-ink-950/30 p-2.5">
               <div class="flex flex-wrap gap-2 min-h-[30px]">
                 <span
                   v-for="(tag, index) in form.tags"
                   :key="`${tag}-${index}`"
-                  class="inline-flex items-center gap-1 rounded-full border border-sky-300/30 bg-sky-400/10 px-2.5 py-1 text-xs text-sky-100"
+                  class="inline-flex items-center gap-1 rounded-full border border-moss-300/30 bg-moss-400/10 px-2.5 py-1 text-xs text-moss-100"
                 >
                   {{ tag }}
                   <button
                     type="button"
-                    class="text-sky-200/80 hover:text-rose-200"
+                    class="text-moss-200/80 hover:text-rose-200"
                     @click="removeTag(index)"
                   >
                     <span class="material-symbols-outlined text-sm leading-none">close</span>
@@ -254,12 +254,12 @@
                   type="text"
                   maxlength="24"
                   placeholder="输入标签后回车，例如：古装、都市、武打"
-                  class="flex-1 rounded-lg border border-sky-300/20 bg-slate-900/50 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/50"
+                  class="flex-1 rounded-lg border border-moss-300/20 bg-ink-900/50 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/50"
                   @keydown="onTagKeydown"
                 />
                 <button
                   type="button"
-                  class="px-3 py-2 rounded-lg border border-sky-300/30 text-xs text-sky-100 hover:bg-sky-400/10"
+                  class="px-3 py-2 rounded-lg border border-moss-300/30 text-xs text-moss-100 hover:bg-moss-400/10"
                   @click="appendTag()"
                 >
                   添加
@@ -270,7 +270,7 @@
                   v-for="quickTag in quickTagSuggestions"
                   :key="quickTag"
                   type="button"
-                  class="px-2.5 py-1 rounded-full border border-white/10 text-[11px] text-on-surface-variant hover:text-sky-100 hover:border-sky-300/30 transition"
+                  class="px-2.5 py-1 rounded-full border border-white/10 text-[11px] text-on-surface-variant hover:text-moss-100 hover:border-moss-300/30 transition"
                   @click="appendTag(quickTag)"
                 >
                   {{ quickTag }}
@@ -285,7 +285,7 @@
               v-model="form.bio"
               rows="4"
               maxlength="2000"
-              class="w-full rounded-lg border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/50"
+              class="w-full rounded-lg border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/50"
               placeholder="可填写代表作品、擅长角色、训练背景等"
             />
           </label>
@@ -297,7 +297,7 @@
                 v-model="form.acting_requirements"
                 rows="5"
                 maxlength="2000"
-                class="w-full rounded-lg border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/50"
+                class="w-full rounded-lg border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/50"
                 placeholder="如：希望有完整剧本、角色成长线清晰、提供基础排练周期等"
               />
             </label>
@@ -308,7 +308,7 @@
                 v-model="form.rejected_requirements"
                 rows="5"
                 maxlength="2000"
-                class="w-full rounded-lg border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/50"
+                class="w-full rounded-lg border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/50"
                 placeholder="如：不接裸露戏、危险动作需专业替身、拒绝过度改词等"
               />
             </label>
@@ -320,27 +320,27 @@
               v-model="form.availability_note"
               rows="3"
               maxlength="1000"
-              class="w-full rounded-lg border border-sky-300/20 bg-slate-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/50"
+              class="w-full rounded-lg border border-moss-300/20 bg-ink-950/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/50"
               placeholder="如：可接受异地拍摄，提前 7 天确认档期"
             />
           </label>
         </section>
 
         <p v-if="errorMessage" class="text-sm text-rose-300">{{ errorMessage }}</p>
-        <p v-if="successMessage" class="text-sm text-emerald-300">{{ successMessage }}</p>
+        <p v-if="successMessage" class="text-sm text-sage-300">{{ successMessage }}</p>
 
         <div class="flex items-center gap-3">
           <button
             type="submit"
             :disabled="saving || loading"
-            class="px-6 py-2.5 rounded-lg bg-sky-400 text-slate-950 font-semibold hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
+            class="px-6 py-2.5 rounded-lg bg-moss-400 text-ink-950 font-semibold hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {{ saving ? '保存中...' : '保存基本信息' }}
           </button>
           <button
             type="button"
             :disabled="saving || loading"
-            class="px-6 py-2.5 rounded-lg border border-sky-300/30 text-sky-100 hover:bg-sky-400/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
+            class="px-6 py-2.5 rounded-lg border border-moss-300/30 text-moss-100 hover:bg-moss-400/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
             @click="loadBasicInfo"
           >
             重新加载

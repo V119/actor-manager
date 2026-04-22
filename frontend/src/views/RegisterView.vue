@@ -1,8 +1,8 @@
 <template>
   <div class="min-h-screen bg-background text-on-surface flex items-center justify-center px-6">
-    <div class="w-full max-w-lg bg-surface/65 border border-sky-400/15 rounded-2xl p-8 backdrop-blur-2xl shadow-[0_0_40px_rgba(125,211,252,0.08)]">
+    <div class="w-full max-w-lg bg-surface/65 border border-moss-400/15 rounded-2xl p-8 backdrop-blur-2xl shadow-[0_0_40px_rgba(111,169,138,0.14)]">
       <div class="mb-8">
-        <p class="text-xs tracking-[0.2em] uppercase text-sky-300">Glacier AI Actor</p>
+        <p class="text-xs tracking-[0.2em] uppercase text-moss-300">Glacier AI Actor</p>
         <h1 class="text-3xl font-bold mt-2">注册账户</h1>
         <p class="text-on-surface-variant text-sm mt-2">当前仅开放普通演员用户注册，企业用户由后台管理员创建。</p>
       </div>
@@ -13,7 +13,7 @@
           <input
             v-model="form.phone"
             type="tel"
-            class="mt-2 w-full bg-surface/40 border border-sky-400/15 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/60 focus:border-sky-300/40"
+            class="mt-2 w-full bg-surface/40 border border-moss-400/15 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/60 focus:border-moss-300/40"
             placeholder="请输入手机号"
             required
           />
@@ -24,7 +24,7 @@
           <input
             v-model="form.password"
             type="password"
-            class="mt-2 w-full bg-surface/40 border border-sky-400/15 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/60 focus:border-sky-300/40"
+            class="mt-2 w-full bg-surface/40 border border-moss-400/15 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/60 focus:border-moss-300/40"
             placeholder="至少 6 位"
             required
           />
@@ -35,7 +35,7 @@
           <input
             v-model="form.confirm_password"
             type="password"
-            class="mt-2 w-full bg-surface/40 border border-sky-400/15 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-sky-300/60 focus:border-sky-300/40"
+            class="mt-2 w-full bg-surface/40 border border-moss-400/15 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-moss-300/60 focus:border-moss-300/40"
             placeholder="请再次输入密码"
             required
           />
@@ -46,7 +46,7 @@
         <button
           type="submit"
           :disabled="loading"
-          class="w-full py-3 rounded-xl bg-sky-400 text-slate-950 font-semibold hover:brightness-110 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+          class="w-full py-3 rounded-xl bg-moss-400 text-ink-950 font-semibold hover:brightness-110 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {{ loading ? '注册中...' : '注册并进入工作台' }}
         </button>
@@ -55,13 +55,13 @@
           <input
             v-model="form.agreement_accepted"
             type="checkbox"
-            class="h-4 w-4 rounded border-sky-300/35 bg-surface/40 text-sky-400 focus:ring-sky-300/60"
+            class="h-4 w-4 rounded border-moss-300/35 bg-surface/40 text-moss-400 focus:ring-moss-300/60"
           />
           <span>
             我已阅读并同意
             <button
               type="button"
-              class="text-sky-300 hover:text-sky-200 underline-offset-2 hover:underline"
+              class="text-moss-300 hover:text-moss-200 underline-offset-2 hover:underline"
               @click.stop="openAgreementModal"
             >
               《AI肖像权独家授权合作协议》
@@ -72,11 +72,11 @@
 
       <p class="text-sm text-on-surface-variant mt-6">
         已有账号？
-        <RouterLink to="/login/individual" class="text-sky-300 hover:text-sky-200">去登录</RouterLink>
+        <RouterLink to="/login/individual" class="text-moss-300 hover:text-moss-200">去登录</RouterLink>
       </p>
       <p class="text-xs text-on-surface-variant mt-3">
         企业用户请使用
-        <RouterLink to="/login/enterprise" class="text-sky-300 hover:text-sky-200">企业登录入口</RouterLink>
+        <RouterLink to="/login/enterprise" class="text-moss-300 hover:text-moss-200">企业登录入口</RouterLink>
       </p>
     </div>
 
